@@ -1,4 +1,4 @@
-name: Build harvest vegetable photo set v3
+name: Build harvest vegetable photo set v4
 
 on:
   push:
@@ -34,7 +34,7 @@ jobs:
             ("01_carrot",       5621248,  "https://www.pexels.com/photo/top-view-of-a-carrot-on-an-orange-surface-5621248/"),
             ("02_beetroot",       244394,  "https://www.pexels.com/photo/purple-beet-244394/"),
             ("03_potato",       33948200,  "https://www.pexels.com/photo/minimalist-portrait-of-a-single-potato-33948200/"),
-            ("04_onion",         7467205,  "https://www.pexels.com/photo/photograph-of-an-onion-on-a-yellow-surface-7467205/"),
+            ("04_onion",        36089435,  "https://www.pexels.com/photo/red-onion-on-a-yellow-surface-close-up-36089435/"),
             ("05_garlic",        5973583,  "https://www.pexels.com/photo/close-up-shot-of-a-garlic-5973583/"),
             ("06_cauliflower",  23235238,  "https://www.pexels.com/photo/cauliflower-on-gray-background-23235238/"),
             ("07_sweetcorn",     5343431,  "https://www.pexels.com/photo/a-corn-on-the-cob-5343431/"),
@@ -114,7 +114,7 @@ jobs:
       - name: Upload set and contact sheet
         uses: actions/upload-artifact@v4
         with:
-          name: harvest-vegetables-2000x2000-v3
+          name: harvest-vegetables-2000x2000-v4
           path: |
             harvest-vegetables-2000x2000.zip
             harvest-vegetables-2000x2000/CONTACT_SHEET.jpg
