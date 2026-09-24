@@ -1,4 +1,4 @@
-name: Build harvest vegetable photo set v2
+name: Build harvest vegetable photo set v3
 
 on:
   push:
@@ -16,108 +16,105 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install image tools
-        run: python -m pip install --quiet pillow requests
+        run: python -m pip install --quiet pillow requests "rembg[cpu]"
       - name: Download and standardise real stock photographs
         shell: python
         run: |
-          import io, os, math, zipfile, requests
-          from PIL import Image, ImageOps, ImageDraw, ImageFont
+          import io, os, zipfile, requests
+          from PIL import Image, ImageDraw
+          from rembg import remove, new_session
 
           OUT="harvest-vegetables-2000x2000"
           os.makedirs(OUT, exist_ok=True)
           S=2000
           headers={"User-Agent":"Mozilla/5.0 (compatible; image-prep/1.0)"}
 
-          # Real Pexels photographs. crop is a normalized source-image box (l,t,r,b).
+          # Each source is a real Pexels photograph containing one principal vegetable.
           photos=[
-            ("01_carrot",       6740689,  "https://www.pexels.com/photo/fresh-carrots-over-a-white-surface-6740689/",                    None),
-            ("02_beetroot",       244394,  "https://www.pexels.com/photo/purple-beet-244394/",                                            None),
-            ("03_potato",        4110456,  "https://www.pexels.com/photo/top-photo-of-potatoes-4110456/",                                  None),
-            ("04_red-onion",     7889980,  "https://www.pexels.com/photo/close-up-shot-of-onions-on-a-white-surface-7889980/",             None),
-            ("05_garlic",        5507590,  "https://www.pexels.com/photo/garlic-on-a-white-surface-5507590/",                               None),
-            ("06_cauliflower",  23235238,  "https://www.pexels.com/photo/cauliflower-on-gray-background-23235238/",                         None),
-            ("07_sweetcorn",     5343431,  "https://www.pexels.com/photo/a-corn-on-the-cob-5343431/",                                      None),
-            ("08_butternut",     4187617,  "https://www.pexels.com/photo/butternut-squash-in-close-up-photography-4187617/",               None),
-            ("09_pumpkin",       5474395,  "https://www.pexels.com/photo/yellow-pumpkin-on-white-surface-5474395/",                          None),
-            ("10_courgette",    26926846,  "https://www.pexels.com/photo/white-vegetable-on-white-background-26926846/",                    None),
+            ("01_carrot",       5621248,  "https://www.pexels.com/photo/top-view-of-a-carrot-on-an-orange-surface-5621248/"),
+            ("02_beetroot",       244394,  "https://www.pexels.com/photo/purple-beet-244394/"),
+            ("03_potato",       33948200,  "https://www.pexels.com/photo/minimalist-portrait-of-a-single-potato-33948200/"),
+            ("04_onion",         7467205,  "https://www.pexels.com/photo/photograph-of-an-onion-on-a-yellow-surface-7467205/"),
+            ("05_garlic",        5973583,  "https://www.pexels.com/photo/close-up-shot-of-a-garlic-5973583/"),
+            ("06_cauliflower",  23235238,  "https://www.pexels.com/photo/cauliflower-on-gray-background-23235238/"),
+            ("07_sweetcorn",     5343431,  "https://www.pexels.com/photo/a-corn-on-the-cob-5343431/"),
+            ("08_butternut",     4187617,  "https://www.pexels.com/photo/butternut-squash-in-close-up-photography-4187617/"),
+            ("09_pumpkin",       5474395,  "https://www.pexels.com/photo/yellow-pumpkin-on-white-surface-5474395/"),
+            ("10_courgette",    11643027,  "https://www.pexels.com/photo/green-vegetable-on-brown-wooden-table-11643027/"),
           ]
 
           def fetch(photo_id):
             url=f"https://images.pexels.com/photos/{photo_id}/pexels-photo-{photo_id}.jpeg"
-            r=requests.get(url,headers=headers,timeout=60)
+            r=requests.get(url,headers=headers,timeout=90)
             r.raise_for_status()
             return Image.open(io.BytesIO(r.content)).convert("RGB"), url
 
-          def subject_bbox_white(im, threshold=242):
-            # Bounding box of pixels that are not near-white. Useful for the clean-background sources.
-            small=im.copy()
-            small.thumbnail((1200,1200))
-            px=small.load(); w,h=small.size
-            xs=[]; ys=[]
-            for y in range(h):
-              for x in range(w):
-                r,g,b=px[x,y]
-                if min(r,g,b) < threshold and (max(r,g,b)-min(r,g,b) > 8 or (r+g+b)/3 < threshold-8):
-                  xs.append(x); ys.append(y)
-            if not xs:
-              return (0,0,im.width,im.height)
-            l,r=min(xs),max(xs)+1; t,b=min(ys),max(ys)+1
-            sx=im.width/w; sy=im.height/h
-            pad=max(10,int(0.04*max(r-l,b-t)))
-            l=max(0,l-pad); t=max(0,t-pad); r=min(w,r+pad); b=min(h,b+pad)
-            return (int(l*sx),int(t*sy),int(r*sx),int(b*sy))
+          session=new_session("u2net")
 
-          def square_canvas(im, bbox=None):
-            if bbox is None:
-              bbox=subject_bbox_white(im)
-            crop=im.crop(bbox)
-            # Keep entire chosen subject, with generous clean margin, on 2000x2000.
-            max_side=int(S*0.84)
-            scale=min(max_side/crop.width,max_side/crop.height)
-            nw=max(1,round(crop.width*scale)); nh=max(1,round(crop.height*scale))
-            crop=crop.resize((nw,nh),Image.Resampling.LANCZOS)
-            canvas=Image.new("RGB",(S,S),"white")
-            canvas.paste(crop,((S-nw)//2,(S-nh)//2))
-            return canvas
+          def isolate_to_square(im):
+            # Background removal only: this is not generative; the vegetable remains the real source photograph.
+            rgba=remove(im, session=session).convert("RGBA")
+            alpha=rgba.getchannel("A")
+            bbox=alpha.getbbox()
+            if not bbox:
+              raise RuntimeError("Background removal returned an empty subject")
+            subject=rgba.crop(bbox)
+
+            # Keep a substantial clean margin so every final image has matching composition.
+            max_side=int(S*0.82)
+            scale=min(max_side/subject.width,max_side/subject.height)
+            nw=max(1,round(subject.width*scale))
+            nh=max(1,round(subject.height*scale))
+            subject=subject.resize((nw,nh),Image.Resampling.LANCZOS)
+
+            canvas=Image.new("RGBA",(S,S),(255,255,255,255))
+            x=(S-nw)//2
+            y=(S-nh)//2
+            canvas.alpha_composite(subject,(x,y))
+            return canvas.convert("RGB")
 
           rows=[]
           sources=[]
-          for name,pid,page,crop_norm in photos:
+          for name,pid,page in photos:
             im,direct=fetch(pid)
             w,h=im.size
-            bbox=None
-            if crop_norm:
-              l,t,r,b=crop_norm
-              bbox=(round(l*w),round(t*h),round(r*w),round(b*h))
-            out=square_canvas(im,bbox)
+            out=isolate_to_square(im)
             fp=os.path.join(OUT,name+".png")
             out.save(fp,"PNG",optimize=True)
             rows.append((name,out.copy(),im.size))
-            sources.append(f"{name}.png\nSource page: {page}\nDirect photograph: {direct}\nPexels: Free to use under the Pexels licence.\nOriginal dimensions downloaded: {w}x{h}\nOutput: 2000x2000 PNG\n")
+            sources.append(
+              f"{name}.png\n"
+              f"Source page: {page}\n"
+              f"Direct photograph: {direct}\n"
+              f"Pexels: Free to use under the Pexels licence.\n"
+              f"Original dimensions downloaded: {w}x{h}\n"
+              f"Processing: background removed, subject fitted to a white 2000x2000 canvas; no generative image creation.\n"
+              f"Output: 2000x2000 PNG\n"
+            )
 
-          # Contact sheet for quality-control.
           thumb=500
-          sheet=Image.new("RGB",(thumb*5,thumb*2+70*2),"white")
+          label_h=70
+          sheet=Image.new("RGB",(thumb*5,(thumb+label_h)*2),"white")
           d=ImageDraw.Draw(sheet)
           for i,(name,im,origsz) in enumerate(rows):
-            x=(i%5)*thumb; y=(i//5)*(thumb+70)
-            t=im.resize((thumb,thumb),Image.Resampling.LANCZOS)
-            sheet.paste(t,(x,y))
+            x=(i%5)*thumb
+            y=(i//5)*(thumb+label_h)
+            sheet.paste(im.resize((thumb,thumb),Image.Resampling.LANCZOS),(x,y))
             d.text((x+8,y+thumb+8),name,fill="black")
             d.text((x+8,y+thumb+28),f"source {origsz[0]}x{origsz[1]} → 2000x2000",fill="black")
-          sheet.save(os.path.join(OUT,"CONTACT_SHEET.jpg"),"JPEG",quality=92)
+          sheet.save(os.path.join(OUT,"CONTACT_SHEET.jpg"),"JPEG",quality=94)
 
           with open(os.path.join(OUT,"SOURCES.txt"),"w",encoding="utf-8") as fh:
             fh.write("\n\n".join(sources))
 
           with zipfile.ZipFile("harvest-vegetables-2000x2000.zip","w",zipfile.ZIP_DEFLATED) as z:
-            for fn in os.listdir(OUT):
+            for fn in sorted(os.listdir(OUT)):
               if fn.endswith(".png") or fn=="SOURCES.txt":
                 z.write(os.path.join(OUT,fn),fn)
       - name: Upload set and contact sheet
         uses: actions/upload-artifact@v4
         with:
-          name: harvest-vegetables-2000x2000
+          name: harvest-vegetables-2000x2000-v3
           path: |
             harvest-vegetables-2000x2000.zip
             harvest-vegetables-2000x2000/CONTACT_SHEET.jpg
