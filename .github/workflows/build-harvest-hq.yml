@@ -1,0 +1,111 @@
+name: Build high quality harvest vegetable set
+
+on:
+  push:
+    paths:
+      - ".github/workflows/build-harvest-hq.yml"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --quiet pillow requests
+      - name: Build lossless-looking 2000px set from real photographs
+        shell: python
+        run: |
+          import io, os, zipfile, statistics, requests
+          from PIL import Image, ImageStat, ImageDraw
+
+          OUT="harvest-vegetables-HQ-2000x2000"
+          os.makedirs(OUT, exist_ok=True)
+          S=2000
+          headers={"User-Agent":"Mozilla/5.0"}
+
+          # Real Pexels photographs, each with one principal vegetable and a simple/plain setting.
+          photos=[
+            ("01_carrot",      5621248,  "https://www.pexels.com/photo/top-view-of-a-carrot-on-an-orange-surface-5621248/"),
+            ("02_beetroot",      244394,  "https://www.pexels.com/photo/purple-beet-244394/"),
+            ("03_potato",      33948200,  "https://www.pexels.com/photo/minimalist-portrait-of-a-single-potato-33948200/"),
+            ("04_red-onion",   36089435,  "https://www.pexels.com/photo/red-onion-on-a-yellow-surface-close-up-36089435/"),
+            ("05_garlic",       8627572,  "https://www.pexels.com/photo/a-close-up-shot-of-a-knob-of-garlic-8627572/"),
+            ("06_cauliflower", 23235238,  "https://www.pexels.com/photo/cauliflower-on-gray-background-23235238/"),
+            ("07_sweetcorn",    5343431,  "https://www.pexels.com/photo/a-corn-on-the-cob-5343431/"),
+            ("08_butternut",    4187617,  "https://www.pexels.com/photo/butternut-squash-in-close-up-photography-4187617/"),
+            ("09_pumpkin",     16253358,  "https://www.pexels.com/photo/pumpkin-on-white-background-16253358/"),
+            ("10_courgette",   11643027,  "https://www.pexels.com/photo/green-vegetable-on-brown-wooden-table-11643027/"),
+          ]
+
+          def get(pid):
+            url=f"https://images.pexels.com/photos/{pid}/pexels-photo-{pid}.jpeg"
+            r=requests.get(url,headers=headers,timeout=90)
+            r.raise_for_status()
+            return Image.open(io.BytesIO(r.content)).convert("RGB"), url
+
+          def edge_colour(im):
+            # Use the photograph's own corner/background colour for padding rather than inventing detail.
+            pts=[]
+            w,h=im.size
+            box=max(20,min(w,h)//30)
+            for x,y in [(0,0),(w-box,0),(0,h-box),(w-box,h-box)]:
+              stat=ImageStat.Stat(im.crop((x,y,x+box,y+box)))
+              pts.append(tuple(int(v) for v in stat.mean[:3]))
+            return tuple(int(statistics.median([p[i] for p in pts])) for i in range(3))
+
+          def fit_no_upscale(im):
+            w,h=im.size
+            scale=min(S/w,S/h,1.0)  # NEVER upscale source pixels.
+            nw=max(1,round(w*scale)); nh=max(1,round(h*scale))
+            if (nw,nh)!=(w,h):
+              im=im.resize((nw,nh),Image.Resampling.LANCZOS)
+            canvas=Image.new("RGB",(S,S),edge_colour(im))
+            canvas.paste(im,((S-nw)//2,(S-nh)//2))
+            return canvas
+
+          sources=[]
+          rows=[]
+          for name,pid,page in photos:
+            im,direct=get(pid)
+            original=im.size
+            if min(original)<S:
+              raise RuntimeError(f"{name}: source too small {original}; refusing to upscale")
+            out=fit_no_upscale(im)
+            fp=os.path.join(OUT,name+".png")
+            out.save(fp,"PNG",compress_level=4)
+            sources.append(
+              f"{name}.png\nSource page: {page}\nDirect photograph: {direct}\n"
+              f"Original dimensions: {original[0]}x{original[1]}\n"
+              f"Output: 2000x2000 PNG\n"
+              "Processing: original photographic pixels only; no AI generation, no background removal, no sharpening, no upscaling. "
+              "Image fitted down proportionally and padded using its own edge colour.\n"
+            )
+            rows.append((name,out,original))
+
+          with open(os.path.join(OUT,"SOURCES.txt"),"w",encoding="utf-8") as f:
+            f.write("\n\n".join(sources))
+
+          thumb=400; label=60
+          sheet=Image.new("RGB",(thumb*5,(thumb+label)*2),"white")
+          d=ImageDraw.Draw(sheet)
+          for i,(name,im,orig) in enumerate(rows):
+            x=(i%5)*thumb; y=(i//5)*(thumb+label)
+            sheet.paste(im.resize((thumb,thumb),Image.Resampling.LANCZOS),(x,y))
+            d.text((x+8,y+thumb+6),name,fill="black")
+            d.text((x+8,y+thumb+25),f"{orig[0]}x{orig[1]} source",fill="black")
+          sheet.save(os.path.join(OUT,"CONTACT_SHEET.jpg"),quality=95)
+
+          with zipfile.ZipFile("harvest-vegetables-HQ-2000x2000.zip","w",zipfile.ZIP_STORED) as z:
+            for fn in sorted(os.listdir(OUT)):
+              if fn.endswith(".png") or fn=="SOURCES.txt":
+                z.write(os.path.join(OUT,fn),fn)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: harvest-vegetables-HQ-2000x2000
+          path: |
+            harvest-vegetables-HQ-2000x2000.zip
+            harvest-vegetables-HQ-2000x2000/CONTACT_SHEET.jpg
+          retention-days: 1
