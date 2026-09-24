@@ -348,6 +348,25 @@
     }
     .export-panel strong { display: block; margin-bottom: 4px; }
     .export-panel span { color: var(--muted); font-size: 13px; }
+    .export-copy { min-width: 0; }
+    .export-option {
+      display: flex;
+      align-items: flex-start;
+      gap: 9px;
+      margin-top: 10px;
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.4;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .export-option input {
+      width: 17px;
+      height: 17px;
+      margin: 1px 0 0;
+      flex: 0 0 auto;
+      accent-color: var(--accent);
+    }
     .export-btn { min-width: 190px; }
 
     .toast {
@@ -401,7 +420,7 @@
       <div>
         <a class="back-link" href="index.html">← ToolBox</a>
         <h1>Picture Crop Round Builder</h1>
-        <p class="sub">Load exactly 10 images, set one square crop size, position the crop on each image, confirm all ten, then export the originals and cropped question images together as a ZIP.</p>
+        <p class="sub">Load exactly 10 images, set one square crop size, position the crop on each image, confirm all ten, then export the question images as a ZIP, with an optional marked full-image copy showing the crop area in red.</p>
       </div>
       <div class="badge">Runs entirely in your browser</div>
     </div>
@@ -496,9 +515,13 @@
     </div>
 
     <section class="panel export-panel">
-      <div>
+      <div class="export-copy">
         <strong id="exportTitle">Export locked</strong>
         <span id="exportStatus">Upload 10 images and confirm the crop on each one.</span>
+        <label class="export-option">
+          <input id="includeMarkedOriginal" type="checkbox" checked>
+          <span>Also export each full image with the selected crop area outlined in red</span>
+        </label>
       </div>
       <button id="exportBtn" class="btn primary export-btn" type="button" disabled>Export 20 images as ZIP</button>
     </section>
@@ -546,6 +569,7 @@
     exportBtn: document.getElementById('exportBtn'),
     exportTitle: document.getElementById('exportTitle'),
     exportStatus: document.getElementById('exportStatus'),
+    includeMarkedOriginal: document.getElementById('includeMarkedOriginal'),
     toast: document.getElementById('toast')
   };
 
@@ -582,6 +606,10 @@
     if (item.questionMode === 'blur') return `${stem}_blur.png`;
     if (item.questionMode === 'distort') return `${stem}_distort.png`;
     return `${stem}_crop.png`;
+  }
+
+  function markedOriginalFilename(filename) {
+    return `${baseName(filename)}_marked.png`;
   }
 
   function minDimension(item) {
@@ -991,7 +1019,10 @@
   function renderExport() {
     const confirmed = items.filter(i => i.confirmed).length;
     const ready = items.length === MAX_IMAGES && confirmed === MAX_IMAGES;
+    const includeMarked = els.includeMarkedOriginal.checked;
+    const outputCount = includeMarked ? MAX_IMAGES * 2 : MAX_IMAGES;
     els.exportBtn.disabled = !ready;
+    els.exportBtn.textContent = `Export ${outputCount} image${outputCount === 1 ? '' : 's'} as ZIP`;
 
     if (!items.length) {
       els.exportTitle.textContent = 'Export locked';
@@ -1004,7 +1035,9 @@
       els.exportStatus.textContent = `Confirm ${MAX_IMAGES - confirmed} more crop${MAX_IMAGES - confirmed === 1 ? '' : 's'} to unlock export.`;
     } else {
       els.exportTitle.textContent = 'Ready to export';
-      els.exportStatus.textContent = 'The ZIP will contain 10 PNG originals plus 10 PNG question images.';
+      els.exportStatus.textContent = includeMarked
+        ? 'The ZIP will contain 10 PNG question images plus 10 full PNG images with the selected crop area outlined in red.'
+        : 'The ZIP will contain the 10 PNG question images only.';
     }
   }
 
@@ -1142,6 +1175,7 @@
   els.cropRange.addEventListener('input', () => setCropSize(Number(els.cropRange.value)));
   els.currentCropSize.addEventListener('change', () => setCurrentImageCropSize(Number(els.currentCropSize.value)));
   els.resetCropSizeBtn.addEventListener('click', resetCurrentImageCropSize);
+  els.includeMarkedOriginal.addEventListener('change', renderExport);
   els.questionMode.addEventListener('change', () => {
     const item = currentItem();
     if (!item) return;
@@ -1165,13 +1199,31 @@
     return new Promise((resolve, reject) => canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Canvas export failed')), type, quality));
   }
 
-  async function makeOriginalPngBlob(item) {
+  async function makeMarkedOriginalBlob(item) {
     const c = document.createElement('canvas');
     c.width = item.width;
     c.height = item.height;
     const ctx = c.getContext('2d');
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(item.img, 0, 0, item.width, item.height);
+
+    const index = items.indexOf(item);
+    const size = effectiveCropSize(item, index);
+    const minDim = Math.min(item.width, item.height);
+    const lineWidth = Math.max(4, Math.round(minDim * 0.006));
+    const inset = lineWidth / 2;
+    const x = Math.max(inset, Math.min(item.crop.x + inset, item.width - inset));
+    const y = Math.max(inset, Math.min(item.crop.y + inset, item.height - inset));
+    const w = Math.max(0, Math.min(size - lineWidth, item.width - x - inset));
+    const h = Math.max(0, Math.min(size - lineWidth, item.height - y - inset));
+
+    ctx.save();
+    ctx.strokeStyle = '#ff0000';
+    ctx.lineWidth = lineWidth;
+    ctx.lineJoin = 'round';
+    ctx.strokeRect(x, y, w, h);
+    ctx.restore();
+
     return canvasToBlob(c, 'image/png');
   }
 
@@ -1316,15 +1368,17 @@
       const entries = [];
       const used = new Set();
       for (const item of items) {
-        const originalBlob = await makeOriginalPngBlob(item);
-        const originalBytes = new Uint8Array(await originalBlob.arrayBuffer());
-        const originalName = uniqueName(`${baseName(item.file.name)}.png`, used);
-        entries.push({ name: originalName, bytes: originalBytes });
-
         const questionBlob = await makeQuestionBlob(item);
         const questionBytes = new Uint8Array(await questionBlob.arrayBuffer());
         const questionName = uniqueName(questionFilename(item.file.name, item), used);
         entries.push({ name: questionName, bytes: questionBytes });
+
+        if (els.includeMarkedOriginal.checked) {
+          const markedBlob = await makeMarkedOriginalBlob(item);
+          const markedBytes = new Uint8Array(await markedBlob.arrayBuffer());
+          const markedName = uniqueName(markedOriginalFilename(item.file.name), used);
+          entries.push({ name: markedName, bytes: markedBytes });
+        }
       }
 
       const zipBlob = await createZip(entries);
@@ -1336,12 +1390,15 @@
       a.click();
       a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 15000);
-      showToast('ZIP exported with 10 PNG originals and 10 PNG question images.');
+      showToast(
+        els.includeMarkedOriginal.checked
+          ? 'ZIP exported with 10 PNG question images and 10 marked full images.'
+          : 'ZIP exported with 10 PNG question images.'
+      );
     } catch (err) {
       console.error(err);
       alert('The ZIP could not be created. Please try again.');
     } finally {
-      els.exportBtn.textContent = 'Export 20 images as ZIP';
       renderExport();
     }
   });
