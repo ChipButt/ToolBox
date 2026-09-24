@@ -215,6 +215,66 @@ body::before{
   border-radius:12px;
   border:1px solid rgba(255,255,255,.07);
 }
+.tool-card{
+  position:relative;
+  min-height:170px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:9px;
+  padding:20px;
+  border:3px solid rgba(255,255,255,.74);
+  border-radius:16px;
+  background:linear-gradient(145deg,#2d856d,#155044);
+  color:#fff;
+  text-align:center;
+  text-decoration:none;
+  box-shadow:
+    0 8px 0 rgba(2,14,35,.42),
+    0 14px 22px rgba(0,0,0,.22),
+    inset 0 0 0 2px rgba(0,0,0,.10),
+    inset 0 16px 28px rgba(255,255,255,.10);
+  transition:transform .12s ease,box-shadow .12s ease;
+}
+.tool-card::before{
+  content:"";
+  position:absolute;
+  inset:8px;
+  border:1px solid rgba(255,255,255,.30);
+  border-radius:10px;
+  pointer-events:none;
+}
+.tool-card:active{
+  transform:translateY(5px) scale(.99);
+  box-shadow:0 3px 0 rgba(2,14,35,.38),0 7px 12px rgba(0,0,0,.18),inset 0 0 0 2px rgba(0,0,0,.10);
+}
+.tool-card-icon{
+  position:relative;
+  z-index:1;
+  width:64px;
+  height:64px;
+  display:grid;
+  place-items:center;
+  border-radius:18px;
+  background:rgba(255,255,255,.94);
+  color:#155044;
+  font-size:34px;
+  box-shadow:0 5px 12px rgba(0,0,0,.18);
+}
+.tool-card strong{
+  position:relative;
+  z-index:1;
+  font-family:Fredoka,Inter,sans-serif;
+  font-size:1.2rem;
+}
+.tool-card small{
+  position:relative;
+  z-index:1;
+  max-width:220px;
+  color:rgba(255,255,255,.78);
+  line-height:1.35;
+}
 .empty-state{
   grid-column:1/-1;
   min-height:230px;
@@ -308,13 +368,11 @@ body::before{
       <div class="tray">
         <div class="tray-label"><strong>Tools</strong></div>
         <div class="tool-grid" id="toolGrid">
-          <div class="empty-state">
-            <div>
-              <div class="empty-icon" aria-hidden="true">+</div>
-              <h2>ToolBox ready</h2>
-              <p>Your tools will live here.</p>
-            </div>
-          </div>
+          <a class="tool-card" href="picture-crop.html" aria-label="Picture Crop Round Builder">
+            <span class="tool-card-icon" aria-hidden="true">✂️</span>
+            <strong>Picture Crop</strong>
+            <small>Crop, blur or distort picture-round images and export them as PNGs.</small>
+          </a>
         </div>
       </div>
     </div>
