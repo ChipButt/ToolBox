@@ -1,4 +1,4 @@
-name: Build harvest vegetable photo set v4
+name: Build harvest vegetable photo set v5
 
 on:
   push:
@@ -31,16 +31,16 @@ jobs:
 
           # Each source is a real Pexels photograph containing one principal vegetable.
           photos=[
-            ("01_carrot",       5621248,  "https://www.pexels.com/photo/top-view-of-a-carrot-on-an-orange-surface-5621248/"),
-            ("02_beetroot",       244394,  "https://www.pexels.com/photo/purple-beet-244394/"),
-            ("03_potato",       33948200,  "https://www.pexels.com/photo/minimalist-portrait-of-a-single-potato-33948200/"),
-            ("04_onion",        36089435,  "https://www.pexels.com/photo/red-onion-on-a-yellow-surface-close-up-36089435/"),
-            ("05_garlic",        5973583,  "https://www.pexels.com/photo/close-up-shot-of-a-garlic-5973583/"),
-            ("06_cauliflower",  23235238,  "https://www.pexels.com/photo/cauliflower-on-gray-background-23235238/"),
-            ("07_sweetcorn",     5343431,  "https://www.pexels.com/photo/a-corn-on-the-cob-5343431/"),
-            ("08_butternut",     4187617,  "https://www.pexels.com/photo/butternut-squash-in-close-up-photography-4187617/"),
-            ("09_pumpkin",       5474395,  "https://www.pexels.com/photo/yellow-pumpkin-on-white-surface-5474395/"),
-            ("10_courgette",    11643027,  "https://www.pexels.com/photo/green-vegetable-on-brown-wooden-table-11643027/"),
+            ("01_carrot",       5621248,  "https://www.pexels.com/photo/top-view-of-a-carrot-on-an-orange-surface-5621248/", None),
+            ("02_beetroot",       244394,  "https://www.pexels.com/photo/purple-beet-244394/", None),
+            ("03_potato",       33948200,  "https://www.pexels.com/photo/minimalist-portrait-of-a-single-potato-33948200/", None),
+            ("04_onion",         7889980,  "https://www.pexels.com/photo/close-up-shot-of-onions-on-a-white-surface-7889980/", (0.24,0.22,0.51,0.735)),
+            ("05_garlic",        5973583,  "https://www.pexels.com/photo/close-up-shot-of-a-garlic-5973583/", None),
+            ("06_cauliflower",  23235238,  "https://www.pexels.com/photo/cauliflower-on-gray-background-23235238/", None),
+            ("07_sweetcorn",     5343431,  "https://www.pexels.com/photo/a-corn-on-the-cob-5343431/", None),
+            ("08_butternut",     4187617,  "https://www.pexels.com/photo/butternut-squash-in-close-up-photography-4187617/", None),
+            ("09_pumpkin",       5474395,  "https://www.pexels.com/photo/yellow-pumpkin-on-white-surface-5474395/", None),
+            ("10_courgette",    11643027,  "https://www.pexels.com/photo/green-vegetable-on-brown-wooden-table-11643027/", None),
           ]
 
           def fetch(photo_id):
@@ -114,7 +114,7 @@ jobs:
       - name: Upload set and contact sheet
         uses: actions/upload-artifact@v4
         with:
-          name: harvest-vegetables-2000x2000-v4
+          name: harvest-vegetables-2000x2000-v5
           path: |
             harvest-vegetables-2000x2000.zip
             harvest-vegetables-2000x2000/CONTACT_SHEET.jpg
