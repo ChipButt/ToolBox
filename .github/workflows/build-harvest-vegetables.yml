@@ -1,4 +1,4 @@
-name: Build harvest vegetable photo set v5
+name: Build harvest vegetable photo set v6
 
 on:
   push:
@@ -75,9 +75,12 @@ jobs:
 
           rows=[]
           sources=[]
-          for name,pid,page in photos:
+          for name,pid,page,crop_norm in photos:
             im,direct=fetch(pid)
             w,h=im.size
+            if crop_norm:
+              l,t,r,b=crop_norm
+              im=im.crop((round(l*w),round(t*h),round(r*w),round(b*h)))
             out=isolate_to_square(im)
             fp=os.path.join(OUT,name+".png")
             out.save(fp,"PNG",optimize=True)
@@ -114,7 +117,7 @@ jobs:
       - name: Upload set and contact sheet
         uses: actions/upload-artifact@v4
         with:
-          name: harvest-vegetables-2000x2000-v5
+          name: harvest-vegetables-2000x2000-v6
           path: |
             harvest-vegetables-2000x2000.zip
             harvest-vegetables-2000x2000/CONTACT_SHEET.jpg
