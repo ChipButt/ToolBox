@@ -272,7 +272,7 @@
     .preview-panel p { color: var(--muted); font-size: 13px; line-height: 1.45; margin: 0 0 12px; }
 
     .preview-box {
-      aspect-ratio: 1;
+      aspect-ratio: var(--preview-aspect, 1);
       border: 1px solid var(--border);
       border-radius: 14px;
       background: #070a0e;
@@ -300,12 +300,20 @@
       border-top: 1px solid var(--border);
     }
     .image-crop-size label { font-size: 13px; }
-    .image-crop-size-row {
+    .image-crop-dim-grid {
       display: grid;
-      grid-template-columns: minmax(0,1fr) auto;
+      grid-template-columns: repeat(2, minmax(0,1fr));
       gap: 8px;
     }
-    .image-crop-size-row input {
+    .crop-dim-field {
+      display: grid;
+      gap: 5px;
+      min-width: 0;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .crop-dim-field input {
       width: 100%;
       min-width: 0;
       border: 1px solid var(--border);
@@ -315,7 +323,7 @@
       padding: 9px 10px;
       outline: none;
     }
-    .image-crop-size-row .btn { padding: 8px 11px; white-space: nowrap; }
+    .crop-reset-btn { width: 100%; padding: 8px 11px; white-space: nowrap; }
     .image-effect-controls {
       display: grid;
       gap: 8px;
@@ -420,7 +428,7 @@
       <div>
         <a class="back-link" href="index.html">← ToolBox</a>
         <h1>Picture Crop Round Builder</h1>
-        <p class="sub">Load exactly 10 images, set one square crop size, position the crop on each image, confirm all ten, then export the question images as a ZIP, with an optional marked full-image copy showing the crop area in red.</p>
+        <p class="sub">Load exactly 10 images, set the crop width and height independently, position the crop on each image, confirm all ten, then export the question images as a ZIP, with an optional marked full-image copy showing the crop area in red.</p>
       </div>
       <div class="badge">Runs entirely in your browser</div>
     </div>
@@ -440,11 +448,18 @@
 
       <div class="settings">
         <div class="setting-row">
-          <label for="cropSize">Reference crop size (Image 1)</label>
-          <input id="cropSize" type="number" min="20" step="1" value="200" />
+          <label for="cropWidth">Reference crop width (Image 1)</label>
+          <input id="cropWidth" type="number" min="20" step="1" value="200" />
         </div>
-        <input id="cropRange" type="range" min="20" max="1000" value="200" step="1" />
-        <div class="hint">Set the crop size on Image 1. Every other image automatically gets the same proportional crop based on its shorter side, so larger images get a larger crop and smaller images get a smaller crop. You can still override any individual image below.</div>
+        <input id="cropWidthRange" type="range" min="20" max="1000" value="200" step="1" />
+
+        <div class="setting-row">
+          <label for="cropHeight">Reference crop height (Image 1)</label>
+          <input id="cropHeight" type="number" min="20" step="1" value="200" />
+        </div>
+        <input id="cropHeightRange" type="range" min="20" max="1000" value="200" step="1" />
+
+        <div class="hint">Width and height are independent. Image 1 sets the reference rectangle; the other images automatically receive the same proportional width and height relative to their own dimensions. You can still override either dimension on an individual image below.</div>
       </div>
     </section>
 
@@ -468,7 +483,7 @@
 
         <div id="canvasWrap" class="canvas-wrap">
           <canvas id="editorCanvas"></canvas>
-          <div id="emptyState" class="empty-state">Upload your images above.<br>Then drag the yellow square over the section you want to use as the quiz question.</div>
+          <div id="emptyState" class="empty-state">Upload your images above.<br>Then drag the yellow crop rectangle over the section you want to use as the quiz question.</div>
         </div>
 
         <div class="nav-row">
@@ -488,12 +503,19 @@
           <div class="line"><span>Filename</span><span id="previewFilename">—</span></div>
           <div class="line"><span>Status</span><span id="previewStatus">Not confirmed</span></div>
           <div class="image-crop-size">
-            <label for="currentCropSize">This image crop size</label>
-            <div class="image-crop-size-row">
-              <input id="currentCropSize" type="number" min="20" step="1" disabled>
-              <button id="resetCropSizeBtn" class="btn" type="button" disabled>Use auto size</button>
+            <label>This image crop dimensions</label>
+            <div class="image-crop-dim-grid">
+              <label class="crop-dim-field" for="currentCropWidth">
+                <span>Width</span>
+                <input id="currentCropWidth" type="number" min="20" step="1" disabled>
+              </label>
+              <label class="crop-dim-field" for="currentCropHeight">
+                <span>Height</span>
+                <input id="currentCropHeight" type="number" min="20" step="1" disabled>
+              </label>
             </div>
-            <div id="currentCropHint" class="hint">Image 1 sets the reference size.</div>
+            <button id="resetCropSizeBtn" class="btn crop-reset-btn" type="button" disabled>Use auto dimensions</button>
+            <div id="currentCropHint" class="hint">Image 1 sets the reference rectangle.</div>
           </div>
 
           <div class="image-effect-controls">
@@ -507,7 +529,7 @@
             <label for="effectStrength">Effect strength</label>
             <input id="effectStrength" type="range" min="2" max="40" value="12" step="1">
 
-            <div id="effectHint" class="hint">Crop uses the square crop. Blur and Distort export the full image with the effect applied.</div>
+            <div id="effectHint" class="hint">Crop uses the selected rectangular crop. Blur and Distort export the full image with the effect applied.</div>
           </div>
         </div>
         <button id="confirmBtn" class="btn good confirm-btn" type="button" disabled>Mark this crop as correct</button>
@@ -541,8 +563,10 @@
     chooseBtn: document.getElementById('chooseBtn'),
     clearBtn: document.getElementById('clearBtn'),
     fileInput: document.getElementById('fileInput'),
-    cropSize: document.getElementById('cropSize'),
-    cropRange: document.getElementById('cropRange'),
+    cropWidth: document.getElementById('cropWidth'),
+    cropWidthRange: document.getElementById('cropWidthRange'),
+    cropHeight: document.getElementById('cropHeight'),
+    cropHeightRange: document.getElementById('cropHeightRange'),
     thumbList: document.getElementById('thumbList'),
     countLabel: document.getElementById('countLabel'),
     currentName: document.getElementById('currentName'),
@@ -559,7 +583,8 @@
     previewScaleMode: document.getElementById('previewScaleMode'),
     previewFilename: document.getElementById('previewFilename'),
     previewStatus: document.getElementById('previewStatus'),
-    currentCropSize: document.getElementById('currentCropSize'),
+    currentCropWidth: document.getElementById('currentCropWidth'),
+    currentCropHeight: document.getElementById('currentCropHeight'),
     resetCropSizeBtn: document.getElementById('resetCropSizeBtn'),
     currentCropHint: document.getElementById('currentCropHint'),
     questionMode: document.getElementById('questionMode'),
@@ -578,7 +603,8 @@
 
   let items = [];
   let currentIndex = -1;
-  let cropSize = 200;
+  let cropWidth = 200;
+  let cropHeight = 200;
   let display = { scale: 1, dx: 0, dy: 0, width: 0, height: 0 };
   let dragging = false;
   let dragOffset = { x: 0, y: 0 };
@@ -616,28 +642,38 @@
     return Math.min(item.width, item.height);
   }
 
-  function referenceMinDimension() {
-    return items.length ? minDimension(items[0]) : null;
+  function effectiveCropDimensions(item, index = items.indexOf(item)) {
+    if (!item) return { width: cropWidth, height: cropHeight };
+
+    const ref = items[0] || item;
+    const autoWidth = index === 0
+      ? cropWidth
+      : Math.round((cropWidth / Math.max(1, ref.width)) * item.width);
+    const autoHeight = index === 0
+      ? cropHeight
+      : Math.round((cropHeight / Math.max(1, ref.height)) * item.height);
+
+    const requestedWidth = index > 0 && Number.isFinite(item.cropWidthOverride)
+      ? item.cropWidthOverride
+      : autoWidth;
+    const requestedHeight = index > 0 && Number.isFinite(item.cropHeightOverride)
+      ? item.cropHeightOverride
+      : autoHeight;
+
+    const minW = Math.min(MIN_CROP, item.width);
+    const minH = Math.min(MIN_CROP, item.height);
+
+    return {
+      width: Math.max(minW, Math.min(item.width, Math.round(requestedWidth))),
+      height: Math.max(minH, Math.min(item.height, Math.round(requestedHeight)))
+    };
   }
 
-  function effectiveCropSize(item, index = items.indexOf(item)) {
-    if (!item) return cropSize;
-    const minDim = minDimension(item);
-    if (index > 0 && Number.isFinite(item.cropSizeOverride)) {
-      return Math.max(1, Math.min(minDim, Math.round(item.cropSizeOverride)));
-    }
-
-    const refMin = referenceMinDimension() || minDim;
-    const scaled = Math.round((cropSize / refMin) * minDim);
-    const minimum = Math.min(MIN_CROP, minDim);
-    return Math.max(minimum, Math.min(minDim, scaled));
-  }
-
-  function centreCropForSize(item, oldSize, newSize) {
-    const cx = item.crop.x + oldSize / 2;
-    const cy = item.crop.y + oldSize / 2;
-    item.crop.x = Math.round(cx - newSize / 2);
-    item.crop.y = Math.round(cy - newSize / 2);
+  function centreCropForDimensions(item, oldDims, newDims) {
+    const cx = item.crop.x + oldDims.width / 2;
+    const cy = item.crop.y + oldDims.height / 2;
+    item.crop.x = Math.round(cx - newDims.width / 2);
+    item.crop.y = Math.round(cy - newDims.height / 2);
   }
 
   async function decodeImage(file) {
@@ -672,15 +708,16 @@
           width: img.naturalWidth,
           height: img.naturalHeight,
           crop: { x: 0, y: 0 },
-          cropSizeOverride: null,
+          cropWidthOverride: null,
+          cropHeightOverride: null,
           questionMode: 'crop',
           effectStrength: 12,
           confirmed: false
         };
         items.push(item);
-        const size = effectiveCropSize(item, items.length - 1);
-        item.crop.x = Math.max(0, Math.round((item.width - size) / 2));
-        item.crop.y = Math.max(0, Math.round((item.height - size) / 2));
+        const dims = effectiveCropDimensions(item, items.length - 1);
+        item.crop.x = Math.max(0, Math.round((item.width - dims.width) / 2));
+        item.crop.y = Math.max(0, Math.round((item.height - dims.height) / 2));
       } catch (err) {
         console.error(err);
         showToast(`Could not read ${file.name}`);
@@ -694,93 +731,152 @@
 
   function enforceCropLimit(quiet = false) {
     if (!items.length) return;
-    const maxAllowed = minDimension(items[0]);
-    els.cropSize.max = String(maxAllowed);
-    els.cropRange.max = String(maxAllowed);
-    if (cropSize > maxAllowed) {
-      cropSize = maxAllowed;
-      els.cropSize.value = String(cropSize);
-      els.cropRange.value = String(cropSize);
-      items.forEach((item, index) => {
-        if (index === 0 || !Number.isFinite(item.cropSizeOverride)) item.confirmed = false;
-      });
-      if (!quiet) showToast(`Reference crop size reduced to ${maxAllowed}px to fit Image 1.`);
+    const ref = items[0];
+
+    els.cropWidth.max = String(ref.width);
+    els.cropWidthRange.max = String(ref.width);
+    els.cropHeight.max = String(ref.height);
+    els.cropHeightRange.max = String(ref.height);
+
+    let changed = false;
+    if (cropWidth > ref.width) {
+      cropWidth = ref.width;
+      changed = true;
     }
+    if (cropHeight > ref.height) {
+      cropHeight = ref.height;
+      changed = true;
+    }
+
+    els.cropWidth.value = String(cropWidth);
+    els.cropWidthRange.value = String(cropWidth);
+    els.cropHeight.value = String(cropHeight);
+    els.cropHeightRange.value = String(cropHeight);
+
+    if (changed) {
+      items.forEach((item, index) => {
+        if (
+          index === 0 ||
+          (!Number.isFinite(item.cropWidthOverride) && !Number.isFinite(item.cropHeightOverride))
+        ) item.confirmed = false;
+      });
+      if (!quiet) showToast('Reference crop dimensions were reduced to fit Image 1.');
+    }
+
     clampAllCrops();
   }
 
   function clampAllCrops() {
     items.forEach((item, index) => {
-      const size = effectiveCropSize(item, index);
-      item.crop.x = Math.max(0, Math.min(item.crop.x, item.width - size));
-      item.crop.y = Math.max(0, Math.min(item.crop.y, item.height - size));
+      const dims = effectiveCropDimensions(item, index);
+      item.crop.x = Math.max(0, Math.min(item.crop.x, item.width - dims.width));
+      item.crop.y = Math.max(0, Math.min(item.crop.y, item.height - dims.height));
     });
   }
 
-  function setCropSize(value) {
+  function setReferenceCropDimension(axis, value) {
     if (!Number.isFinite(value)) return;
-    const maxAllowed = items.length ? minDimension(items[0]) : 10000;
+    const ref = items[0] || null;
+    const maxAllowed = ref ? (axis === 'width' ? ref.width : ref.height) : 10000;
     const next = Math.max(MIN_CROP, Math.min(Math.round(value), maxAllowed));
-    if (next === cropSize) {
-      els.cropSize.value = String(next);
-      els.cropRange.value = String(next);
+    const oldValue = axis === 'width' ? cropWidth : cropHeight;
+
+    if (next === oldValue) {
+      if (axis === 'width') {
+        els.cropWidth.value = String(next);
+        els.cropWidthRange.value = String(next);
+      } else {
+        els.cropHeight.value = String(next);
+        els.cropHeightRange.value = String(next);
+      }
       return;
     }
 
-    const oldSizes = items.map((item, index) => effectiveCropSize(item, index));
-    cropSize = next;
+    const oldDims = items.map((item, index) => effectiveCropDimensions(item, index));
+    if (axis === 'width') cropWidth = next;
+    else cropHeight = next;
 
     items.forEach((item, index) => {
-      const newSize = effectiveCropSize(item, index);
-      if (newSize !== oldSizes[index]) {
-        centreCropForSize(item, oldSizes[index], newSize);
+      const newDims = effectiveCropDimensions(item, index);
+      if (
+        newDims.width !== oldDims[index].width ||
+        newDims.height !== oldDims[index].height
+      ) {
+        centreCropForDimensions(item, oldDims[index], newDims);
         item.confirmed = false;
       }
     });
 
-    els.cropSize.value = String(next);
-    els.cropRange.value = String(next);
+    if (axis === 'width') {
+      els.cropWidth.value = String(next);
+      els.cropWidthRange.value = String(next);
+    } else {
+      els.cropHeight.value = String(next);
+      els.cropHeightRange.value = String(next);
+    }
+
     clampAllCrops();
     renderAll();
-    if (items.length) showToast('Reference size changed — auto-scaled crops were updated proportionally.');
+    if (items.length) {
+      showToast(`Reference crop ${axis} changed — automatic crops were updated proportionally.`);
+    }
   }
 
-  function setCurrentImageCropSize(value) {
+  function setCurrentImageCropDimension(axis, value) {
     const item = currentItem();
     if (!item || !Number.isFinite(value)) return;
 
     if (currentIndex === 0) {
-      setCropSize(value);
+      setReferenceCropDimension(axis, value);
       return;
     }
 
-    const oldSize = effectiveCropSize(item, currentIndex);
-    const minDim = minDimension(item);
-    const next = Math.max(Math.min(MIN_CROP, minDim), Math.min(Math.round(value), minDim));
-    item.cropSizeOverride = next;
-    const newSize = effectiveCropSize(item, currentIndex);
-    if (newSize !== oldSize) {
-      centreCropForSize(item, oldSize, newSize);
+    const oldDims = effectiveCropDimensions(item, currentIndex);
+    const maxAllowed = axis === 'width' ? item.width : item.height;
+    const minimum = Math.min(MIN_CROP, maxAllowed);
+    const next = Math.max(minimum, Math.min(Math.round(value), maxAllowed));
+
+    if (axis === 'width') item.cropWidthOverride = next;
+    else item.cropHeightOverride = next;
+
+    const newDims = effectiveCropDimensions(item, currentIndex);
+    if (
+      newDims.width !== oldDims.width ||
+      newDims.height !== oldDims.height
+    ) {
+      centreCropForDimensions(item, oldDims, newDims);
       item.confirmed = false;
     }
+
     clampAllCrops();
     renderAll();
-    showToast(`Image ${currentIndex + 1} now uses a custom ${newSize}px crop.`);
+    showToast(`Image ${currentIndex + 1} now uses a custom crop ${axis} of ${next}px.`);
   }
 
   function resetCurrentImageCropSize() {
     const item = currentItem();
-    if (!item || currentIndex <= 0 || !Number.isFinite(item.cropSizeOverride)) return;
-    const oldSize = effectiveCropSize(item, currentIndex);
-    item.cropSizeOverride = null;
-    const newSize = effectiveCropSize(item, currentIndex);
-    if (newSize !== oldSize) {
-      centreCropForSize(item, oldSize, newSize);
+    if (
+      !item ||
+      currentIndex <= 0 ||
+      (!Number.isFinite(item.cropWidthOverride) && !Number.isFinite(item.cropHeightOverride))
+    ) return;
+
+    const oldDims = effectiveCropDimensions(item, currentIndex);
+    item.cropWidthOverride = null;
+    item.cropHeightOverride = null;
+    const newDims = effectiveCropDimensions(item, currentIndex);
+
+    if (
+      newDims.width !== oldDims.width ||
+      newDims.height !== oldDims.height
+    ) {
+      centreCropForDimensions(item, oldDims, newDims);
       item.confirmed = false;
     }
+
     clampAllCrops();
     renderAll();
-    showToast(`Image ${currentIndex + 1} is using the automatic proportional size again.`);
+    showToast(`Image ${currentIndex + 1} is using the automatic proportional dimensions again.`);
   }
 
   function clearAll() {
@@ -826,17 +922,18 @@
 
     ectx.drawImage(item.img, dx, dy, dw, dh);
 
-    const size = effectiveCropSize(item, currentIndex);
+    const dims = effectiveCropDimensions(item, currentIndex);
     const rx = dx + item.crop.x * scale;
     const ry = dy + item.crop.y * scale;
-    const rs = size * scale;
+    const rw = dims.width * scale;
+    const rh = dims.height * scale;
 
-    // Darken everything outside the crop square.
+    // Darken everything outside the crop rectangle.
     ectx.save();
     ectx.fillStyle = 'rgba(0, 0, 0, .58)';
     ectx.beginPath();
     ectx.rect(dx, dy, dw, dh);
-    ectx.rect(rx, ry, rs, rs);
+    ectx.rect(rx, ry, rw, rh);
     ectx.fill('evenodd');
     ectx.restore();
 
@@ -844,17 +941,17 @@
     ectx.save();
     ectx.strokeStyle = '#f3c74f';
     ectx.lineWidth = 3;
-    ectx.strokeRect(rx + 1.5, ry + 1.5, Math.max(0, rs - 3), Math.max(0, rs - 3));
+    ectx.strokeRect(rx + 1.5, ry + 1.5, Math.max(0, rw - 3), Math.max(0, rh - 3));
     ectx.strokeStyle = 'rgba(255,255,255,.55)';
     ectx.lineWidth = 1;
-    ectx.strokeRect(rx + 5.5, ry + 5.5, Math.max(0, rs - 11), Math.max(0, rs - 11));
+    ectx.strokeRect(rx + 5.5, ry + 5.5, Math.max(0, rw - 11), Math.max(0, rh - 11));
     ectx.restore();
 
-    // Handle marker in the centre so tiny crops remain draggable.
+    // Handle marker in the centre so small crops remain draggable.
     ectx.save();
     ectx.fillStyle = 'rgba(243,199,79,.95)';
     ectx.beginPath();
-    ectx.arc(rx + rs / 2, ry + rs / 2, 4, 0, Math.PI * 2);
+    ectx.arc(rx + rw / 2, ry + rh / 2, 4, 0, Math.PI * 2);
     ectx.fill();
     ectx.restore();
   }
@@ -864,12 +961,20 @@
     const index = items.indexOf(item);
 
     if (preview) {
-      canvas.width = 500;
-      canvas.height = 500;
+      if (item.questionMode === 'crop') {
+        const dims = effectiveCropDimensions(item, index);
+        const scale = 500 / Math.max(dims.width, dims.height);
+        canvas.width = Math.max(1, Math.round(dims.width * scale));
+        canvas.height = Math.max(1, Math.round(dims.height * scale));
+      } else {
+        const scale = 500 / Math.max(item.width, item.height);
+        canvas.width = Math.max(1, Math.round(item.width * scale));
+        canvas.height = Math.max(1, Math.round(item.height * scale));
+      }
     } else if (item.questionMode === 'crop') {
-      const size = effectiveCropSize(item, index);
-      canvas.width = size;
-      canvas.height = size;
+      const dims = effectiveCropDimensions(item, index);
+      canvas.width = dims.width;
+      canvas.height = dims.height;
     } else {
       canvas.width = item.width;
       canvas.height = item.height;
@@ -883,10 +988,20 @@
     ctx.fillRect(0, 0, outW, outH);
 
     if (item.questionMode === 'crop') {
-      const size = effectiveCropSize(item, index);
+      const dims = effectiveCropDimensions(item, index);
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
-      ctx.drawImage(item.img, item.crop.x, item.crop.y, size, size, 0, 0, outW, outH);
+      ctx.drawImage(
+        item.img,
+        item.crop.x,
+        item.crop.y,
+        dims.width,
+        dims.height,
+        0,
+        0,
+        outW,
+        outH
+      );
       return;
     }
 
@@ -915,14 +1030,17 @@
 
   function drawPreview() {
     const item = currentItem();
-    const size = 500;
-    els.previewCanvas.width = size;
-    els.previewCanvas.height = size;
-    pctx.clearRect(0, 0, size, size);
-    pctx.fillStyle = '#070a0e';
-    pctx.fillRect(0, 0, size, size);
-    if (!item) return;
+    pctx.clearRect(0, 0, els.previewCanvas.width, els.previewCanvas.height);
+    if (!item) {
+      els.previewCanvas.width = 500;
+      els.previewCanvas.height = 500;
+      els.previewCanvas.parentElement.style.setProperty('--preview-aspect', '1');
+      return;
+    }
+
     drawQuestionToCanvas(pctx, els.previewCanvas, item, true);
+    const aspect = els.previewCanvas.width / Math.max(1, els.previewCanvas.height);
+    els.previewCanvas.parentElement.style.setProperty('--preview-aspect', String(aspect));
   }
 
   function renderThumbs() {
@@ -964,10 +1082,12 @@
       els.previewScaleMode.textContent = '—';
       els.previewFilename.textContent = '—';
       els.previewStatus.textContent = 'Not confirmed';
-      els.currentCropSize.value = '';
-      els.currentCropSize.disabled = true;
+      els.currentCropWidth.value = '';
+      els.currentCropHeight.value = '';
+      els.currentCropWidth.disabled = true;
+      els.currentCropHeight.disabled = true;
       els.resetCropSizeBtn.disabled = true;
-      els.currentCropHint.textContent = 'Upload an image to set its crop size.';
+      els.currentCropHint.textContent = 'Upload an image to set its crop dimensions.';
       els.questionMode.value = 'crop';
       els.questionMode.disabled = true;
       els.effectStrength.value = '12';
@@ -980,32 +1100,42 @@
       return;
     }
 
-    const size = effectiveCropSize(item, currentIndex);
-    const custom = currentIndex > 0 && Number.isFinite(item.cropSizeOverride);
+    const dims = effectiveCropDimensions(item, currentIndex);
+    const customWidth = currentIndex > 0 && Number.isFinite(item.cropWidthOverride);
+    const customHeight = currentIndex > 0 && Number.isFinite(item.cropHeightOverride);
+    const custom = customWidth || customHeight;
+    const cropMode = item.questionMode === 'crop';
+
     els.currentName.textContent = item.file.name;
     els.currentDims.textContent = `${item.width} × ${item.height} px`;
     els.cropCoords.textContent = `x ${Math.round(item.crop.x)}, y ${Math.round(item.crop.y)}`;
-    els.previewSize.textContent = `${size} × ${size} px`;
+    els.previewSize.textContent = `${dims.width} × ${dims.height} px`;
     els.previewScaleMode.textContent = currentIndex === 0 ? 'Reference' : (custom ? 'Custom' : 'Auto-scaled');
-    els.currentCropSize.value = String(size);
-    els.currentCropSize.max = String(minDimension(item));
-    els.currentCropSize.disabled = false;
-    els.resetCropSizeBtn.disabled = currentIndex === 0 || !custom;
-    const cropMode = item.questionMode === 'crop';
-    els.currentCropHint.textContent = currentIndex === 0
-      ? 'Image 1 sets the reference size used to scale the other images.'
-      : (custom ? 'Custom size for this image only.' : 'Automatically scaled from Image 1. Change the number to override it.');
-    els.currentCropSize.disabled = !cropMode;
+
+    els.currentCropWidth.value = String(dims.width);
+    els.currentCropHeight.value = String(dims.height);
+    els.currentCropWidth.max = String(item.width);
+    els.currentCropHeight.max = String(item.height);
+    els.currentCropWidth.disabled = !cropMode;
+    els.currentCropHeight.disabled = !cropMode;
     els.resetCropSizeBtn.disabled = !cropMode || currentIndex === 0 || !custom;
+
+    els.currentCropHint.textContent = currentIndex === 0
+      ? 'Image 1 sets the reference width and height used to scale the other images.'
+      : (custom
+        ? 'Custom dimensions for this image. Width and height can be changed independently.'
+        : 'Automatically scaled from Image 1. Change either number to override that dimension.');
+
     els.questionMode.disabled = false;
     els.questionMode.value = item.questionMode || 'crop';
     els.effectStrength.disabled = cropMode;
     els.effectStrength.value = String(item.effectStrength || 12);
     els.effectHint.textContent = cropMode
-      ? 'Crop mode uses the square selection.'
+      ? 'Crop mode uses the selected rectangular area.'
       : (item.questionMode === 'blur'
         ? 'Blur mode exports the full image blurred.'
         : 'Distort mode exports the full image with horizontal distortion.');
+
     els.previewFilename.textContent = questionFilename(item.file.name, item);
     els.previewStatus.textContent = item.confirmed ? 'Confirmed' : 'Not confirmed';
     els.previewStatus.style.color = item.confirmed ? 'var(--good)' : 'var(--muted)';
@@ -1064,18 +1194,23 @@
   }
 
   function isInsideCrop(p, item) {
-    const size = effectiveCropSize(item, currentIndex);
-    return p.x >= item.crop.x && p.x <= item.crop.x + size && p.y >= item.crop.y && p.y <= item.crop.y + size;
+    const dims = effectiveCropDimensions(item, currentIndex);
+    return (
+      p.x >= item.crop.x &&
+      p.x <= item.crop.x + dims.width &&
+      p.y >= item.crop.y &&
+      p.y <= item.crop.y + dims.height
+    );
   }
 
   function moveCropTo(x, y, preserveOffset = false) {
     const item = currentItem();
     if (!item) return;
-    const size = effectiveCropSize(item, currentIndex);
-    let nx = preserveOffset ? x - dragOffset.x : x - size / 2;
-    let ny = preserveOffset ? y - dragOffset.y : y - size / 2;
-    nx = Math.max(0, Math.min(nx, item.width - size));
-    ny = Math.max(0, Math.min(ny, item.height - size));
+    const dims = effectiveCropDimensions(item, currentIndex);
+    let nx = preserveOffset ? x - dragOffset.x : x - dims.width / 2;
+    let ny = preserveOffset ? y - dragOffset.y : y - dims.height / 2;
+    nx = Math.max(0, Math.min(nx, item.width - dims.width));
+    ny = Math.max(0, Math.min(ny, item.height - dims.height));
     nx = Math.round(nx);
     ny = Math.round(ny);
     if (nx === item.crop.x && ny === item.crop.y) return;
@@ -1107,9 +1242,9 @@
       dragOffset.y = p.y - item.crop.y;
       moveCropTo(p.x, p.y, true);
     } else {
-      const size = effectiveCropSize(item, currentIndex);
-      dragOffset.x = size / 2;
-      dragOffset.y = size / 2;
+      const dims = effectiveCropDimensions(item, currentIndex);
+      dragOffset.x = dims.width / 2;
+      dragOffset.y = dims.height / 2;
       moveCropTo(p.x, p.y, true);
     }
   });
@@ -1171,9 +1306,12 @@
   }));
   els.dropzone.addEventListener('drop', e => addFiles(e.dataTransfer.files));
 
-  els.cropSize.addEventListener('change', () => setCropSize(Number(els.cropSize.value)));
-  els.cropRange.addEventListener('input', () => setCropSize(Number(els.cropRange.value)));
-  els.currentCropSize.addEventListener('change', () => setCurrentImageCropSize(Number(els.currentCropSize.value)));
+  els.cropWidth.addEventListener('change', () => setReferenceCropDimension('width', Number(els.cropWidth.value)));
+  els.cropWidthRange.addEventListener('input', () => setReferenceCropDimension('width', Number(els.cropWidthRange.value)));
+  els.cropHeight.addEventListener('change', () => setReferenceCropDimension('height', Number(els.cropHeight.value)));
+  els.cropHeightRange.addEventListener('input', () => setReferenceCropDimension('height', Number(els.cropHeightRange.value)));
+  els.currentCropWidth.addEventListener('change', () => setCurrentImageCropDimension('width', Number(els.currentCropWidth.value)));
+  els.currentCropHeight.addEventListener('change', () => setCurrentImageCropDimension('height', Number(els.currentCropHeight.value)));
   els.resetCropSizeBtn.addEventListener('click', resetCurrentImageCropSize);
   els.includeMarkedOriginal.addEventListener('change', renderExport);
   els.questionMode.addEventListener('change', () => {
@@ -1208,14 +1346,14 @@
     ctx.drawImage(item.img, 0, 0, item.width, item.height);
 
     const index = items.indexOf(item);
-    const size = effectiveCropSize(item, index);
+    const dims = effectiveCropDimensions(item, index);
     const minDim = Math.min(item.width, item.height);
     const lineWidth = Math.max(4, Math.round(minDim * 0.006));
     const inset = lineWidth / 2;
     const x = Math.max(inset, Math.min(item.crop.x + inset, item.width - inset));
     const y = Math.max(inset, Math.min(item.crop.y + inset, item.height - inset));
-    const w = Math.max(0, Math.min(size - lineWidth, item.width - x - inset));
-    const h = Math.max(0, Math.min(size - lineWidth, item.height - y - inset));
+    const w = Math.max(0, Math.min(dims.width - lineWidth, item.width - x - inset));
+    const h = Math.max(0, Math.min(dims.height - lineWidth, item.height - y - inset));
 
     ctx.save();
     ctx.strokeStyle = '#ff0000';
