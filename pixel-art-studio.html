@@ -156,7 +156,7 @@ function specificColor(text,nouns,fallback){
   const low=text.toLowerCase();
   for(const [word,value] of Object.entries(WORD_COLORS)){
     for(const noun of nouns){
-      if(low.includes(word+' '+noun)||low.includes(noun+' '+word)||low.includes(word+'-'+noun)||low.includes(word+' haired'))return value;
+      if(low.includes(word+' '+noun)||low.includes(noun+' '+word)||low.includes(word+'-'+noun)||low.includes(word+' haired')||low.includes(word+'-haired'))return value;
     }
   }
   return fallback;
@@ -270,7 +270,7 @@ function generate(){
   setStatus($('artStyle').value==='character'?'Generated detailed character artwork. 96×128 or 128×192 gives the strongest result.':'Generated a procedural starting point. Edit any pixel before export.')
 }
 function cellFromEvent(ev){const r=editCanvas.getBoundingClientRect();const x=Math.floor((ev.clientX-r.left)/r.width*canvasW),y=Math.floor((ev.clientY-r.top)/r.height*canvasH);return{x:Math.max(0,Math.min(canvasW-1,x)),y:Math.max(0,Math.min(canvasH-1,y))}}
-function applyAt(x,y,first=false){const f=chosenFrame();if(first)pushHistory();if(tool==='pencil')f[idx(x,y)]=colour;else if(tool==='eraser')f[idx(x,y)]=null;else if(tool==='pick'){const c=f[idx(x,y)];if(c){colour=c;$('customColor').value=c;renderPalette()}drawing=false}else if(tool==='fill'){const target=f[idx(x,y)];if(target===colour)return;const stack=[[x,y]],seen=new Set();while(stack.length){const [cx,cy]=stack.pop(),k=idx(cx,cy);if(seen.has(k)||f[k]!==target)continue;seen.add(k);f[k]=colour;for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){const nx=cx+dx,ny=cy+dy;if(nx>=0&&ny>=0&&nx<size&&ny<size)stack.push([nx,ny])}}drawing=false}drawEditor();renderFrames();drawPreview()}
+function applyAt(x,y,first=false){const f=chosenFrame();if(first)pushHistory();if(tool==='pencil')f[idx(x,y)]=colour;else if(tool==='eraser')f[idx(x,y)]=null;else if(tool==='pick'){const c=f[idx(x,y)];if(c){colour=c;$('customColor').value=c;renderPalette()}drawing=false}else if(tool==='fill'){const target=f[idx(x,y)];if(target===colour)return;const stack=[[x,y]],seen=new Set();while(stack.length){const [cx,cy]=stack.pop(),k=idx(cx,cy);if(seen.has(k)||f[k]!==target)continue;seen.add(k);f[k]=colour;for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){const nx=cx+dx,ny=cy+dy;if(nx>=0&&ny>=0&&nx<canvasW&&ny<canvasH)stack.push([nx,ny])}}drawing=false}drawEditor();renderFrames();drawPreview()}
 editCanvas.addEventListener('pointerdown',ev=>{ev.preventDefault();drawing=true;editCanvas.setPointerCapture(ev.pointerId);const q=cellFromEvent(ev);applyAt(q.x,q.y,true)});
 editCanvas.addEventListener('pointermove',ev=>{const q=cellFromEvent(ev);$('pixelPos').textContent=`x ${q.x}, y ${q.y}`;if(drawing&&(tool==='pencil'||tool==='eraser'))applyAt(q.x,q.y,false)});
 function end(ev){drawing=false;try{editCanvas.releasePointerCapture(ev.pointerId)}catch(_){}}
