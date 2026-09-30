@@ -7,7 +7,7 @@
 <style>
 :root{--bg:#0c1118;--panel:#151d28;--panel2:#1b2634;--line:#2e3c4e;--text:#edf3f8;--muted:#9ba9b8;--gold:#f7bd18;--blue:#0d4f98;--good:#41c77b}
 *{box-sizing:border-box}html,body{min-height:100%}body{margin:0;background:radial-gradient(circle at top,#182738 0,#0c1118 45%);color:var(--text);font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-button,input,select,textarea{font:inherit}.app{width:min(1500px,calc(100% - 24px));margin:18px auto 36px}.top{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:14px}.back{display:inline-flex;text-decoration:none;color:var(--text);background:#202b39;border:1px solid var(--line);border-radius:999px;padding:9px 13px;font-weight:800}.top h1{margin:8px 0 4px;font-size:clamp(26px,3vw,40px)}.sub{margin:0;color:var(--muted);max-width:850px;line-height:1.45}.badge{white-space:nowrap;border:1px solid var(--line);border-radius:999px;padding:9px 12px;color:var(--muted);background:#121923}.panel{background:linear-gradient(180deg,#1a2431,#131b25);border:1px solid var(--line);border-radius:17px;box-shadow:0 18px 40px rgba(0,0,0,.24)}.setup{display:grid;grid-template-columns:minmax(280px,1fr) 190px 210px 180px 150px auto;gap:10px;padding:13px;margin-bottom:14px;align-items:end}.field{display:grid;gap:6px}.field label{font-size:12px;font-weight:800;color:#d9e3eb}.field input,.field select,.field textarea{width:100%;border:1px solid var(--line);border-radius:10px;background:#0d141d;color:var(--text);padding:10px;outline:none}.field textarea{min-height:68px;resize:vertical}.btn{border:1px solid var(--line);border-radius:10px;background:#202b39;color:var(--text);padding:10px 13px;font-weight:800;cursor:pointer}.btn:hover:not(:disabled){border-color:#50647d}.btn:disabled{opacity:.42;cursor:not-allowed}.btn.primary{background:var(--gold);color:#211900;border-color:var(--gold)}.btn.good{background:#173c2a;color:#def7e7;border-color:#2a7047}.work{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:14px}.editor{padding:13px;min-width:0}.toolbar{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-bottom:10px}.tool.active{background:var(--gold);color:#201800;border-color:var(--gold)}.palette{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.sw{width:30px;height:30px;border-radius:7px;border:2px solid #657389;cursor:pointer}.sw.active{outline:2px solid var(--gold);outline-offset:2px}.customColor{width:42px;height:32px;border:0;background:transparent;padding:0}.canvasShell{min-height:560px;display:grid;place-items:center;border:1px solid var(--line);border-radius:14px;overflow:auto;background-color:#0a0f15;background-image:linear-gradient(45deg,#151d27 25%,transparent 25%),linear-gradient(-45deg,#151d27 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#151d27 75%),linear-gradient(-45deg,transparent 75%,#151d27 75%);background-size:20px 20px;background-position:0 0,0 10px,10px -10px,-10px 0}.canvasShell canvas{image-rendering:pixelated;image-rendering:crisp-edges;touch-action:none;max-width:none}.meta{display:flex;justify-content:space-between;gap:12px;color:var(--muted);font-size:12px;margin-top:8px}.side{padding:13px;display:grid;align-content:start;gap:12px}.side h2{font-size:16px;margin:0 0 6px}.side p{margin:0;color:var(--muted);font-size:13px;line-height:1.45}.frames{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}.frame{border:1px solid var(--line);border-radius:9px;background:#0c1219;padding:5px;cursor:pointer;position:relative}.frame.active{border-color:var(--gold);box-shadow:0 0 0 1px rgba(247,189,24,.35)}.frame canvas{width:100%;height:auto;display:block;image-rendering:pixelated;background-color:#111923;background-image:linear-gradient(45deg,#1d2835 25%,transparent 25%),linear-gradient(-45deg,#1d2835 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#1d2835 75%),linear-gradient(-45deg,transparent 75%,#1d2835 75%);background-size:10px 10px;background-position:0 0,0 5px,5px -5px,-5px 0}.frame span{position:absolute;right:6px;bottom:5px;background:rgba(0,0,0,.7);padding:2px 5px;border-radius:5px;font-size:10px}.frameActions{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.preview{height:180px;display:grid;place-items:center;border:1px solid var(--line);border-radius:12px;background:#0b1118;overflow:hidden}.preview canvas{max-width:150px;max-height:160px;width:auto;height:auto;image-rendering:pixelated}.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}.export{display:grid;gap:7px}.export .btn{width:100%}.hint{font-size:12px;color:var(--muted);line-height:1.4}.kbd{padding:8px 10px;border-radius:9px;background:#101720;border:1px solid var(--line);color:var(--muted);font-size:11px}.status{min-height:18px;color:#c8d5df;font-size:12px}.sep{height:1px;background:var(--line)}@media(max-width:1000px){.setup{grid-template-columns:1fr 1fr}.setup .prompt{grid-column:1/-1}.work{grid-template-columns:1fr}.side{grid-template-columns:repeat(2,minmax(0,1fr))}.side>div{min-width:0}.frames{grid-template-columns:repeat(6,minmax(0,1fr))}}@media(max-width:650px){.app{width:min(100% - 12px,1500px);margin-top:8px}.top{display:block}.badge{display:inline-block;margin-top:8px}.setup{grid-template-columns:1fr}.setup .prompt{grid-column:auto}.canvasShell{min-height:420px}.side{display:grid;grid-template-columns:1fr}.frames{grid-template-columns:repeat(4,minmax(0,1fr))}.toolbar{align-items:flex-start}}
+button,input,select,textarea{font:inherit}.app{width:min(1500px,calc(100% - 24px));margin:18px auto 36px}.top{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:14px}.back{display:inline-flex;text-decoration:none;color:var(--text);background:#202b39;border:1px solid var(--line);border-radius:999px;padding:9px 13px;font-weight:800}.top h1{margin:8px 0 4px;font-size:clamp(26px,3vw,40px)}.sub{margin:0;color:var(--muted);max-width:850px;line-height:1.45}.badge{white-space:nowrap;border:1px solid var(--line);border-radius:999px;padding:9px 12px;color:var(--muted);background:#121923}.panel{background:linear-gradient(180deg,#1a2431,#131b25);border:1px solid var(--line);border-radius:17px;box-shadow:0 18px 40px rgba(0,0,0,.24)}.setup{display:grid;grid-template-columns:minmax(280px,1fr) 190px 210px 180px 150px auto;gap:10px;padding:13px;margin-bottom:14px;align-items:end}.field{display:grid;gap:6px}.field label{font-size:12px;font-weight:800;color:#d9e3eb}.field input,.field select,.field textarea{width:100%;border:1px solid var(--line);border-radius:10px;background:#0d141d;color:var(--text);padding:10px;outline:none}.field textarea{min-height:68px;resize:vertical}.btn{border:1px solid var(--line);border-radius:10px;background:#202b39;color:var(--text);padding:10px 13px;font-weight:800;cursor:pointer}.btn:hover:not(:disabled){border-color:#50647d}.btn:disabled{opacity:.42;cursor:not-allowed}.btn.primary{background:var(--gold);color:#211900;border-color:var(--gold)}.btn.good{background:#173c2a;color:#def7e7;border-color:#2a7047}.work{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:14px}.editor{padding:13px;min-width:0}.toolbar{display:grid;gap:8px;margin-bottom:10px}.toolbarRow{display:flex;gap:7px;align-items:center;flex-wrap:wrap}.tool.active{background:var(--gold);color:#201800;border-color:var(--gold)}.controlGroup{display:flex;align-items:center;gap:7px;padding:6px 8px;border:1px solid var(--line);border-radius:10px;background:#101720}.controlGroup label{font-size:11px;font-weight:800;color:var(--muted);white-space:nowrap}.controlGroup input[type="range"]{width:110px}.controlGroup input[type="number"]{width:68px;border:1px solid var(--line);border-radius:8px;background:#0d141d;color:var(--text);padding:7px}.toggle.active{background:#173c2a;color:#def7e7;border-color:#2a7047}.danger{background:#3b1d23;color:#ffd9de;border-color:#6c303b}.toolDivider{width:1px;height:30px;background:var(--line)}.textControls{display:none;align-items:center;gap:7px}.textControls.show{display:flex}.textControls input{border:1px solid var(--line);border-radius:8px;background:#0d141d;color:var(--text);padding:7px}.selectionActions{display:none;gap:7px}.selectionActions.show{display:flex}.palette{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.sw{width:30px;height:30px;border-radius:7px;border:2px solid #657389;cursor:pointer}.sw.active{outline:2px solid var(--gold);outline-offset:2px}.customColor{width:42px;height:32px;border:0;background:transparent;padding:0}.canvasShell{min-height:560px;display:grid;place-items:center;border:1px solid var(--line);border-radius:14px;overflow:auto;background-color:#0a0f15;background-image:linear-gradient(45deg,#151d27 25%,transparent 25%),linear-gradient(-45deg,#151d27 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#151d27 75%),linear-gradient(-45deg,transparent 75%,#151d27 75%);background-size:20px 20px;background-position:0 0,0 10px,10px -10px,-10px 0}.canvasShell canvas{image-rendering:pixelated;image-rendering:crisp-edges;touch-action:none;max-width:none}.meta{display:flex;justify-content:space-between;gap:12px;color:var(--muted);font-size:12px;margin-top:8px}.side{padding:13px;display:grid;align-content:start;gap:12px}.side h2{font-size:16px;margin:0 0 6px}.side p{margin:0;color:var(--muted);font-size:13px;line-height:1.45}.frames{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}.frame{border:1px solid var(--line);border-radius:9px;background:#0c1219;padding:5px;cursor:pointer;position:relative}.frame.active{border-color:var(--gold);box-shadow:0 0 0 1px rgba(247,189,24,.35)}.frame canvas{width:100%;height:auto;display:block;image-rendering:pixelated;background-color:#111923;background-image:linear-gradient(45deg,#1d2835 25%,transparent 25%),linear-gradient(-45deg,#1d2835 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#1d2835 75%),linear-gradient(-45deg,transparent 75%,#1d2835 75%);background-size:10px 10px;background-position:0 0,0 5px,5px -5px,-5px 0}.frame span{position:absolute;right:6px;bottom:5px;background:rgba(0,0,0,.7);padding:2px 5px;border-radius:5px;font-size:10px}.frameActions{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.preview{height:180px;display:grid;place-items:center;border:1px solid var(--line);border-radius:12px;background:#0b1118;overflow:hidden}.preview canvas{max-width:150px;max-height:160px;width:auto;height:auto;image-rendering:pixelated}.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}.export{display:grid;gap:7px}.export .btn{width:100%}.hint{font-size:12px;color:var(--muted);line-height:1.4}.kbd{padding:8px 10px;border-radius:9px;background:#101720;border:1px solid var(--line);color:var(--muted);font-size:11px}.status{min-height:18px;color:#c8d5df;font-size:12px}.sep{height:1px;background:var(--line)}@media(max-width:1000px){.setup{grid-template-columns:1fr 1fr}.setup .prompt{grid-column:1/-1}.work{grid-template-columns:1fr}.side{grid-template-columns:repeat(2,minmax(0,1fr))}.side>div{min-width:0}.frames{grid-template-columns:repeat(6,minmax(0,1fr))}}@media(max-width:650px){.app{width:min(100% - 12px,1500px);margin-top:8px}.top{display:block}.badge{display:inline-block;margin-top:8px}.setup{grid-template-columns:1fr}.setup .prompt{grid-column:auto}.canvasShell{min-height:420px}.side{display:grid;grid-template-columns:1fr}.frames{grid-template-columns:repeat(4,minmax(0,1fr))}.toolbar{align-items:flex-start}}
 </style>
 </head>
 <body>
@@ -41,13 +41,50 @@ button,input,select,textarea{font:inherit}.app{width:min(1500px,calc(100% - 24px
   <div class="work">
     <main class="panel editor">
       <div class="toolbar">
-        <button class="btn tool active" data-tool="pencil">Pencil</button>
-        <button class="btn tool" data-tool="eraser">Eraser</button>
-        <button class="btn tool" data-tool="fill">Fill</button>
-        <button class="btn tool" data-tool="pick">Eyedropper</button>
-        <button id="undo" class="btn" disabled>Undo</button>
-        <div class="palette" id="palette"></div>
-        <input id="customColor" class="customColor" type="color" value="#7a493d" title="Custom colour">
+        <div class="toolbarRow">
+          <button class="btn tool active" data-tool="pencil">Pencil</button>
+          <button class="btn tool" data-tool="brush">Brush</button>
+          <button class="btn tool" data-tool="eraser">Eraser</button>
+          <button class="btn tool" data-tool="fill">Fill</button>
+          <button class="btn tool" data-tool="pick">Eyedropper</button>
+          <button class="btn tool" data-tool="spray">Spray</button>
+          <span class="toolDivider"></span>
+          <button class="btn tool" data-tool="line">Line</button>
+          <button class="btn tool" data-tool="rect">Rectangle</button>
+          <button class="btn tool" data-tool="ellipse">Ellipse</button>
+          <button class="btn tool" data-tool="text">Text</button>
+          <button class="btn tool" data-tool="select">Select</button>
+        </div>
+        <div class="toolbarRow">
+          <div class="controlGroup">
+            <label for="brushSize">Size</label>
+            <input id="brushSize" type="range" min="1" max="32" value="1">
+            <input id="brushSizeNumber" type="number" min="1" max="32" value="1">
+            <span id="brushSizeLabel" class="hint">1 px</span>
+          </div>
+          <button id="fillAll" class="btn">Fill All</button>
+          <button id="clearFrame" class="btn danger">Clear</button>
+          <button id="undo" class="btn" disabled>Undo</button>
+          <button id="redo" class="btn" disabled>Redo</button>
+          <button id="gridToggle" class="btn toggle active">Grid</button>
+          <div class="controlGroup"><label for="zoom">Zoom</label><select id="zoom"><option value="auto">Auto</option><option value="2">2×</option><option value="4">4×</option><option value="6">6×</option><option value="8">8×</option><option value="12">12×</option><option value="16">16×</option></select></div>
+        </div>
+        <div class="toolbarRow">
+          <div class="palette" id="palette"></div>
+          <input id="customColor" class="customColor" type="color" value="#7a493d" title="Custom colour">
+          <div id="textControls" class="textControls">
+            <input id="textValue" type="text" placeholder="Text" maxlength="80">
+            <input id="textSize" type="number" min="4" max="96" value="12" title="Text size">
+            <button id="placeText" class="btn">Place text</button>
+          </div>
+          <div id="selectionActions" class="selectionActions">
+            <button id="copySel" class="btn">Copy</button>
+            <button id="cutSel" class="btn">Cut</button>
+            <button id="pasteSel" class="btn">Paste</button>
+            <button id="deleteSel" class="btn">Delete</button>
+            <button id="cropSel" class="btn">Crop</button>
+          </div>
+        </div>
       </div>
       <div class="canvasShell" id="canvasShell"><canvas id="editCanvas"></canvas></div>
       <div class="meta"><span id="frameLabel">Frame 1</span><span id="pixelPos">—</span></div>
@@ -75,6 +112,22 @@ button,input,select,textarea{font:inherit}.app{width:min(1500px,calc(100% - 24px
       </div>
 
       <div>
+        <h2>Canvas</h2>
+        <div class="row2">
+          <button id="flipH" class="btn">Flip horizontal</button>
+          <button id="flipV" class="btn">Flip vertical</button>
+          <button id="rotateL" class="btn">Rotate left</button>
+          <button id="rotateR" class="btn">Rotate right</button>
+        </div>
+        <div class="row2" style="margin-top:8px">
+          <div class="field"><label for="resizeW">Width</label><input id="resizeW" type="number" min="1" max="512" value="32"></div>
+          <div class="field"><label for="resizeH">Height</label><input id="resizeH" type="number" min="1" max="512" value="32"></div>
+        </div>
+        <button id="resizeCanvas" class="btn" style="width:100%;margin-top:8px">Resize canvas</button>
+        <p class="hint" style="margin-top:8px">Resize preserves artwork from the top-left. Select an area and use Crop to trim tightly around it.</p>
+      </div>
+
+      <div>
         <h2>Export</h2>
         <div class="export">
           <button id="exportFrame" class="btn">Current frame PNG</button>
@@ -89,7 +142,7 @@ button,input,select,textarea{font:inherit}.app{width:min(1500px,calc(100% - 24px
       <div>
         <h2>Code format</h2>
         <p>The GameBox export stores a palette plus horizontal pixel runs for every frame and includes a renderer that builds a <code>GBPixel.Grid</code>. It can be animated with no PNG files.</p>
-        <div class="kbd" style="margin-top:8px">Ctrl/Cmd+Z = undo · D = duplicate frame · Space = play/pause</div>
+        <div class="kbd" style="margin-top:8px">Ctrl/Cmd+Z = undo · Ctrl/Cmd+Y = redo · Ctrl/Cmd+C/X/V = selection · Delete = clear selection · D = duplicate frame · Space = play/pause</div>
       </div>
       <div class="status" id="status"></div>
     </aside>
