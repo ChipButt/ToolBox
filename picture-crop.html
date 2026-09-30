@@ -227,6 +227,29 @@
     .editor-title strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .editor-title span { color: var(--muted); font-size: 12px; }
 
+    .draw-toolbar {
+      display: grid;
+      gap: 9px;
+      margin-bottom: 11px;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 13px;
+      background: rgba(255,255,255,.025);
+    }
+    .draw-toolbar-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .tool-btn.active { background: var(--accent); color: #1a1607; border-color: var(--accent); }
+    .swatch {
+      width: 34px; height: 34px; border-radius: 9px; border: 2px solid #526075;
+      padding: 0; position: relative; flex: 0 0 auto;
+    }
+    .swatch.active { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .swatch.blur {
+      width: auto; padding: 0 11px; background: #334155; color: white; font-weight: 800;
+    }
+    .swatch.highlight { background: rgba(255,230,0,.55); }
+    .brush-size-wrap { display: flex; align-items: center; gap: 8px; min-width: 185px; flex: 1 1 220px; }
+    .brush-size-wrap input { min-width: 100px; }
+    .shortcut-note { color: var(--muted); font-size: 12px; }
     .canvas-wrap {
       flex: none;
       height: clamp(500px, 66vh, 760px);
@@ -481,6 +504,32 @@
           <span id="cropCoords" class="hint"></span>
         </div>
 
+        <div class="draw-toolbar">
+          <div class="draw-toolbar-row">
+            <button id="cropToolBtn" class="btn tool-btn active" type="button">Crop / Resize</button>
+            <button id="drawToolBtn" class="btn tool-btn" type="button">Draw</button>
+            <button id="selectToolBtn" class="btn tool-btn" type="button">Select</button>
+            <button id="undoBtn" class="btn" type="button" disabled>Undo</button>
+            <button id="copyBtn" class="btn" type="button" disabled>Copy</button>
+            <button id="pasteBtn" class="btn" type="button" disabled>Paste</button>
+            <button id="clearEditsBtn" class="btn" type="button" disabled>Clear edits</button>
+          </div>
+          <div class="draw-toolbar-row" id="brushControls">
+            <button class="swatch active" data-brush="color" data-color="#000000" style="background:#000" type="button" aria-label="Black"></button>
+            <button class="swatch" data-brush="color" data-color="#ffffff" style="background:#fff" type="button" aria-label="White"></button>
+            <button class="swatch" data-brush="color" data-color="#ff0000" style="background:#f00" type="button" aria-label="Red"></button>
+            <button class="swatch" data-brush="color" data-color="#0066ff" style="background:#06f" type="button" aria-label="Blue"></button>
+            <button class="swatch" data-brush="color" data-color="#00a850" style="background:#00a850" type="button" aria-label="Green"></button>
+            <button class="swatch highlight" data-brush="highlight" type="button" aria-label="Yellow highlighter"></button>
+            <button class="swatch blur" data-brush="blur" type="button">Blur</button>
+            <label class="brush-size-wrap">Brush size
+              <input id="brushSize" type="range" min="4" max="160" value="32" step="2">
+              <span id="brushSizeLabel">32 px</span>
+            </label>
+          </div>
+          <div class="shortcut-note">Shortcuts: Ctrl/Cmd+Z undo · Ctrl/Cmd+C copy selection · Ctrl/Cmd+V paste. Select draws a rectangular area to copy.</div>
+        </div>
+
         <div id="canvasWrap" class="canvas-wrap">
           <canvas id="editorCanvas"></canvas>
           <div id="emptyState" class="empty-state">Upload your images above.<br>Then drag the yellow crop rectangle into position, or drag any corner handle to resize it freely.</div>
@@ -575,6 +624,16 @@
     canvasWrap: document.getElementById('canvasWrap'),
     editorCanvas: document.getElementById('editorCanvas'),
     emptyState: document.getElementById('emptyState'),
+    cropToolBtn: document.getElementById('cropToolBtn'),
+    drawToolBtn: document.getElementById('drawToolBtn'),
+    selectToolBtn: document.getElementById('selectToolBtn'),
+    undoBtn: document.getElementById('undoBtn'),
+    copyBtn: document.getElementById('copyBtn'),
+    pasteBtn: document.getElementById('pasteBtn'),
+    clearEditsBtn: document.getElementById('clearEditsBtn'),
+    brushControls: document.getElementById('brushControls'),
+    brushSize: document.getElementById('brushSize'),
+    brushSizeLabel: document.getElementById('brushSizeLabel'),
     prevBtn: document.getElementById('prevBtn'),
     nextBtn: document.getElementById('nextBtn'),
     navStatus: document.getElementById('navStatus'),
@@ -613,6 +672,14 @@
   let dragOffset = { x: 0, y: 0 };
   let dragNeedsUiRefresh = false;
   let toastTimer = null;
+  let activeTool = 'crop';
+  let brushKind = 'color';
+  let brushColor = '#000000';
+  let brushSize = 32;
+  let activeStroke = null;
+  let selection = null;
+  let clipboardCanvas = null;
+  let clipboardOrigin = null;
 
   function showToast(message) {
     els.toast.textContent = message;
@@ -715,7 +782,9 @@
           cropHeightOverride: null,
           questionMode: 'crop',
           effectStrength: 12,
-          confirmed: false
+          confirmed: false,
+          editOps: [],
+          editCanvas: null
         };
         items.push(item);
         const dims = effectiveCropDimensions(item, items.length - 1);
@@ -882,6 +951,174 @@
     showToast(`Image ${currentIndex + 1} is using the automatic proportional dimensions again.`);
   }
 
+  function ensureEditCanvas(item) {
+    if (!item) return null;
+    if (!item.editCanvas) {
+      const c = document.createElement('canvas');
+      c.width = item.width;
+      c.height = item.height;
+      item.editCanvas = c;
+      rebuildEditCanvas(item);
+    }
+    return item.editCanvas;
+  }
+
+  function drawStrokePath(ctx, op) {
+    if (!op.points || !op.points.length) return;
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = op.size;
+    ctx.beginPath();
+    ctx.moveTo(op.points[0].x, op.points[0].y);
+    if (op.points.length === 1) ctx.lineTo(op.points[0].x + 0.01, op.points[0].y + 0.01);
+    else for (let i = 1; i < op.points.length; i++) ctx.lineTo(op.points[i].x, op.points[i].y);
+    if (op.kind === 'highlight') {
+      ctx.strokeStyle = 'rgba(255,230,0,.48)';
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.stroke();
+    } else if (op.kind === 'color') {
+      ctx.strokeStyle = op.color || '#000000';
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function applyBlurStroke(ctx, canvas, op) {
+    if (!op.points || !op.points.length) return;
+    const blurred = document.createElement('canvas');
+    blurred.width = canvas.width;
+    blurred.height = canvas.height;
+    const bctx = blurred.getContext('2d');
+    const strength = Math.max(4, Math.round(op.size * .35));
+    bctx.save();
+    bctx.filter = `blur(${strength}px)`;
+    const pad = strength * 2;
+    bctx.drawImage(canvas, -pad, -pad, canvas.width + pad * 2, canvas.height + pad * 2);
+    bctx.restore();
+
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = op.size;
+    ctx.beginPath();
+    ctx.moveTo(op.points[0].x, op.points[0].y);
+    if (op.points.length === 1) ctx.lineTo(op.points[0].x + .01, op.points[0].y + .01);
+    else for (let i = 1; i < op.points.length; i++) ctx.lineTo(op.points[i].x, op.points[i].y);
+    ctx.strokeStyle = '#000';
+    ctx.stroke();
+    ctx.globalCompositeOperation = 'source-in';
+    ctx.drawImage(blurred, 0, 0);
+    ctx.restore();
+  }
+
+  function rebuildEditCanvas(item) {
+    if (!item) return;
+    const c = item.editCanvas || document.createElement('canvas');
+    c.width = item.width;
+    c.height = item.height;
+    item.editCanvas = c;
+    const ctx = c.getContext('2d');
+    ctx.clearRect(0,0,c.width,c.height);
+    ctx.drawImage(sourceForItem(item), 0, 0, item.width, item.height);
+    for (const op of item.editOps || []) {
+      if (op.type === 'stroke') {
+        if (op.kind === 'blur') applyBlurStroke(ctx, c, op);
+        else drawStrokePath(ctx, op);
+      } else if (op.type === 'paste' && op.canvas) {
+        ctx.drawImage(op.canvas, op.x, op.y);
+      }
+    }
+  }
+
+  function sourceForItem(item) {
+    return ensureEditCanvas(item) || item.img;
+  }
+
+  function markEditChanged(item) {
+    if (!item) return;
+    item.confirmed = false;
+    dragNeedsUiRefresh = true;
+    renderMeta();
+    renderExport();
+  }
+
+  function setTool(tool) {
+    activeTool = tool;
+    selection = null;
+    els.cropToolBtn.classList.toggle('active', tool === 'crop');
+    els.drawToolBtn.classList.toggle('active', tool === 'draw');
+    els.selectToolBtn.classList.toggle('active', tool === 'select');
+    els.brushControls.style.opacity = tool === 'draw' ? '1' : '.55';
+    els.editorCanvas.style.cursor = tool === 'draw' ? 'crosshair' : (tool === 'select' ? 'crosshair' : 'default');
+    drawEditor();
+    updateEditButtons();
+  }
+
+  function updateEditButtons() {
+    const item = currentItem();
+    const hasEdits = !!(item && item.editOps && item.editOps.length);
+    els.undoBtn.disabled = !hasEdits;
+    els.clearEditsBtn.disabled = !hasEdits;
+    els.copyBtn.disabled = !(item && selection && selection.w > 2 && selection.h > 2);
+    els.pasteBtn.disabled = !clipboardCanvas || !item;
+  }
+
+  function undoEdit() {
+    const item = currentItem();
+    if (!item || !item.editOps.length) return;
+    item.editOps.pop();
+    rebuildEditCanvas(item);
+    selection = null;
+    markEditChanged(item);
+    renderAll();
+    showToast('Last image edit undone.');
+  }
+
+  function clearImageEdits() {
+    const item = currentItem();
+    if (!item || !item.editOps.length) return;
+    item.editOps = [];
+    rebuildEditCanvas(item);
+    selection = null;
+    markEditChanged(item);
+    renderAll();
+    showToast('Image edits cleared.');
+  }
+
+  function copySelection() {
+    const item = currentItem();
+    if (!item || !selection || selection.w < 2 || selection.h < 2) {
+      showToast('Use Select to draw an area first.');
+      return;
+    }
+    const src = sourceForItem(item);
+    const x = Math.max(0, Math.round(selection.x));
+    const y = Math.max(0, Math.round(selection.y));
+    const w = Math.max(1, Math.min(item.width - x, Math.round(selection.w)));
+    const h = Math.max(1, Math.min(item.height - y, Math.round(selection.h)));
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    c.getContext('2d').drawImage(src, x, y, w, h, 0, 0, w, h);
+    clipboardCanvas = c;
+    clipboardOrigin = { x, y };
+    updateEditButtons();
+    showToast(`Copied ${w} × ${h}px selection.`);
+  }
+
+  function pasteClipboard() {
+    const item = currentItem();
+    if (!item || !clipboardCanvas) return;
+    const x = Math.max(0, Math.min(item.width - clipboardCanvas.width, (clipboardOrigin?.x || 0) + 12));
+    const y = Math.max(0, Math.min(item.height - clipboardCanvas.height, (clipboardOrigin?.y || 0) + 12));
+    item.editOps.push({ type:'paste', canvas: clipboardCanvas, x, y });
+    rebuildEditCanvas(item);
+    selection = { x, y, w: clipboardCanvas.width, h: clipboardCanvas.height };
+    markEditChanged(item);
+    renderAll();
+    showToast('Pasted selection.');
+  }
+
   function clearAll() {
     items.forEach(i => URL.revokeObjectURL(i.objectUrl));
     items = [];
@@ -890,6 +1127,9 @@
     dragMode = null;
     resizeCorner = null;
     resizeState = null;
+    selection = null;
+    clipboardCanvas = null;
+    clipboardOrigin = null;
     els.fileInput.value = '';
     renderAll();
   }
@@ -926,7 +1166,7 @@
     const dy = (cssH - dh) / 2;
     display = { scale, dx, dy, width: dw, height: dh };
 
-    ectx.drawImage(item.img, dx, dy, dw, dh);
+    ectx.drawImage(sourceForItem(item), dx, dy, dw, dh);
 
     const dims = effectiveCropDimensions(item, currentIndex);
     const rx = dx + item.crop.x * scale;
@@ -934,6 +1174,7 @@
     const rw = dims.width * scale;
     const rh = dims.height * scale;
 
+    if (activeTool === 'crop') {
     // Darken everything outside the crop rectangle.
     ectx.save();
     ectx.fillStyle = 'rgba(0, 0, 0, .58)';
@@ -976,6 +1217,21 @@
       ectx.stroke();
     }
     ectx.restore();
+    }
+
+    if (selection) {
+      ectx.save();
+      ectx.strokeStyle = '#ffffff';
+      ectx.setLineDash([7,5]);
+      ectx.lineWidth = 2;
+      ectx.strokeRect(
+        dx + selection.x * scale,
+        dy + selection.y * scale,
+        selection.w * scale,
+        selection.h * scale
+      );
+      ectx.restore();
+    }
   }
 
   function drawQuestionToCanvas(ctx, canvas, item, preview = false) {
@@ -1009,12 +1265,14 @@
     ctx.fillStyle = '#070a0e';
     ctx.fillRect(0, 0, outW, outH);
 
+    const editedSource = sourceForItem(item);
+
     if (item.questionMode === 'crop') {
       const dims = effectiveCropDimensions(item, index);
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
       ctx.drawImage(
-        item.img,
+        editedSource,
         item.crop.x,
         item.crop.y,
         dims.width,
@@ -1031,7 +1289,7 @@
       ctx.save();
       ctx.filter = `blur(${Number(item.effectStrength) || 12}px)`;
       const pad = Math.ceil((Number(item.effectStrength) || 12) * 2);
-      ctx.drawImage(item.img, -pad, -pad, outW + pad * 2, outH + pad * 2);
+      ctx.drawImage(editedSource, -pad, -pad, outW + pad * 2, outH + pad * 2);
       ctx.restore();
       return;
     }
@@ -1046,7 +1304,7 @@
       const dy = outH * i / slices;
       const dh = outH / slices + 1;
       const dx = Math.sin((i / slices) * Math.PI * 8) * amplitude;
-      ctx.drawImage(item.img, 0, sy, item.width, sh, dx, dy, outW, dh);
+      ctx.drawImage(editedSource, 0, sy, item.width, sh, dx, dy, outW, dh);
     }
   }
 
@@ -1197,6 +1455,7 @@
     renderThumbs();
     renderMeta();
     renderExport();
+    updateEditButtons();
     requestAnimationFrame(() => {
       drawEditor();
       drawPreview();
@@ -1393,12 +1652,37 @@
     const item = currentItem();
     if (!item) return;
     const p = pointerToSource(ev);
-    if (!p) return;
+    if (!p || p.x < 0 || p.y < 0 || p.x > item.width || p.y > item.height) return;
 
-    const corner = cropHandleAt(p, item);
     dragging = true;
     els.editorCanvas.setPointerCapture(ev.pointerId);
 
+    if (activeTool === 'draw') {
+      dragMode = 'draw';
+      activeStroke = {
+        type: 'stroke',
+        kind: brushKind,
+        color: brushColor,
+        size: brushSize,
+        points: [{x:p.x,y:p.y}]
+      };
+      item.editOps.push(activeStroke);
+      rebuildEditCanvas(item);
+      markEditChanged(item);
+      drawEditor();
+      drawPreview();
+      return;
+    }
+
+    if (activeTool === 'select') {
+      dragMode = 'select';
+      selection = { x:p.x, y:p.y, w:0, h:0, sx:p.x, sy:p.y };
+      drawEditor();
+      updateEditButtons();
+      return;
+    }
+
+    const corner = cropHandleAt(p, item);
     if (corner) {
       dragMode = 'resize';
       beginResize(corner, item);
@@ -1409,19 +1693,16 @@
     dragMode = 'move';
     resizeCorner = null;
     resizeState = null;
-
     if (isInsideCrop(p, item)) {
       dragOffset.x = p.x - item.crop.x;
       dragOffset.y = p.y - item.crop.y;
-      els.editorCanvas.style.cursor = 'move';
-      moveCropTo(p.x, p.y, true);
     } else {
       const dims = effectiveCropDimensions(item, currentIndex);
       dragOffset.x = dims.width / 2;
       dragOffset.y = dims.height / 2;
-      els.editorCanvas.style.cursor = 'move';
-      moveCropTo(p.x, p.y, true);
     }
+    els.editorCanvas.style.cursor = 'move';
+    moveCropTo(p.x, p.y, true);
   });
 
   els.editorCanvas.addEventListener('pointermove', ev => {
@@ -1431,34 +1712,63 @@
     if (!p) return;
 
     if (!dragging) {
-      const corner = cropHandleAt(p, item);
-      if (corner) els.editorCanvas.style.cursor = cursorForCorner(corner);
-      else if (isInsideCrop(p, item)) els.editorCanvas.style.cursor = 'move';
-      else els.editorCanvas.style.cursor = 'crosshair';
+      if (activeTool === 'draw' || activeTool === 'select') {
+        els.editorCanvas.style.cursor = 'crosshair';
+      } else {
+        const corner = cropHandleAt(p, item);
+        if (corner) els.editorCanvas.style.cursor = cursorForCorner(corner);
+        else if (isInsideCrop(p, item)) els.editorCanvas.style.cursor = 'move';
+        else els.editorCanvas.style.cursor = 'crosshair';
+      }
       return;
     }
 
     ev.preventDefault();
-    if (dragMode === 'resize') resizeCropTo(p);
-    else moveCropTo(p.x, p.y, true);
+    if (dragMode === 'draw') {
+      const x = Math.max(0, Math.min(item.width, p.x));
+      const y = Math.max(0, Math.min(item.height, p.y));
+      const last = activeStroke.points[activeStroke.points.length - 1];
+      if (Math.hypot(x-last.x,y-last.y) >= Math.max(1, brushSize * .08)) {
+        activeStroke.points.push({x,y});
+        rebuildEditCanvas(item);
+        drawEditor();
+        drawPreview();
+      }
+    } else if (dragMode === 'select') {
+      const x = Math.max(0, Math.min(item.width, p.x));
+      const y = Math.max(0, Math.min(item.height, p.y));
+      selection.x = Math.min(selection.sx, x);
+      selection.y = Math.min(selection.sy, y);
+      selection.w = Math.abs(x - selection.sx);
+      selection.h = Math.abs(y - selection.sy);
+      drawEditor();
+      updateEditButtons();
+    } else if (dragMode === 'resize') {
+      resizeCropTo(p);
+    } else {
+      moveCropTo(p.x, p.y, true);
+    }
   });
 
   els.editorCanvas.addEventListener('pointerleave', () => {
-    if (!dragging) els.editorCanvas.style.cursor = 'default';
+    if (!dragging) els.editorCanvas.style.cursor = activeTool === 'crop' ? 'default' : 'crosshair';
   });
 
   function endDrag(ev) {
     if (!dragging) return;
+    const finishedMode = dragMode;
     dragging = false;
     dragMode = null;
     resizeCorner = null;
     resizeState = null;
+    activeStroke = null;
     try { els.editorCanvas.releasePointerCapture(ev.pointerId); } catch (_) {}
-    clampAllCrops();
-    els.editorCanvas.style.cursor = 'default';
+    if (finishedMode === 'move' || finishedMode === 'resize') clampAllCrops();
+    els.editorCanvas.style.cursor = activeTool === 'crop' ? 'default' : 'crosshair';
     renderMeta();
     drawEditor();
     drawPreview();
+    updateEditButtons();
     if (dragNeedsUiRefresh) {
       renderThumbs();
       renderExport();
@@ -1527,6 +1837,43 @@
     drawPreview();
     renderMeta();
     renderExport();
+  });
+
+  els.cropToolBtn.addEventListener('click', () => setTool('crop'));
+  els.drawToolBtn.addEventListener('click', () => setTool('draw'));
+  els.selectToolBtn.addEventListener('click', () => setTool('select'));
+  els.undoBtn.addEventListener('click', undoEdit);
+  els.copyBtn.addEventListener('click', copySelection);
+  els.pasteBtn.addEventListener('click', pasteClipboard);
+  els.clearEditsBtn.addEventListener('click', clearImageEdits);
+  els.brushSize.addEventListener('input', () => {
+    brushSize = Number(els.brushSize.value);
+    els.brushSizeLabel.textContent = `${brushSize} px`;
+  });
+  document.querySelectorAll('.swatch[data-brush]').forEach(btn => btn.addEventListener('click', () => {
+    brushKind = btn.dataset.brush;
+    if (btn.dataset.color) brushColor = btn.dataset.color;
+    document.querySelectorAll('.swatch[data-brush]').forEach(x => x.classList.remove('active'));
+    btn.classList.add('active');
+    setTool('draw');
+  }));
+
+  document.addEventListener('keydown', ev => {
+    const mod = ev.ctrlKey || ev.metaKey;
+    if (!mod) return;
+    const target = ev.target;
+    if (target && /INPUT|TEXTAREA|SELECT/.test(target.tagName)) return;
+    const key = ev.key.toLowerCase();
+    if (key === 'z') {
+      ev.preventDefault();
+      undoEdit();
+    } else if (key === 'c') {
+      ev.preventDefault();
+      copySelection();
+    } else if (key === 'v') {
+      ev.preventDefault();
+      pasteClipboard();
+    }
   });
 
   window.addEventListener('resize', () => requestAnimationFrame(drawEditor));
