@@ -85,6 +85,8 @@ button,input,select,textarea{font:inherit}.app{width:min(1500px,calc(100% - 24px
             <button id="copySel" class="btn">Copy</button>
             <button id="cutSel" class="btn">Cut</button>
             <button id="pasteSel" class="btn">Paste</button>
+            <button id="flipSelH" class="btn">Flip ↔</button>
+            <button id="flipSelV" class="btn">Flip ↕</button>
             <button id="deleteSel" class="btn">Delete</button>
             <button id="cropSel" class="btn">Crop</button>
           </div>
@@ -345,6 +347,19 @@ function pointInSelection(x,y){return selection&&x>=selection.x&&y>=selection.y&
 function copySelection(){if(!selection){setStatus('Select an area first.');return false}const f=chosenFrame(),data=[];for(let y=0;y<selection.h;y++)for(let x=0;x<selection.w;x++)data.push(f[idx(selection.x+x,selection.y+y)]);clipboard={w:selection.w,h:selection.h,data};setStatus(`Copied ${selection.w}×${selection.h} pixels.`);return true}
 function clearSelectionPixels(){if(!selection)return;const f=chosenFrame();for(let y=0;y<selection.h;y++)for(let x=0;x<selection.w;x++)f[idx(selection.x+x,selection.y+y)]=null}
 function cutSelection(){if(!selection)return;pushHistory();copySelection();clearSelectionPixels();renderAll();setStatus('Cut selection.')}
+function flipSelection(horizontal){
+  if(!selection){setStatus('Select an area first.');return}
+  pushHistory();
+  const f=chosenFrame(),sn={...selection},data=[];
+  for(let y=0;y<sn.h;y++)for(let x=0;x<sn.w;x++)data.push(f[idx(sn.x+x,sn.y+y)]);
+  for(let y=0;y<sn.h;y++)for(let x=0;x<sn.w;x++){
+    const sx=horizontal?(sn.w-1-x):x;
+    const sy=horizontal?y:(sn.h-1-y);
+    f[idx(sn.x+x,sn.y+y)]=data[sy*sn.w+sx];
+  }
+  renderAll();
+  setStatus(horizontal?'Flipped selected area horizontally.':'Flipped selected area vertically.');
+}
 function deleteSelection(){if(!selection)return;pushHistory();clearSelectionPixels();renderAll();setStatus('Deleted selection.')}
 function pasteSelection(atX,atY){if(!clipboard){setStatus('Nothing has been copied yet.');return}pushHistory();const x=Math.max(0,Math.min(canvasW-clipboard.w,atX??selection?.x??0)),y=Math.max(0,Math.min(canvasH-clipboard.h,atY??selection?.y??0)),f=chosenFrame();for(let yy=0;yy<clipboard.h;yy++)for(let xx=0;xx<clipboard.w;xx++){const c=clipboard.data[yy*clipboard.w+xx];if(c!==null)f[idx(x+xx,y+yy)]=c}selection={x,y,w:clipboard.w,h:clipboard.h};renderAll();setStatus('Pasted selection.')}
 function moveSelectionStart(q){if(!selection)return false;pushHistory();const f=chosenFrame(),data=[];for(let y=0;y<selection.h;y++)for(let x=0;x<selection.w;x++)data.push(f[idx(selection.x+x,selection.y+y)]);selectionMove={start:q,original:{...selection},data,base:cloneFrame(f)};for(let y=0;y<selection.h;y++)for(let x=0;x<selection.w;x++)selectionMove.base[idx(selection.x+x,selection.y+y)]=null;return true}
@@ -434,7 +449,7 @@ $('generate').onclick=generate;$('undo').onclick=undo;$('redo').onclick=redo;$('
 $('gridToggle').onclick=()=>{showGrid=!showGrid;$('gridToggle').classList.toggle('active',showGrid);drawEditor()};
 $('zoom').onchange=e=>{zoomLevel=e.target.value;drawEditor()};
 $('placeText').onclick=()=>drawTextAt(textAnchor?.x??0,textAnchor?.y??0);
-$('copySel').onclick=copySelection;$('cutSel').onclick=cutSelection;$('pasteSel').onclick=()=>pasteSelection();$('deleteSel').onclick=deleteSelection;$('cropSel').onclick=cropSelection;
+$('copySel').onclick=copySelection;$('cutSel').onclick=cutSelection;$('pasteSel').onclick=()=>pasteSelection();$('flipSelH').onclick=()=>flipSelection(true);$('flipSelV').onclick=()=>flipSelection(false);$('deleteSel').onclick=deleteSelection;$('cropSel').onclick=cropSelection;
 $('flipH').onclick=()=>flipFrame(true);$('flipV').onclick=()=>flipFrame(false);$('rotateL').onclick=()=>rotateAll(false);$('rotateR').onclick=()=>rotateAll(true);$('resizeCanvas').onclick=resizeCanvas;
 $('addFrame').onclick=addFrame;$('dupFrame').onclick=dupFrame;$('delFrame').onclick=delFrame;$('play').onclick=togglePlay;$('exportFrame').onclick=exportFrame;$('exportZip').onclick=exportZip;$('exportSheet').onclick=exportSheet;$('exportJson').onclick=exportJson;$('exportJs').onclick=exportJs;
 $('sequence').onchange=()=>{$('frameCount').disabled=$('sequence').value==='still';if($('sequence').value==='still')$('frameCount').value='1'};
