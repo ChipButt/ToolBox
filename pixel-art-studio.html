@@ -371,21 +371,48 @@ function drawFrameTo(ctx,f,w,h){ctx.clearRect(0,0,w,h);ctx.imageSmoothingEnabled
 function drawEditor(){
   const shell=$('canvasShell').getBoundingClientRect();
   const maxW=Math.max(280,Math.min(shell.width-24,720)),maxH=720;
-  const scale=Math.max(2,Math.floor(Math.min(maxW/canvasW,maxH/canvasH)));
+  const autoScale=Math.max(2,Math.floor(Math.min(maxW/canvasW,maxH/canvasH)));
+  const scale=zoomLevel==='auto'?autoScale:Math.max(1,Number(zoomLevel)||autoScale);
   editCanvas.width=canvasW*scale;editCanvas.height=canvasH*scale;editCanvas.style.width=editCanvas.width+'px';editCanvas.style.height=editCanvas.height+'px';
   ectx.clearRect(0,0,editCanvas.width,editCanvas.height);drawFrameTo(ectx,chosenFrame(),editCanvas.width,editCanvas.height);
-  ectx.strokeStyle='rgba(255,255,255,.07)';ectx.lineWidth=1;
-  for(let x=0;x<=canvasW;x++){const q=x*scale+.5;ectx.beginPath();ectx.moveTo(q,0);ectx.lineTo(q,editCanvas.height);ectx.stroke()}
-  for(let y=0;y<=canvasH;y++){const q=y*scale+.5;ectx.beginPath();ectx.moveTo(0,q);ectx.lineTo(editCanvas.width,q);ectx.stroke()}
-  $('frameLabel').textContent=`Frame ${current+1} / ${frames.length} · ${canvasW}×${canvasH}`
+  if(showGrid&&scale>=4){
+    ectx.strokeStyle='rgba(255,255,255,.07)';ectx.lineWidth=1;
+    for(let x=0;x<=canvasW;x++){const q=x*scale+.5;ectx.beginPath();ectx.moveTo(q,0);ectx.lineTo(q,editCanvas.height);ectx.stroke()}
+    for(let y=0;y<=canvasH;y++){const q=y*scale+.5;ectx.beginPath();ectx.moveTo(0,q);ectx.lineTo(editCanvas.width,q);ectx.stroke()}
+  }
+  if(selection){
+    ectx.save();ectx.strokeStyle='#57d6ff';ectx.lineWidth=Math.max(1,Math.min(3,scale/3));ectx.setLineDash([Math.max(3,scale*.8),Math.max(2,scale*.45)]);
+    ectx.strokeRect(selection.x*scale+.5,selection.y*scale+.5,selection.w*scale,selection.h*scale);ectx.restore()
+  }
+  $('frameLabel').textContent=`Frame ${current+1} / ${frames.length} · ${canvasW}×${canvasH} · ${zoomLevel==='auto'?'auto':scale+'×'}`
 }
-function renderPalette(){paletteEl.innerHTML='';BASEPAL.slice(0,14).forEach(c=>{const b=document.createElement('button');b.className='sw'+(c===colour?' active':'');b.style.background=c;b.title=c;b.onclick=()=>{colour=c;$('customColor').value=c;renderPalette()};paletteEl.appendChild(b)})}
+function renderPalette(){paletteEl.innerHTML='';BASEPAL.forEach(c=>{const b=document.createElement('button');b.className='sw'+(c===colour?' active':'');b.style.background=c;b.title=c;b.onclick=()=>{colour=c;$('customColor').value=c;renderPalette()};paletteEl.appendChild(b)})}
 function renderFrames(){const host=$('frames');host.innerHTML='';frames.forEach((f,i)=>{const b=document.createElement('button');b.className='frame'+(i===current?' active':'');const c=document.createElement('canvas');c.width=canvasW;c.height=canvasH;c.style.aspectRatio=canvasW+'/'+canvasH;drawFrameTo(c.getContext('2d'),f,canvasW,canvasH);const n=document.createElement('span');n.textContent=i+1;b.append(c,n);b.onclick=()=>{current=i;renderAll()};host.appendChild(b)});$('delFrame').disabled=frames.length<=1}
 function drawPreview(){preview.width=canvasW;preview.height=canvasH;drawFrameTo(pctx,chosenFrame(),canvasW,canvasH)}
-function renderAll(){renderPalette();renderFrames();drawEditor();drawPreview()}
+function updateSelectionUI(){$('selectionActions').classList.toggle('show',!!selection);$('pasteSel').disabled=!clipboard}
+function renderAll(){renderPalette();renderFrames();drawEditor();drawPreview();updateSelectionUI();syncCanvasFields();updateUndoButtons()}
 function addFrame(){pushHistory();frames.push(blankFrame(canvasW,canvasH));current=frames.length-1;renderAll()}
 function dupFrame(){pushHistory();frames.splice(current+1,0,cloneFrame(chosenFrame()));current++;renderAll()}
-function delFrame(){if(frames.length<=1)return;pushHistory();frames.splice(current,1);current=Math.min(current,frames.length-1);renderAll()}
+function delFrame(){if(frames.length<=1)return;pushHistory();frames.splice(current,1);current=Math.min(current,frames.length-1);selection=null;renderAll()}
+function fillAll(){pushHistory();chosenFrame().fill(colour);renderAll();setStatus('Filled the entire frame.')}
+function clearFrame(){pushHistory();chosenFrame().fill(null);selection=null;renderAll();setStatus('Cleared current frame.')}
+function flipFrame(horizontal){pushHistory();const src=chosenFrame(),out=blankFrame(canvasW,canvasH);for(let y=0;y<canvasH;y++)for(let x=0;x<canvasW;x++){const nx=horizontal?canvasW-1-x:x,ny=horizontal?y:canvasH-1-y;out[ny*canvasW+nx]=src[y*canvasW+x]}frames[current]=out;selection=null;renderAll();setStatus(horizontal?'Flipped horizontally.':'Flipped vertically.')}
+function rotateAll(clockwise){
+  pushHistory();const oldW=canvasW,oldH=canvasH,newW=oldH,newH=oldW;
+  frames=frames.map(src=>{const out=new Array(newW*newH).fill(null);for(let y=0;y<oldH;y++)for(let x=0;x<oldW;x++){const nx=clockwise?oldH-1-y:y,ny=clockwise?x:oldW-1-x;out[ny*newW+nx]=src[y*oldW+x]}return out});
+  canvasW=newW;canvasH=newH;size=Math.min(canvasW,canvasH);selection=null;renderAll();setStatus(clockwise?'Rotated right.':'Rotated left.')
+}
+function resizeCanvas(){
+  const newW=Math.max(1,Math.min(512,Number($('resizeW').value)||canvasW)),newH=Math.max(1,Math.min(512,Number($('resizeH').value)||canvasH));
+  if(newW===canvasW&&newH===canvasH)return;pushHistory();const oldW=canvasW,oldH=canvasH;
+  frames=frames.map(src=>{const out=new Array(newW*newH).fill(null);for(let y=0;y<Math.min(oldH,newH);y++)for(let x=0;x<Math.min(oldW,newW);x++)out[y*newW+x]=src[y*oldW+x];return out});
+  canvasW=newW;canvasH=newH;size=Math.min(canvasW,canvasH);selection=null;renderAll();setStatus(`Resized canvas to ${canvasW}×${canvasH}.`)
+}
+function cropSelection(){
+  if(!selection)return;pushHistory();const oldW=canvasW,oldH=canvasH,sn={...selection},newW=sn.w,newH=sn.h;
+  frames=frames.map(src=>{const out=new Array(newW*newH).fill(null);for(let y=0;y<newH;y++)for(let x=0;x<newW;x++)out[y*newW+x]=src[(sn.y+y)*oldW+(sn.x+x)];return out});
+  canvasW=newW;canvasH=newH;size=Math.min(canvasW,canvasH);selection=null;renderAll();setStatus(`Cropped canvas to ${canvasW}×${canvasH}.`)
+}
 function togglePlay(){playing=!playing;$('play').textContent=playing?'Stop':'Play';clearInterval(timer);if(playing){timer=setInterval(()=>{current=(current+1)%frames.length;renderFrames();drawEditor();drawPreview()},1000/Math.max(1,Number($('fps').value)||6))}}
 function downloadBlob(blob,name){const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),15000)}
 function frameCanvas(f){const c=document.createElement('canvas');c.width=canvasW;c.height=canvasH;drawFrameTo(c.getContext('2d'),f,canvasW,canvasH);return c}
@@ -399,8 +426,17 @@ function exportJs(){const d=dataObject();const js=`/* Generated by Chip In ToolB
 const crcTable=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=(c&1)?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0}return t})();function crc32(b){let c=0xFFFFFFFF;for(const v of b)c=crcTable[(c^v)&255]^(c>>>8);return(c^0xFFFFFFFF)>>>0}function u16(n){const b=new Uint8Array(2);new DataView(b.buffer).setUint16(0,n&65535,true);return b}function u32(n){const b=new Uint8Array(4);new DataView(b.buffer).setUint32(0,n>>>0,true);return b}function concat(a){const n=a.reduce((s,p)=>s+p.length,0),o=new Uint8Array(n);let q=0;for(const p of a){o.set(p,q);q+=p.length}return o}
 async function zip(entries){const enc=new TextEncoder(),locals=[],centrals=[];let off=0;const d=new Date(),tm=((d.getHours()&31)<<11)|((d.getMinutes()&63)<<5)|(Math.floor(d.getSeconds()/2)&31),dt=(((Math.max(1980,d.getFullYear())-1980)&127)<<9)|(((d.getMonth()+1)&15)<<5)|(d.getDate()&31);for(const e of entries){const nb=enc.encode(e.name),data=e.bytes,crc=crc32(data),local=concat([u32(0x04034b50),u16(20),u16(0x0800),u16(0),u16(tm),u16(dt),u32(crc),u32(data.length),u32(data.length),u16(nb.length),u16(0),nb,data]);locals.push(local);centrals.push(concat([u32(0x02014b50),u16(20),u16(20),u16(0x0800),u16(0),u16(tm),u16(dt),u32(crc),u32(data.length),u32(data.length),u16(nb.length),u16(0),u16(0),u16(0),u16(0),u32(0),u32(off),nb]));off+=local.length}const cs=centrals.reduce((s,p)=>s+p.length,0),end=concat([u32(0x06054b50),u16(0),u16(0),u16(entries.length),u16(entries.length),u32(cs),u32(off),u16(0)]);return new Blob([...locals,...centrals,end],{type:'application/zip'})}
 async function exportZip(){const entries=[];for(let i=0;i<frames.length;i++){const b=await canvasBlob(frameCanvas(frames[i]));entries.push({name:`${safeName()}-frame-${String(i+1).padStart(2,'0')}.png`,bytes:new Uint8Array(await b.arrayBuffer())})}downloadBlob(await zip(entries),`${safeName()}-frames.zip`)}
-document.querySelectorAll('.tool').forEach(b=>b.onclick=()=>{tool=b.dataset.tool;document.querySelectorAll('.tool').forEach(x=>x.classList.toggle('active',x===b))});
-$('customColor').oninput=e=>{colour=e.target.value;renderPalette()};$('generate').onclick=generate;$('undo').onclick=undo;$('addFrame').onclick=addFrame;$('dupFrame').onclick=dupFrame;$('delFrame').onclick=delFrame;$('play').onclick=togglePlay;$('exportFrame').onclick=exportFrame;$('exportZip').onclick=exportZip;$('exportSheet').onclick=exportSheet;$('exportJson').onclick=exportJson;$('exportJs').onclick=exportJs;
+document.querySelectorAll('.tool').forEach(b=>b.onclick=()=>{tool=b.dataset.tool;document.querySelectorAll('.tool').forEach(x=>x.classList.toggle('active',x===b));$('textControls').classList.toggle('show',tool==='text');if(tool!=='select'){selection=null;updateSelectionUI();drawEditor()}});
+function setBrushSize(v){brushSize=Math.max(1,Math.min(32,Number(v)||1));$('brushSize').value=brushSize;$('brushSizeNumber').value=brushSize;$('brushSizeLabel').textContent=brushSize+' px'}
+$('brushSize').oninput=e=>setBrushSize(e.target.value);$('brushSizeNumber').oninput=e=>setBrushSize(e.target.value);
+$('customColor').oninput=e=>{colour=e.target.value;renderPalette()};
+$('generate').onclick=generate;$('undo').onclick=undo;$('redo').onclick=redo;$('fillAll').onclick=fillAll;$('clearFrame').onclick=clearFrame;
+$('gridToggle').onclick=()=>{showGrid=!showGrid;$('gridToggle').classList.toggle('active',showGrid);drawEditor()};
+$('zoom').onchange=e=>{zoomLevel=e.target.value;drawEditor()};
+$('placeText').onclick=()=>drawTextAt(textAnchor?.x??0,textAnchor?.y??0);
+$('copySel').onclick=copySelection;$('cutSel').onclick=cutSelection;$('pasteSel').onclick=()=>pasteSelection();$('deleteSel').onclick=deleteSelection;$('cropSel').onclick=cropSelection;
+$('flipH').onclick=()=>flipFrame(true);$('flipV').onclick=()=>flipFrame(false);$('rotateL').onclick=()=>rotateAll(false);$('rotateR').onclick=()=>rotateAll(true);$('resizeCanvas').onclick=resizeCanvas;
+$('addFrame').onclick=addFrame;$('dupFrame').onclick=dupFrame;$('delFrame').onclick=delFrame;$('play').onclick=togglePlay;$('exportFrame').onclick=exportFrame;$('exportZip').onclick=exportZip;$('exportSheet').onclick=exportSheet;$('exportJson').onclick=exportJson;$('exportJs').onclick=exportJs;
 $('sequence').onchange=()=>{$('frameCount').disabled=$('sequence').value==='still';if($('sequence').value==='still')$('frameCount').value='1'};
 $('artStyle').onchange=()=>{
   if($('artStyle').value==='character'&&['16x16','24x24','32x32','48x48','64x64'].includes($('canvasPreset').value))$('canvasPreset').value='96x128';
@@ -410,8 +446,21 @@ $('canvasPreset').onchange=()=>{
   if($('canvasPreset').value==='96x128'||$('canvasPreset').value==='128x192')$('artStyle').value='character';
 };
 addEventListener('resize',()=>requestAnimationFrame(drawEditor));
-document.addEventListener('keydown',ev=>{const tag=ev.target.tagName;if(/INPUT|TEXTAREA|SELECT/.test(tag))return;const mod=ev.ctrlKey||ev.metaKey;if(mod&&ev.key.toLowerCase()==='z'){ev.preventDefault();undo()}else if(ev.key.toLowerCase()==='d'){ev.preventDefault();dupFrame()}else if(ev.code==='Space'){ev.preventDefault();togglePlay()}});
-generate();
+document.addEventListener('keydown',ev=>{
+  const tag=ev.target.tagName,mod=ev.ctrlKey||ev.metaKey,key=ev.key.toLowerCase();
+  if(mod&&key==='z'){ev.preventDefault();ev.shiftKey?redo():undo();return}
+  if(mod&&key==='y'){ev.preventDefault();redo();return}
+  if(mod&&key==='c'){ev.preventDefault();copySelection();return}
+  if(mod&&key==='x'){ev.preventDefault();cutSelection();return}
+  if(mod&&key==='v'){ev.preventDefault();pasteSelection();return}
+  if(/INPUT|TEXTAREA|SELECT/.test(tag))return;
+  if(ev.key==='Delete'||ev.key==='Backspace'){if(selection){ev.preventDefault();deleteSelection()}return}
+  if(selection&&['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(ev.key)){
+    ev.preventDefault();copySelection();pushHistory();const dx=ev.key==='ArrowLeft'?-1:ev.key==='ArrowRight'?1:0,dy=ev.key==='ArrowUp'?-1:ev.key==='ArrowDown'?1:0;clearSelectionPixels();selection.x=Math.max(0,Math.min(canvasW-selection.w,selection.x+dx));selection.y=Math.max(0,Math.min(canvasH-selection.h,selection.y+dy));const f=chosenFrame();for(let y=0;y<clipboard.h;y++)for(let x=0;x<clipboard.w;x++){const c=clipboard.data[y*clipboard.w+x];if(c!==null)f[idx(selection.x+x,selection.y+y)]=c}renderAll();return
+  }
+  if(key==='d'){ev.preventDefault();dupFrame()}else if(ev.code==='Space'){ev.preventDefault();togglePlay()}
+});
+setBrushSize(1);syncCanvasFields();updateSelectionUI();generate();
 })();
 </script>
 </body>
