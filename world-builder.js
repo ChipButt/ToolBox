@@ -1030,6 +1030,7 @@ addEventListener('resize',()=>{if(play)requestAnimationFrame(centerPlayView)});
 
 addEventListener('beforeunload',()=>{if(project)saveLocal(false)});
 
+sheetAssets=window.WorldBuilderSheetAssets||null;
 project=loadLocal();
 initialiseUndoHistory();
 categoryFilter='all';
@@ -1040,7 +1041,7 @@ renderCategories();
 renderAssets();
 renderAllPanels();
 updateModeStatus();
-flashStatus('58 core assets registered. Loading artwork…');
+flashStatus(catalogNames().length+' assets registered. Loading artwork…');
 requestAnimationFrame(loop);
 
 VillagePixelAssets.ready.then(api=>{
