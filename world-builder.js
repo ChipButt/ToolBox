@@ -16,7 +16,7 @@ const puzzleOverlay=$('#puzzleOverlay'),puzzleHeading=$('#puzzleHeading'),puzzle
 const STORE='chipin-world-builder-v1';
 const RECOVERY_STORE='chipin-world-builder-recovery-v1';
 const HISTORY_STORE='chipin-world-builder-history-v1';
-const SCHEMA_VERSION=5;
+const SCHEMA_VERSION=6;
 
 const VIRTUAL_ASSETS={
   'couch-horizontal':{label:'Couch — Horizontal',source:'couch.png',sx:0,sy:0,sw:32,sh:16},
@@ -267,6 +267,7 @@ function normaliseProject(p){
     m.spawn=m.spawn||{x:80,y:80};m.assets=Array.isArray(m.assets)?m.assets:[];m.transitions=Array.isArray(m.transitions)?m.transitions:[];m.npcs=Array.isArray(m.npcs)?m.npcs:[];m.questTargets=Array.isArray(m.questTargets)?m.questTargets:[];
     for(const a of m.assets){
       a.id=a.id||uid('asset');a.layer=Number(a.layer)||0;a.solid=!!a.solid;a.flipX=!!a.flipX;a.flipY=!!a.flipY;
+      if(typeof a.aboveCharacters!=='boolean')a.aboveCharacters=false;
       if(typeof a.animated!=='boolean')a.animated=a.asset==='fireplace.png';
       a.animationFps=clamp(Number(a.animationFps)||6,1,30)
     }
@@ -421,7 +422,7 @@ function addAssetAt(x,y){
   const key=selectedAssetName+'|'+gx+'|'+gy+'|'+cols+'x'+rows;if(key===lastStampKey)return;lastStampKey=key;
   let last=null;
   for(let row=0;row<rows;row++)for(let col=0;col<cols;col++){
-    const a={id:uid('asset'),asset:selectedAssetName,x:gx+col*d.w,y:gy+row*d.h,w:d.w,h:d.h,frame:d.frame,layer:0,flipX:false,flipY:false,solid:false,animated:selectedAssetName==='fireplace.png',animationFps:6};
+    const a={id:uid('asset'),asset:selectedAssetName,x:gx+col*d.w,y:gy+row*d.h,w:d.w,h:d.h,frame:d.frame,layer:0,flipX:false,flipY:false,solid:false,aboveCharacters:false,animated:selectedAssetName==='fireplace.png',animationFps:6};
     const v=VIRTUAL_ASSETS[selectedAssetName];
     if(v){a.sourceAsset=v.source;a.crop={x:v.sx,y:v.sy,w:v.sw,h:v.sh}}
     m.assets.push(a);last=a;
@@ -567,12 +568,15 @@ function drawPlayer(now){
 function draw(now=performance.now()){
   if(!assets||!project)return;const m=activeMap();if(canvas.width!==m.width||canvas.height!==m.height)resizeCanvas();
   ctx.clearRect(0,0,m.width,m.height);ctx.fillStyle=m.bg;ctx.fillRect(0,0,m.width,m.height);
-  const placed=[...m.assets].sort((a,b)=>(a.layer||0)-(b.layer||0));for(const a of placed)drawPlacedAsset(a);
+  const placed=[...m.assets].sort((a,b)=>(a.layer||0)-(b.layer||0));
+  for(const a of placed)if(!a.aboveCharacters)drawPlacedAsset(a);
   if(!play)drawGrid(m);
   for(const t of m.transitions)drawTransition(t);
   for(const q of m.questTargets)drawQuestTarget(q);
   for(const n of m.npcs)drawNpc(n);
-  drawSpawn(m);drawDraft();drawPlayer(now);
+  drawPlayer(now);
+  for(const a of placed)if(a.aboveCharacters)drawPlacedAsset(a);
+  drawSpawn(m);drawDraft();
 }
 function loop(now){
   const dt=Math.min(.05,(now-lastTime)/1000);lastTime=now;if(play)updatePlay(dt,now);draw(now);requestAnimationFrame(loop)
@@ -761,14 +765,14 @@ function renderSelectionInspector(updateTitle=true){
     selectionInspector.innerHTML=
       input('X','selX',o.x,'number')+input('Y','selY',o.y,'number')+input('Width','selW',o.w,'number')+input('Height','selH',o.h,'number')+
       (count>1?input(o.animated?'Start frame':'Frame','selFrame',o.frame??0,'number')+input('Animation FPS','selAnimFps',o.animationFps||6,'number'):'')+input('Layer','selLayer',o.layer||0,'number')+
-      '<div class="inlineChecks">'+(count>1?'<label><input id="selAnimated" type="checkbox" '+(o.animated?'checked':'')+'> Animated</label>':'')+'<label><input id="selFlipX" type="checkbox" '+(o.flipX?'checked':'')+'> Flip X</label><label><input id="selFlipY" type="checkbox" '+(o.flipY?'checked':'')+'> Flip Y</label><label><input id="selSolid" type="checkbox" '+(o.solid?'checked':'')+'> Solid collision</label></div>'+
+      '<div class="inlineChecks">'+(count>1?'<label><input id="selAnimated" type="checkbox" '+(o.animated?'checked':'')+'> Animated</label>':'')+'<label><input id="selFlipX" type="checkbox" '+(o.flipX?'checked':'')+'> Flip X</label><label><input id="selFlipY" type="checkbox" '+(o.flipY?'checked':'')+'> Flip Y</label><label><input id="selSolid" type="checkbox" '+(o.solid?'checked':'')+'> Solid collision</label><label><input id="selAboveCharacters" type="checkbox" '+(o.aboveCharacters?'checked':'')+'> Draw above characters</label></div>'+
       '<div class="inspectorActions"><button id="dupSelected" type="button">DUPLICATE</button><button id="layerUp" type="button">LAYER +</button><button id="layerDown" type="button">LAYER −</button></div>';
     bindNumber('selX',o,'x');bindNumber('selY',o,'y');bindNumber('selW',o,'w');bindNumber('selH',o,'h');
     if($('#selFrame'))$('#selFrame').onchange=e=>{o.frame=clamp(Number(e.target.value)||0,0,count-1);saveLocal(false);draw()};
     if($('#selAnimFps'))$('#selAnimFps').onchange=e=>{o.animationFps=clamp(Number(e.target.value)||6,1,30);e.target.value=o.animationFps;saveLocal(false);draw()};
     if($('#selAnimated'))$('#selAnimated').onchange=e=>{o.animated=e.target.checked;saveLocal(false);renderSelectionInspector();draw()};
     bindNumber('selLayer',o,'layer');
-    $('#selFlipX').onchange=e=>{o.flipX=e.target.checked;saveLocal(false);draw()};$('#selFlipY').onchange=e=>{o.flipY=e.target.checked;saveLocal(false);draw()};$('#selSolid').onchange=e=>{o.solid=e.target.checked;saveLocal(false);draw()};
+    $('#selFlipX').onchange=e=>{o.flipX=e.target.checked;saveLocal(false);draw()};$('#selFlipY').onchange=e=>{o.flipY=e.target.checked;saveLocal(false);draw()};$('#selSolid').onchange=e=>{o.solid=e.target.checked;saveLocal(false);draw()};$('#selAboveCharacters').onchange=e=>{o.aboveCharacters=e.target.checked;saveLocal(false);draw()};
     $('#dupSelected').onclick=duplicateSelected;$('#layerUp').onclick=()=>{o.layer=(o.layer||0)+1;saveLocal(false);renderSelectionInspector();draw()};$('#layerDown').onclick=()=>{o.layer=(o.layer||0)-1;saveLocal(false);renderSelectionInspector();draw()};
   } else if(selected.type==='transition'){
     if(updateTitle)selectionTitle.textContent=o.label||'Map Link';
