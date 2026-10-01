@@ -8,6 +8,8 @@
 :root{--bg:#0c1118;--panel:#151d28;--panel2:#1b2634;--line:#2e3c4e;--text:#edf3f8;--muted:#9ba9b8;--gold:#f7bd18;--blue:#0d4f98;--good:#41c77b}
 *{box-sizing:border-box}html,body{min-height:100%}body{margin:0;background:radial-gradient(circle at top,#182738 0,#0c1118 45%);color:var(--text);font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
 button,input,select,textarea{font:inherit}.app{width:min(1500px,calc(100% - 24px));margin:18px auto 36px}.top{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:14px}.back{display:inline-flex;text-decoration:none;color:var(--text);background:#202b39;border:1px solid var(--line);border-radius:999px;padding:9px 13px;font-weight:800}.top h1{margin:8px 0 4px;font-size:clamp(26px,3vw,40px)}.sub{margin:0;color:var(--muted);max-width:850px;line-height:1.45}.badge{white-space:nowrap;border:1px solid var(--line);border-radius:999px;padding:9px 12px;color:var(--muted);background:#121923}.panel{background:linear-gradient(180deg,#1a2431,#131b25);border:1px solid var(--line);border-radius:17px;box-shadow:0 18px 40px rgba(0,0,0,.24)}.setup{display:grid;grid-template-columns:minmax(280px,1fr) 190px 210px 180px 150px auto;gap:10px;padding:13px;margin-bottom:14px;align-items:end}.field{display:grid;gap:6px}.field label{font-size:12px;font-weight:800;color:#d9e3eb}.field input,.field select,.field textarea{width:100%;border:1px solid var(--line);border-radius:10px;background:#0d141d;color:var(--text);padding:10px;outline:none}.field textarea{min-height:68px;resize:vertical}.btn{border:1px solid var(--line);border-radius:10px;background:#202b39;color:var(--text);padding:10px 13px;font-weight:800;cursor:pointer}.btn:hover:not(:disabled){border-color:#50647d}.btn:disabled{opacity:.42;cursor:not-allowed}.btn.primary{background:var(--gold);color:#211900;border-color:var(--gold)}.btn.good{background:#173c2a;color:#def7e7;border-color:#2a7047}.work{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:14px}.editor{padding:13px;min-width:0}.toolbar{display:grid;gap:8px;margin-bottom:10px}.toolbarRow{display:flex;gap:7px;align-items:center;flex-wrap:wrap}.tool.active{background:var(--gold);color:#201800;border-color:var(--gold)}.controlGroup{display:flex;align-items:center;gap:7px;padding:6px 8px;border:1px solid var(--line);border-radius:10px;background:#101720}.controlGroup label{font-size:11px;font-weight:800;color:var(--muted);white-space:nowrap}.controlGroup input[type="range"]{width:110px}.controlGroup input[type="number"]{width:68px;border:1px solid var(--line);border-radius:8px;background:#0d141d;color:var(--text);padding:7px}.toggle.active{background:#173c2a;color:#def7e7;border-color:#2a7047}.danger{background:#3b1d23;color:#ffd9de;border-color:#6c303b}.toolDivider{width:1px;height:30px;background:var(--line)}.textControls{display:none;align-items:center;gap:7px}.textControls.show{display:flex}.textControls input{border:1px solid var(--line);border-radius:8px;background:#0d141d;color:var(--text);padding:7px}.selectionActions{display:none;gap:7px}.selectionActions.show{display:flex}.palette{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.sw{width:30px;height:30px;border-radius:7px;border:2px solid #657389;cursor:pointer}.sw.active{outline:2px solid var(--gold);outline-offset:2px}.customColor{width:42px;height:32px;border:0;background:transparent;padding:0}.canvasShell{min-height:560px;display:grid;place-items:center;border:1px solid var(--line);border-radius:14px;overflow:auto;background-color:#0a0f15;background-image:linear-gradient(45deg,#151d27 25%,transparent 25%),linear-gradient(-45deg,#151d27 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#151d27 75%),linear-gradient(-45deg,transparent 75%,#151d27 75%);background-size:20px 20px;background-position:0 0,0 10px,10px -10px,-10px 0}.canvasShell canvas{image-rendering:pixelated;image-rendering:crisp-edges;touch-action:none;max-width:none}.meta{display:flex;justify-content:space-between;gap:12px;color:var(--muted);font-size:12px;margin-top:8px}.side{padding:13px;display:grid;align-content:start;gap:12px}.side h2{font-size:16px;margin:0 0 6px}.side p{margin:0;color:var(--muted);font-size:13px;line-height:1.45}.frames{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}.frame{border:1px solid var(--line);border-radius:9px;background:#0c1219;padding:5px;cursor:pointer;position:relative}.frame.active{border-color:var(--gold);box-shadow:0 0 0 1px rgba(247,189,24,.35)}.frame canvas{width:100%;height:auto;display:block;image-rendering:pixelated;background-color:#111923;background-image:linear-gradient(45deg,#1d2835 25%,transparent 25%),linear-gradient(-45deg,#1d2835 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#1d2835 75%),linear-gradient(-45deg,transparent 75%,#1d2835 75%);background-size:10px 10px;background-position:0 0,0 5px,5px -5px,-5px 0}.frame span{position:absolute;right:6px;bottom:5px;background:rgba(0,0,0,.7);padding:2px 5px;border-radius:5px;font-size:10px}.frameActions{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.preview{height:180px;display:grid;place-items:center;border:1px solid var(--line);border-radius:12px;background:#0b1118;overflow:hidden}.preview canvas{max-width:150px;max-height:160px;width:auto;height:auto;image-rendering:pixelated}.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}.export{display:grid;gap:7px}.export .btn{width:100%}.hint{font-size:12px;color:var(--muted);line-height:1.4}.kbd{padding:8px 10px;border-radius:9px;background:#101720;border:1px solid var(--line);color:var(--muted);font-size:11px}.status{min-height:18px;color:#c8d5df;font-size:12px}.sep{height:1px;background:var(--line)}@media(max-width:1000px){.setup{grid-template-columns:1fr 1fr}.setup .prompt{grid-column:1/-1}.work{grid-template-columns:1fr}.side{grid-template-columns:repeat(2,minmax(0,1fr))}.side>div{min-width:0}.frames{grid-template-columns:repeat(6,minmax(0,1fr))}}@media(max-width:650px){.app{width:min(100% - 12px,1500px);margin-top:8px}.top{display:block}.badge{display:inline-block;margin-top:8px}.setup{grid-template-columns:1fr}.setup .prompt{grid-column:auto}.canvasShell{min-height:420px}.side{display:grid;grid-template-columns:1fr}.frames{grid-template-columns:repeat(4,minmax(0,1fr))}.toolbar{align-items:flex-start}}
+
+.assetLab{padding:13px;margin-bottom:14px}.assetLabHead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}.assetLabHead h2{margin:0;font-size:20px}.assetLabHead p{margin:3px 0 0;color:var(--muted);font-size:12px}.freeBadge{border:1px solid #2a7047;background:#173c2a;color:#def7e7;border-radius:999px;padding:7px 10px;font-size:10px;font-weight:900;white-space:nowrap}.labGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.labCard{border:1px solid var(--line);border-radius:12px;background:#101720;overflow:hidden}.labCard>summary{cursor:pointer;padding:11px 12px;font-size:13px;font-weight:900;list-style:none}.labCard>summary::-webkit-details-marker{display:none}.labCard>summary:after{content:'+';float:right;color:var(--gold)}.labCard[open]>summary:after{content:'−'}.labBody{padding:0 12px 12px;display:grid;gap:9px}.labRow{display:flex;gap:7px;align-items:end;flex-wrap:wrap}.labRow>.field{flex:1 1 110px}.labRow .btn{flex:0 0 auto}.filePick{border:1px dashed #50647d;border-radius:10px;padding:9px;background:#0b1118;color:var(--muted);font-size:11px}.filePick input{width:100%;margin-top:5px;color:var(--text)}.snapPreview{width:100%;height:150px;border:1px solid var(--line);border-radius:10px;background:#0a0f15;image-rendering:pixelated;object-fit:contain}.labNote,.labEmpty{color:var(--muted);font-size:11px;line-height:1.4}.mapList,.overlayList{display:grid;gap:5px;max-height:190px;overflow:auto}.mapRow{display:grid;grid-template-columns:1fr 32px;gap:5px}.mapInfo,.overlayRow{border:1px solid var(--line);border-radius:8px;background:#0c131c;color:var(--text);padding:7px 8px;text-align:left;cursor:pointer}.mapInfo strong,.overlayRow strong{display:block;font-size:11px}.mapInfo span,.overlayRow small{display:block;color:var(--muted);font-size:9px;margin-top:2px}.miniDanger{border:1px solid #6c303b;border-radius:8px;background:#3b1d23;color:#ffd9de;font-weight:900}.mapPreview{width:100%;height:120px;image-rendering:pixelated;background:#0a0f15;border:1px solid var(--line);border-radius:10px}.paletteMapList{display:grid;gap:5px;max-height:230px;overflow:auto}.paletteMapRow{display:grid;grid-template-columns:26px 64px 42px minmax(90px,1fr) 42px;gap:6px;align-items:center;padding:5px;border:1px solid #273548;border-radius:8px;background:#0b1118}.sourceSwatch{width:24px;height:24px;border:1px solid #738197;border-radius:5px}.paletteMapRow code{font-size:9px}.colourCount{font-size:9px;color:var(--muted)}.paletteMapRow input[type=text]{min-width:0;border:1px solid var(--line);border-radius:6px;background:#0d141d;color:var(--text);padding:6px;font-size:10px}.paletteMapRow input[type=color]{width:38px;height:28px;padding:0;border:0;background:transparent}.overlayRow{width:100%;display:grid;grid-template-columns:18px 1fr;align-items:center}.overlayRow.active{border-color:var(--gold)}.overlayRow .eye{color:var(--good)}.nudge{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}.nudge .btn{padding:7px}.labStatus{grid-column:1/-1;padding:8px 10px;border-radius:8px;background:#0b1118;color:#c8d5df;font-size:11px;min-height:30px}.inlineCheck{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted)}@media(max-width:900px){.labGrid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -36,6 +38,101 @@ button,input,select,textarea{font:inherit}.app{width:min(1500px,calc(100% - 24px
     <div class="field"><label for="sequence">Sequence</label><select id="sequence"><option value="still">Still image</option><option value="walk">Walk</option><option value="run">Run</option><option value="idle">Idle / bob</option><option value="spin">Turn / spin</option></select></div>
     <div class="field"><label for="frameCount">Frames</label><select id="frameCount"><option>1</option><option>2</option><option selected>4</option><option>6</option><option>8</option></select></div>
     <button id="generate" class="btn primary" type="button">Generate starting art</button>
+  </section>
+
+  
+  <section class="panel assetLab">
+    <div class="assetLabHead">
+      <div><h2>Asset Lab</h2><p>Import, clean, animate, recolour and accessorise existing pixel artwork entirely in your browser.</p></div>
+      <div class="freeBadge">FREE · LOCAL · NO API</div>
+    </div>
+    <div class="labGrid">
+      <details class="labCard" open>
+        <summary>Import & Pixel Snapper</summary>
+        <div class="labBody">
+          <label class="filePick">Artwork / sprite-sheet PNG or JPG<input id="assetImage" type="file" accept="image/png,image/jpeg,image/webp"></label>
+          <label class="filePick">Optional animation JSON<input id="assetJson" type="file" accept=".json,application/json"></label>
+          <div class="labRow">
+            <div class="field"><label>Source</label><div class="kbd"><span id="sheetW">—</span> × <span id="sheetH">—</span></div></div>
+            <div class="field"><label for="snapColors">Snap colours</label><input id="snapColors" type="number" min="1" max="256" value="16"></div>
+            <div class="field"><label for="snapPixelSize">Pixel size override</label><input id="snapPixelSize" type="number" min="1" placeholder="Auto"></div>
+          </div>
+          <label class="inlineCheck"><input id="snapUsePalette" type="checkbox"> Force the current Pixel Studio palette</label>
+          <canvas id="snapPreview" class="snapPreview" width="220" height="150"></canvas>
+          <div id="snapResultInfo" class="labNote">Pixel Snapper uses the MIT-licensed Sprite Fusion grid-cleaning algorithm adapted for ToolBox.</div>
+          <div class="labRow"><button id="snapRun" class="btn">Clean / Snap Pixels</button><button id="snapOpen" class="btn good">Open snapped result</button></div>
+          <div class="sep"></div>
+          <strong style="font-size:12px">Sprite-sheet slicing</strong>
+          <div class="labRow">
+            <div class="field"><label for="cellW">Frame width</label><input id="cellW" type="number" min="1" max="512" value="32"></div>
+            <div class="field"><label for="cellH">Frame height</label><input id="cellH" type="number" min="1" max="512" value="32"></div>
+            <div class="field"><label for="sheetCols">Columns</label><input id="sheetCols" type="number" min="1" max="128" value="8"></div>
+          </div>
+          <div class="labRow"><button id="sheetImport" class="btn primary">Import sprite sheet</button><span id="frameCountImported" class="labNote"></span></div>
+        </div>
+      </details>
+
+      <details class="labCard">
+        <summary>Animation Mapping</summary>
+        <div class="labBody">
+          <div class="labRow">
+            <div class="field"><label for="mapAction">Action</label><input id="mapAction" type="text" placeholder="Walking"></div>
+            <div class="field"><label for="mapDirection">Direction</label><input id="mapDirection" type="text" placeholder="south"></div>
+          </div>
+          <div class="labRow">
+            <div class="field"><label for="mapStart">Start frame</label><input id="mapStart" type="number" min="1" value="1"></div>
+            <div class="field"><label for="mapCount">Frame count</label><input id="mapCount" type="number" min="1" value="6"></div>
+            <button id="mapAdd" class="btn good">Add mapping</button>
+            <button id="mapClear" class="btn">Clear</button>
+          </div>
+          <div id="animationMapList" class="mapList"></div>
+          <canvas id="mapPreview" class="mapPreview" width="160" height="120"></canvas>
+          <div id="mapPreviewLabel" class="labNote">Tap a mapping to preview it.</div>
+        </div>
+      </details>
+
+      <details class="labCard">
+        <summary>Palette Remap & Character Variants</summary>
+        <div class="labBody">
+          <div class="labRow"><button id="paletteScan" class="btn">Scan artwork colours</button><button id="paletteApply" class="btn primary">Apply palette</button></div>
+          <div id="paletteMapList" class="paletteMapList"></div>
+          <div class="labRow">
+            <div class="field"><label for="variantName">Variant name</label><input id="variantName" type="text" placeholder="Red jacket / blonde hair"></div>
+            <button id="variantSave" class="btn good">Save variant</button>
+          </div>
+          <div class="field"><label for="variantSelect">Reuse a saved mapping</label><select id="variantSelect"><option value="">Saved variants…</option></select></div>
+          <div class="labNote">Name colour rows such as hair, skin, jacket, trousers or shoes. Saved variants remember those remaps locally without duplicating the sprite sheet.</div>
+        </div>
+      </details>
+
+      <details class="labCard">
+        <summary>Overlay Layers · Hair / Hats / Jackets / Beards / Accessories</summary>
+        <div class="labBody">
+          <div class="labRow">
+            <div class="field"><label for="overlayType">Layer type</label><select id="overlayType"><option>hat</option><option>hair</option><option>jacket</option><option>beard</option><option>accessory</option><option>custom</option></select></div>
+            <button id="overlayCopy" class="btn">Copy selection to layer</button>
+            <button id="overlayLift" class="btn">Lift selection to layer</button>
+          </div>
+          <input id="overlayImport" type="file" accept="image/png,image/webp" hidden>
+          <button id="overlayImportBtn" class="btn">Import transparent PNG overlay</button>
+          <div id="overlayList" class="overlayList"></div>
+          <div class="labRow">
+            <label class="inlineCheck"><input id="overlayVisible" type="checkbox" checked> Visible</label>
+            <div class="field"><label for="overlayX">X</label><input id="overlayX" type="number" value="0"></div>
+            <div class="field"><label for="overlayY">Y</label><input id="overlayY" type="number" value="0"></div>
+          </div>
+          <div class="nudge"><button id="overlayLeft" class="btn">←</button><button id="overlayUp" class="btn">↑</button><button id="overlayDown" class="btn">↓</button><button id="overlayRight" class="btn">→</button></div>
+          <div class="labRow"><button id="overlayFlipH" class="btn toggle">Flip ↔</button><button id="overlayFlipV" class="btn toggle">Flip ↕</button><button id="overlayAllFrames" class="btn">Copy transform to all frames</button></div>
+          <div class="labRow">
+            <div class="field"><label for="overlayTint">Tint</label><input id="overlayTint" type="color" value="#ffffff"></div>
+            <div class="field"><label for="overlayTintAmount">Tint %</label><input id="overlayTintAmount" type="range" min="0" max="100" value="0"></div>
+          </div>
+          <div class="labRow"><button id="overlayDelete" class="btn danger">Delete layer</button><button id="overlayBake" class="btn primary">Bake overlays into frames</button></div>
+          <div class="labNote">Overlays stay non-destructive until baked. Each animation frame can have its own position, flip and tint.</div>
+        </div>
+      </details>
+      <div id="assetStatus" class="labStatus">Asset Lab ready.</div>
+    </div>
   </section>
 
   <div class="work">
@@ -504,5 +601,7 @@ window.PixelStudioCore={
 setBrushSize(1);syncCanvasFields();updateSelectionUI();generate();
 })();
 </script>
+<script src="pixel-snapper.js?v=1"></script>
+<script src="pixel-studio-advanced.js?v=1"></script>
 </body>
 </html>
