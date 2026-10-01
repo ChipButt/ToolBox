@@ -610,7 +610,7 @@ $('#addCategory').onclick=()=>{const name=prompt('Category name');if(!name?.trim
 $('#organiseAssets').onclick=()=>{organiseMode=!organiseMode;if(!organiseMode)organisedSelection.clear();updateBulkCategoryBar();renderAssets(assetSearch.value)};
 $('#assignCategory').onclick=()=>{if(!organisedSelection.size){flashStatus('Select one or more assets first.');return}setAssetCategory([...organisedSelection],bulkCategorySelect.value);organisedSelection.clear();renderAssets(assetSearch.value);updateBulkCategoryBar()};
 $('#clearAssetSelection').onclick=()=>{organisedSelection.clear();renderAssets(assetSearch.value);updateBulkCategoryBar()};
-$('.modeBtn[data-mode]').forEach(b=>b.onclick=()=>setMode(b.dataset.mode));
+$$('.modeBtn[data-mode]').forEach(b=>b.onclick=()=>setMode(b.dataset.mode));
 
 function download(name,text,type='text/javascript'){
   const blob=new Blob([text],{type}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),500)
