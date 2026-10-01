@@ -15,7 +15,7 @@ const puzzleOverlay=$('#puzzleOverlay'),puzzleHeading=$('#puzzleHeading'),puzzle
 const STORE='chipin-world-builder-v1';
 const RECOVERY_STORE='chipin-world-builder-recovery-v1';
 const HISTORY_STORE='chipin-world-builder-history-v1';
-const SCHEMA_VERSION=2;
+const SCHEMA_VERSION=3;
 
 const VIRTUAL_ASSETS={
   'couch-horizontal':{label:'Couch — Horizontal',source:'couch.png',sx:0,sy:0,sw:32,sh:16},
@@ -43,6 +43,11 @@ const EXTRA_ASSET_NAMES=[
   'TF Rudolph Adult.png','TF Rudolph Adult B.png','TF Rudolph Child.png','TF Jesus.png','TF Mrs Claus.png',
   'TF Santa.png','TF Elf A.png','TF Elf B.png','TF Polar Bear.png','TF Polar Bear Cub.png',
   'TF Snowmen Tiles.png','TF Toy Tiles.png'
+];
+const DEFAULT_NPC_ASSETS=[
+  'character.png','TF Gnome A.png','TF Gnome B.png','TF Reindeer.png','TF Reindeer Child.png','TF Reindeer B.png',
+  'TF Rudolph Adult.png','TF Rudolph Adult B.png','TF Rudolph Child.png','TF Jesus.png','TF Mrs Claus.png',
+  'TF Santa.png','TF Elf A.png','TF Elf B.png','TF Polar Bear.png','TF Polar Bear Cub.png'
 ];
 const STATIC_META={
   'bench.png':[16,16],'chair.png':[16,16],'character.png':[256,16,16,16],'christmas-lights.png':[128,16,16,16],
@@ -72,6 +77,8 @@ let assets=null, extraAssets=null, project=null, mode='select', selected=null, s
 let drag=null, draftRect=null, pathEditing=false, pointerDown=false, lastStampKey='';
 let organiseMode=false,categoryFilter='all';
 const organisedSelection=new Set();
+const mapSelection=new Set();
+let marquee=null;
 let play=null, editorMapBeforePlay=null, lastTime=performance.now();
 let dialogState=null, puzzleState=null;
 const keys=new Set();
@@ -89,6 +96,21 @@ function catalogNames(){
     .sort((a,b)=>assetLabel(a).localeCompare(assetLabel(b)));
 }
 function assetLabel(name){return VIRTUAL_ASSETS[name]?.label||String(name).replace('.png','')}
+function npcAssetNames(){
+  const list=project?.editor?.npcAssets||DEFAULT_NPC_ASSETS;
+  return list.filter(name=>catalogNames().includes(name));
+}
+function isNpcAsset(name){return npcAssetNames().includes(name)}
+function setNpcClassification(names,enabled){
+  const set=new Set(project.editor.npcAssets||[]);
+  for(const name of names){enabled?set.add(name):set.delete(name)}
+  project.editor.npcAssets=[...set];
+  if(!set.has(project.editor.lastNpcAsset))project.editor.lastNpcAsset=project.editor.npcAssets[0]||'character.png';
+  saveLocal(false);renderCategories();renderAssets(assetSearch.value)
+}
+function selectedMapAssets(){const ids=mapSelection;return activeMap().assets.filter(a=>ids.has(a.id))}
+function clearMapSelection(){mapSelection.clear();marquee=null}
+function rectIntersects(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y}
 function assetProvider(name){
   if(VIRTUAL_ASSETS[name]){
     if(assets)return assets;
@@ -146,7 +168,7 @@ function drawAsset(target,name,x,y,options={}){
   target.restore();
 }
 function freshEditor(){
-  return {categories:[],assetCategoryByAsset:{},brush:{w:1,h:1},activeCategory:'all'};
+  return {categories:[],assetCategoryByAsset:{},npcAssets:[...DEFAULT_NPC_ASSETS],lastNpcAsset:'character.png',brush:{w:1,h:1},activeCategory:'all'};
 }
 
 function freshMap(name='New Map'){
@@ -162,6 +184,8 @@ function normaliseProject(p){
   p.editor=p.editor&&typeof p.editor==='object'?p.editor:freshEditor();
   p.editor.categories=Array.isArray(p.editor.categories)?p.editor.categories:[];
   p.editor.assetCategoryByAsset=p.editor.assetCategoryByAsset&&typeof p.editor.assetCategoryByAsset==='object'?p.editor.assetCategoryByAsset:{};
+  p.editor.npcAssets=Array.isArray(p.editor.npcAssets)?p.editor.npcAssets:[...DEFAULT_NPC_ASSETS];
+  p.editor.lastNpcAsset=p.editor.lastNpcAsset||p.editor.npcAssets[0]||'character.png';
   p.editor.brush=p.editor.brush&&typeof p.editor.brush==='object'?p.editor.brush:{w:1,h:1};
   p.editor.brush.w=clamp(Number(p.editor.brush.w)||1,1,32);p.editor.brush.h=clamp(Number(p.editor.brush.h)||1,1,32);
   p.editor.activeCategory='all';
@@ -171,7 +195,7 @@ function normaliseProject(p){
     m.spawn=m.spawn||{x:80,y:80};m.assets=Array.isArray(m.assets)?m.assets:[];m.transitions=Array.isArray(m.transitions)?m.transitions:[];m.npcs=Array.isArray(m.npcs)?m.npcs:[];m.questTargets=Array.isArray(m.questTargets)?m.questTargets:[];
     for(const a of m.assets){a.id=a.id||uid('asset');a.layer=Number(a.layer)||0;a.solid=!!a.solid;a.flipX=!!a.flipX;a.flipY=!!a.flipY}
     for(const t of m.transitions){t.id=t.id||uid('link');t.label=t.label||'Map Link'}
-    for(const n of m.npcs){n.id=n.id||uid('npc');n.name=n.name||'Elf';n.dialogue=n.dialogue||'Hello!';n.path=Array.isArray(n.path)?n.path:[];n.speed=Number(n.speed)||24;n.quest=n.quest||{enabled:false,title:'',description:'',itemName:'',reward:'Christmas Present',completeText:'Thank you!'}}
+    for(const n of m.npcs){n.id=n.id||uid('npc');n.name=n.name||'Elf';n.characterAsset=n.characterAsset||'character.png';n.dialogue=n.dialogue||'Hello!';n.path=Array.isArray(n.path)?n.path:[];n.speed=Number(n.speed)||24;n.quest=n.quest||{enabled:false,title:'',description:'',itemName:'',reward:'Christmas Present',completeText:'Thank you!'}}
     for(const q of m.questTargets){q.id=q.id||uid('quest');q.label=q.label||'Quest Item';q.itemName=q.itemName||'Quest Item';q.puzzle=q.puzzle||{enabled:false,prompt:'Repeat the sequence.',sequence:[1,2,3,4]}}
   }
   if(!p.maps.some(m=>m.id===p.activeMapId))p.activeMapId=p.maps[0].id;
@@ -206,11 +230,11 @@ function mapById(id){return project.maps.find(m=>m.id===id)}
 function setActiveMap(id){
   if(play)return;
   if(!mapById(id))return;
-  project.activeMapId=id;selected=null;pathEditing=false;resizeCanvas();renderAllPanels();draw();
+  project.activeMapId=id;selected=null;mapSelection.clear();marquee=null;pathEditing=false;resizeCanvas();renderAllPanels();draw();
 }
 function flashStatus(text){modeStatus.textContent=text;clearTimeout(flashStatus.t);flashStatus.t=setTimeout(updateModeStatus,1800)}
 function updateModeStatus(){
-  const labels={select:'Select and drag objects. Use the inspector for exact values.',place:selectedAssetName?'Stamp '+assetLabel(selectedAssetName)+' · brush '+brushCols()+'×'+brushRows()+'.':'Choose an asset from the palette.',transition:'Drag a rectangle where walking should load another map.',npc:'Click to place an NPC, then edit dialogue, movement and quest settings.',quest:'Click to place a quest item / puzzle point.',play:'Playtest is live. Walk through links and interact with NPCs.'};
+  const labels={select:'Select and drag objects. Shift-click assets to add/remove them from a group.',multi:'Click assets or drag a box to select multiple placed tiles.',place:selectedAssetName?'Stamp '+assetLabel(selectedAssetName)+' · brush '+brushCols()+'×'+brushRows()+'.':'Choose an asset from the palette.',transition:'Drag a rectangle where walking should load another map.',npc:'Click to place an NPC, then choose its animated character, path, dialogue and quest.',quest:'Click to place a quest item / puzzle point.',spawn:'Click exactly where the player should spawn on this map.',play:'Playtest is live. Walk through links and interact with NPCs.'};
   modeStatus.textContent=pathEditing?'NPC PATH: click map points in walking order.':labels[mode];
 }
 function setMode(next){
@@ -270,7 +294,8 @@ function addAssetAt(x,y){
   saveLocal(false);renderMaps();draw();
 }
 function addNpcAt(x,y){
-  const n={id:uid('npc'),name:'Elf',x:snapV(x),y:snapV(y),speed:24,dialogue:'Hello!\nIt is lovely to see you.',path:[],quest:{enabled:false,title:'A Little Favour',description:'Could you fetch something for me?',itemName:'Quest Item',reward:'Christmas Present',completeText:'You found it! Thank you so much.'}};
+  const choices=npcAssetNames(),characterAsset=(choices.includes(project.editor.lastNpcAsset)?project.editor.lastNpcAsset:choices[0])||'character.png';
+  const n={id:uid('npc'),name:'Elf',characterAsset,x:snapV(x),y:snapV(y),speed:24,dialogue:'Hello!\nIt is lovely to see you.',path:[],quest:{enabled:false,title:'A Little Favour',description:'Could you fetch something for me?',itemName:'Quest Item',reward:'Christmas Present',completeText:'You found it! Thank you so much.'}};
   activeMap().npcs.push(n);selectObject('npc',n.id);setMode('select');saveLocal(false)
 }
 function addQuestAt(x,y){
@@ -292,12 +317,28 @@ canvas.addEventListener('pointerdown',e=>{
   if(pathEditing&&selected?.type==='npc'){
     const n=getSelected();n.path.push({x:snapV(p.x),y:snapV(p.y)});saveLocal(false);renderSelectionInspector();draw();return;
   }
+  if(mode==='spawn'){
+    const m=activeMap();m.spawn.x=snapV(p.x);m.spawn.y=snapV(p.y);saveLocal(false);renderMapInspector();setMode('select');flashStatus('Spawn point set.');draw();return
+  }
   if(mode==='place'){addAssetAt(p.x,p.y);return}
   if(mode==='npc'){addNpcAt(p.x,p.y);return}
   if(mode==='quest'){addQuestAt(p.x,p.y);return}
   if(mode==='transition'){draftRect={x:p.x,y:p.y,w:0,h:0};canvas.setPointerCapture(e.pointerId);return}
+  if(mode==='multi'){
+    const hit=hitTest(p);
+    if(hit?.type==='asset'){
+      mapSelection.has(hit.id)?mapSelection.delete(hit.id):mapSelection.add(hit.id);
+      selected=null;renderSelectionInspector();draw();return
+    }
+    marquee={x:p.x,y:p.y,w:0,h:0};canvas.setPointerCapture(e.pointerId);draw();return
+  }
   if(mode==='select'){
     const hit=hitTest(p);
+    if(e.shiftKey&&hit?.type==='asset'){
+      mapSelection.has(hit.id)?mapSelection.delete(hit.id):mapSelection.add(hit.id);
+      selected=null;renderSelectionInspector();draw();return
+    }
+    clearMapSelection();
     if(!hit){selected=null;renderSelectionInspector();draw();return}
     selected=hit;const o=getSelected();renderSelectionInspector();
     if(hit.type==='asset'||hit.type==='transition'){drag={type:hit.type,id:hit.id,ox:p.x-o.x,oy:p.y-o.y}}
@@ -309,6 +350,7 @@ canvas.addEventListener('pointermove',e=>{
   const p=pointerWorld(e);cursorStatus.textContent='X '+Math.round(p.x)+' · Y '+Math.round(p.y);
   if(play)return;
   if(mode==='place'&&pointerDown&&(e.buttons&1)){addAssetAt(p.x,p.y);return}
+  if(mode==='multi'&&marquee&&(e.buttons&1)){marquee.w=p.x-marquee.x;marquee.h=p.y-marquee.y;draw();return}
   if(mode==='transition'&&draftRect&&(e.buttons&1)){draftRect.w=p.x-draftRect.x;draftRect.h=p.y-draftRect.y;draw();return}
   if(drag&&(e.buttons&1)){
     const o=getSelected();if(!o)return;
@@ -316,8 +358,16 @@ canvas.addEventListener('pointermove',e=>{
     if(o.x==null)return;renderSelectionInspector(false);draw();
   }
 });
-canvas.addEventListener('pointerup',()=>{pointerDown=false;lastStampKey='';if(mode==='transition')finishTransition();if(drag){drag=null;saveLocal(false)}});
-canvas.addEventListener('pointercancel',()=>{pointerDown=false;drag=null;draftRect=null;lastStampKey=''});
+canvas.addEventListener('pointerup',()=>{pointerDown=false;lastStampKey='';
+  if(mode==='transition')finishTransition();
+  if(mode==='multi'&&marquee){
+    let {x,y,w,h}=marquee;if(w<0){x+=w;w=-w}if(h<0){y+=h;h=-h}
+    if(w>3&&h>3){const box={x,y,w,h};for(const a of activeMap().assets)if(rectIntersects(a,box))mapSelection.add(a.id)}
+    marquee=null;selected=null;renderSelectionInspector();draw()
+  }
+  if(drag){drag=null;saveLocal(false)}
+});
+canvas.addEventListener('pointercancel',()=>{pointerDown=false;drag=null;draftRect=null;marquee=null;lastStampKey=''});
 canvas.addEventListener('contextmenu',e=>e.preventDefault());
 
 function drawGrid(m){
@@ -329,7 +379,7 @@ function drawPlacedAsset(a){
   try{drawAsset(ctx,a.asset,a.x,a.y,opt)}catch(_){
     ctx.save();ctx.fillStyle='rgba(44,128,106,.18)';ctx.fillRect(a.x,a.y,a.w,a.h);ctx.restore()
   }
-  if(selected?.type==='asset'&&selected.id===a.id&&!play){ctx.save();ctx.strokeStyle='#f7bd18';ctx.lineWidth=2;ctx.strokeRect(a.x-1,a.y-1,a.w+2,a.h+2);ctx.restore()}
+  if(!play&&(selected?.type==='asset'&&selected.id===a.id||mapSelection.has(a.id))){ctx.save();ctx.strokeStyle=mapSelection.has(a.id)?'#2c806a':'#f7bd18';ctx.lineWidth=2;ctx.strokeRect(a.x-1,a.y-1,a.w+2,a.h+2);ctx.restore()}
 }
 function drawTransition(t){
   if(play)return;
@@ -343,10 +393,21 @@ function drawQuestTarget(q){
   else{ctx.fillStyle='#f7bd18';ctx.fillRect(q.x-6,q.y-6,12,12)}
   if(!play){ctx.save();ctx.strokeStyle=selected?.type==='quest'&&selected.id===q.id?'#f7bd18':'#c75b20';ctx.lineWidth=2;ctx.strokeRect(q.x-9,q.y-9,18,18);ctx.restore()}
 }
-function npcFrame(step=0,dir='down'){const base={down:0,up:4,left:8,right:12}[dir]||0;return assets.frame('character.png',base+(step%4),16,16)}
+function npcFrameForAsset(name,step=0,dir='down'){
+  const meta=assetMeta(name),cell=meta.cell;if(!cell)return null;
+  const cols=Math.max(1,Math.floor(meta.width/cell.width)),rows=Math.max(1,Math.floor(meta.height/cell.height));
+  let index=0;
+  if(name==='character.png'&&cols>=16){const base={down:0,up:4,left:8,right:12}[dir]||0;index=base+(step%4)}
+  else if(rows>=4){const row={down:0,left:1,right:2,up:3}[dir]??0;index=row*cols+(step%cols)}
+  else index=step%(cols*rows);
+  try{return assetProvider(name).frame(name,index,cell.width,cell.height)}catch(_){return null}
+}
 function drawNpcAt(n,x=n.x,y=n.y,step=0,dir='down',selectedNpc=false){
-  const f=npcFrame(step,dir);ctx.imageSmoothingEnabled=false;ctx.drawImage(f,Math.round(x-12),Math.round(y-20),24,24);
-  if(selectedNpc&&!play){ctx.strokeStyle='#f7bd18';ctx.lineWidth=2;ctx.strokeRect(x-13,y-21,26,26)}
+  const name=n.characterAsset||'character.png',meta=assetMeta(name),cell=meta.cell||{width:16,height:16};
+  const f=npcFrameForAsset(name,step,dir),drawH=Math.min(36,Math.max(24,cell.height)),drawW=Math.max(16,cell.width*(drawH/cell.height));
+  if(f){ctx.imageSmoothingEnabled=false;ctx.drawImage(f,Math.round(x-drawW/2),Math.round(y-drawH+4),Math.round(drawW),Math.round(drawH))}
+  else{ctx.fillStyle='#2c806a';ctx.fillRect(Math.round(x-6),Math.round(y-16),12,16)}
+  if(selectedNpc&&!play){ctx.strokeStyle='#f7bd18';ctx.lineWidth=2;ctx.strokeRect(Math.round(x-drawW/2-1),Math.round(y-drawH+3),Math.round(drawW+2),Math.round(drawH+2))}
 }
 function drawNpc(n){
   if(!play&&n.path?.length){ctx.save();ctx.strokeStyle='rgba(44,128,106,.65)';ctx.lineWidth=2;ctx.setLineDash([5,4]);ctx.beginPath();ctx.moveTo(n.x,n.y);for(const p of n.path)ctx.lineTo(p.x,p.y);ctx.stroke();ctx.setLineDash([]);for(const p of n.path){ctx.fillStyle='#2c806a';ctx.fillRect(p.x-3,p.y-3,6,6)}ctx.restore()}
@@ -356,10 +417,11 @@ function drawSpawn(m){
   if(play)return;ctx.save();ctx.fillStyle='rgba(44,128,106,.25)';ctx.strokeStyle='#2c806a';ctx.lineWidth=2;ctx.beginPath();ctx.arc(m.spawn.x,m.spawn.y,9,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.fillStyle='#185948';ctx.font='bold 8px monospace';ctx.fillText('SPAWN',m.spawn.x+12,m.spawn.y+3);ctx.restore()
 }
 function drawDraft(){
-  if(!draftRect)return;ctx.save();ctx.fillStyle='rgba(51,120,205,.18)';ctx.strokeStyle='#3378cd';ctx.lineWidth=2;ctx.fillRect(draftRect.x,draftRect.y,draftRect.w,draftRect.h);ctx.strokeRect(draftRect.x,draftRect.y,draftRect.w,draftRect.h);ctx.restore()
+  if(draftRect){ctx.save();ctx.fillStyle='rgba(51,120,205,.18)';ctx.strokeStyle='#3378cd';ctx.lineWidth=2;ctx.fillRect(draftRect.x,draftRect.y,draftRect.w,draftRect.h);ctx.strokeRect(draftRect.x,draftRect.y,draftRect.w,draftRect.h);ctx.restore()}
+  if(marquee){ctx.save();ctx.fillStyle='rgba(44,128,106,.16)';ctx.strokeStyle='#2c806a';ctx.setLineDash([5,3]);ctx.lineWidth=2;ctx.fillRect(marquee.x,marquee.y,marquee.w,marquee.h);ctx.strokeRect(marquee.x,marquee.y,marquee.w,marquee.h);ctx.restore()}
 }
 function drawPlayer(now){
-  if(!play)return;const moving=play.moving,step=moving?Math.floor((now-play.animStart)/150)%4:0;const f=npcFrame(step,play.dir);ctx.imageSmoothingEnabled=false;ctx.fillStyle='rgba(16,36,29,.25)';ctx.beginPath();ctx.ellipse(play.x,play.y+2,8,3,0,0,Math.PI*2);ctx.fill();ctx.drawImage(f,Math.round(play.x-12),Math.round(play.y-20),24,24);
+  if(!play)return;const moving=play.moving,step=moving?Math.floor((now-play.animStart)/150)%4:0;const f=npcFrameForAsset('character.png',step,play.dir);ctx.imageSmoothingEnabled=false;ctx.fillStyle='rgba(16,36,29,.25)';ctx.beginPath();ctx.ellipse(play.x,play.y+2,8,3,0,0,Math.PI*2);ctx.fill();if(f)ctx.drawImage(f,Math.round(play.x-12),Math.round(play.y-20),24,24);
 }
 function draw(now=performance.now()){
   if(!assets||!project)return;const m=activeMap();if(canvas.width!==m.width||canvas.height!==m.height)resizeCanvas();
@@ -397,6 +459,7 @@ function renderCategories(){
   const names=catalogNames();
   const specs=[
     {id:'all',baseName:'All',count:names.length,system:true},
+    {id:'npcs',baseName:'NPCs',count:names.filter(name=>isNpcAsset(name)).length,system:true},
     {id:'uncategorised',baseName:'Uncategorised',count:names.filter(name=>!assignedCategory(name)).length,system:true},
     ...project.editor.categories.map(cat=>({
       id:cat.id,
@@ -419,7 +482,7 @@ function renderCategories(){
       if(spec.id==='all')return;
       e.preventDefault();b.classList.remove('dragOver');
       const name=e.dataTransfer.getData('text/asset-name');
-      if(name)setAssetCategory([name],spec.id==='uncategorised'?'':spec.id)
+      if(name){if(spec.id==='npcs')setNpcClassification([name],true);else setAssetCategory([name],spec.id==='uncategorised'?'':spec.id)}
     };
     if(!spec.system){
       b.title='Click to filter · double-click to rename · right-click to delete';
@@ -452,6 +515,7 @@ function updateBulkCategoryBar(){
 function assetMatchesCategory(name){
   const assigned=assignedCategory(name);
   if(categoryFilter==='all')return true;
+  if(categoryFilter==='npcs')return isNpcAsset(name);
   if(categoryFilter==='uncategorised')return !assigned;
   return assigned===categoryFilter
 }
@@ -480,6 +544,7 @@ function renderAssets(filter=''){
       const label=document.createElement('span');label.textContent=assetLabel(name);
       const category=categoryName(assignedCategory(name));
       if(category){const badge=document.createElement('span');badge.className='assetCategoryLabel';badge.textContent=category;b.appendChild(badge)}
+      if(isNpcAsset(name)){const npcBadge=document.createElement('span');npcBadge.className='assetNpcBadge';npcBadge.textContent='NPC';b.appendChild(npcBadge)}
 
       b.append(thumb,label,check);
       b.ondragstart=e=>{e.dataTransfer.setData('text/asset-name',name);e.dataTransfer.effectAllowed='move';b.classList.add('dragging')};
@@ -512,6 +577,7 @@ function renderMapInspector(){
    input('Width','mapWidth',m.width,'number')+input('Height','mapHeight',m.height,'number')+
    input('Background','mapBg',m.bg,'color')+input('Spawn X','spawnX',m.spawn.x,'number')+
    input('Spawn Y','spawnY',m.spawn.y,'number')+
+   '<div class="inspectorActions"><button id="setSpawnTool" type="button">SET SPAWN ON MAP</button><button id="clearMap" type="button">CLEAR MAP</button></div>'+
    '<div class="inspectorActions"><button id="duplicateMap" type="button">DUPLICATE MAP</button><button id="deleteMap" type="button">DELETE MAP</button></div>';
   $('#mapName').onchange=e=>{m.name=e.target.value||'Map';saveLocal(false);renderMaps();renderMapInspector();draw()};
   $('#mapWidth').onchange=e=>{m.width=Math.max(160,Number(e.target.value)||640);m.spawn.x=clamp(m.spawn.x,0,m.width);saveLocal(false);resizeCanvas();renderMaps();draw()};
@@ -519,13 +585,21 @@ function renderMapInspector(){
   $('#mapBg').oninput=e=>{m.bg=e.target.value;saveLocal(false);draw()};
   $('#spawnX').onchange=e=>{m.spawn.x=snapV(Number(e.target.value)||0);saveLocal(false);draw()};
   $('#spawnY').onchange=e=>{m.spawn.y=snapV(Number(e.target.value)||0);saveLocal(false);draw()};
+  $('#setSpawnTool').onclick=()=>setMode('spawn');
+  $('#clearMap').onclick=()=>{if(!confirm('Clear every placed asset, map link, NPC and quest item from "'+m.name+'"? The map itself and spawn point will stay.'))return;m.assets=[];m.transitions=[];m.npcs=[];m.questTargets=[];selected=null;clearMapSelection();saveLocal(false);renderMaps();renderSelectionInspector();draw();flashStatus('Map cleared.')};
   $('#duplicateMap').onclick=duplicateMap;$('#deleteMap').onclick=deleteMap;
 }
 function mapOptions(selectedId){return project.maps.map(m=>'<option value="'+m.id+'" '+(m.id===selectedId?'selected':'')+'>'+esc(m.name)+'</option>').join('')}
 function assetOptions(selectedName){return '<option value="">Marker only</option>'+catalogNames().map(n=>'<option value="'+n+'" '+(n===selectedName?'selected':'')+'>'+esc(assetLabel(n))+'</option>').join('')}
 function bindNumber(id,obj,key,after=draw){const el=$('#'+id);if(el)el.onchange=e=>{obj[key]=Number(e.target.value)||0;saveLocal(false);after()}}
 function renderSelectionInspector(updateTitle=true){
-  const o=getSelected();deleteSelected.disabled=!o;
+  const multi=selectedMapAssets(),o=getSelected();deleteSelected.disabled=!(o||multi.length);
+  if(multi.length&&!o){
+    if(updateTitle)selectionTitle.textContent=multi.length+' assets selected';
+    selectionInspector.className='inspectorForm';
+    selectionInspector.innerHTML='<div class="multiSelectionBox" style="grid-column:1/-1"><strong>'+multi.length+' placed assets selected</strong>Use arrow keys to move them together, Delete to remove them, or duplicate the whole group.</div><div class="inspectorActions"><button id="dupMulti" type="button">DUPLICATE GROUP</button><button id="clearMulti" type="button">CLEAR SELECTION</button></div>';
+    $('#dupMulti').onclick=duplicateSelected;$('#clearMulti').onclick=()=>{clearMapSelection();renderSelectionInspector();draw()};return
+  }
   if(!o){if(updateTitle)selectionTitle.textContent='Nothing selected';selectionInspector.className='inspectorEmpty';selectionInspector.innerHTML='Select an asset, map link, NPC or quest item.';return}
   selectionInspector.className='inspectorForm';
   if(selected.type==='asset'){
@@ -549,8 +623,9 @@ function renderSelectionInspector(updateTitle=true){
   } else if(selected.type==='npc'){
     if(updateTitle)selectionTitle.textContent=o.name;
     const q=o.quest||{};
+    const npcChoices=npcAssetNames(),npcOptions=(npcChoices.includes(o.characterAsset)?npcChoices:[o.characterAsset,...npcChoices]).filter(Boolean).map(name=>'<option value="'+esc(name)+'" '+(name===o.characterAsset?'selected':'')+'>'+esc(assetLabel(name))+'</option>').join('');
     selectionInspector.innerHTML=
-      input('Name','npcName',o.name,'text','full')+input('X','selX',o.x,'number')+input('Y','selY',o.y,'number')+input('Walk speed','npcSpeed',o.speed||24,'number')+
+      input('Name','npcName',o.name,'text','full')+'<label class="full"><span>Character</span><select id="npcCharacter">'+npcOptions+'</select></label>'+input('X','selX',o.x,'number')+input('Y','selY',o.y,'number')+input('Walk speed','npcSpeed',o.speed||24,'number')+
       '<label class="full"><span>Interaction text (each line becomes a dialogue step)</span><textarea id="npcDialogue">'+esc(o.dialogue||'')+'</textarea></label>'+
       '<div class="inspectorActions"><button id="editPath" type="button" class="'+(pathEditing?'active':'')+'">'+(pathEditing?'FINISH PATH':'EDIT PATH')+'</button><button id="clearPath" type="button">CLEAR PATH ('+(o.path?.length||0)+')</button></div>'+
       '<div class="inlineChecks"><label><input id="questEnabled" type="checkbox" '+(q.enabled?'checked':'')+'> Gives a fetch quest</label></div>'+
@@ -558,7 +633,7 @@ function renderSelectionInspector(updateTitle=true){
       '<label class="full"><span>Quest description</span><textarea id="questDescription">'+esc(q.description||'')+'</textarea></label>'+
       input('Required item name','questItem',q.itemName||'','text','full')+input('Reward','questReward',q.reward||'Christmas Present','text','full')+
       '<label class="full"><span>Completion dialogue</span><textarea id="questComplete">'+esc(q.completeText||'')+'</textarea></label>';
-    $('#npcName').onchange=e=>{o.name=e.target.value||'Elf';saveLocal(false);renderSelectionInspector();draw()};bindNumber('selX',o,'x');bindNumber('selY',o,'y');bindNumber('npcSpeed',o,'speed');
+    $('#npcName').onchange=e=>{o.name=e.target.value||'Elf';saveLocal(false);renderSelectionInspector();draw()};$('#npcCharacter').onchange=e=>{o.characterAsset=e.target.value;project.editor.lastNpcAsset=e.target.value;saveLocal(false);draw()};bindNumber('selX',o,'x');bindNumber('selY',o,'y');bindNumber('npcSpeed',o,'speed');
     $('#npcDialogue').onchange=e=>{o.dialogue=e.target.value;saveLocal(false)};$('#editPath').onclick=()=>{const wasEditing=pathEditing;setMode('select');pathEditing=!wasEditing;renderSelectionInspector();updateModeStatus();draw()};$('#clearPath').onclick=()=>{o.path=[];saveLocal(false);renderSelectionInspector();draw()};
     $('#questEnabled').onchange=e=>{o.quest.enabled=e.target.checked;saveLocal(false)};$('#questTitle').onchange=e=>{o.quest.title=e.target.value;saveLocal(false)};$('#questDescription').onchange=e=>{o.quest.description=e.target.value;saveLocal(false)};$('#questItem').onchange=e=>{o.quest.itemName=e.target.value;saveLocal(false)};$('#questReward').onchange=e=>{o.quest.reward=e.target.value;saveLocal(false)};$('#questComplete').onchange=e=>{o.quest.completeText=e.target.value;saveLocal(false)};
   } else {
@@ -579,11 +654,18 @@ function renderSelectionInspector(updateTitle=true){
 function renderAllPanels(){renderMaps();renderMapInspector();renderSelectionInspector();}
 
 function duplicateSelected(){
+  const multi=selectedMapAssets(),m=activeMap();
+  if(multi.length&&!selected){
+    const newIds=[];for(const o of multi){const copy=JSON.parse(JSON.stringify(o));copy.id=uid('asset');copy.x+=grid();copy.y+=grid();m.assets.push(copy);newIds.push(copy.id)}
+    mapSelection.clear();for(const id of newIds)mapSelection.add(id);saveLocal(false);renderMaps();renderSelectionInspector();draw();return
+  }
   const o=getSelected();if(!o)return;const copy=JSON.parse(JSON.stringify(o));copy.id=uid(selected.type);copy.x+=grid();copy.y+=grid();
-  const m=activeMap(),arr=selected.type==='asset'?m.assets:selected.type==='transition'?m.transitions:selected.type==='npc'?m.npcs:m.questTargets;arr.push(copy);selectObject(selected.type,copy.id);saveLocal(false)
+  const arr=selected.type==='asset'?m.assets:selected.type==='transition'?m.transitions:selected.type==='npc'?m.npcs:m.questTargets;arr.push(copy);selectObject(selected.type,copy.id);saveLocal(false)
 }
 function deleteSelection(){
-  if(!selected)return;const m=activeMap(),key=selected.type==='asset'?'assets':selected.type==='transition'?'transitions':selected.type==='npc'?'npcs':'questTargets';m[key]=m[key].filter(o=>o.id!==selected.id);selected=null;pathEditing=false;saveLocal(false);renderSelectionInspector();renderMaps();draw()
+  const m=activeMap();
+  if(mapSelection.size&&!selected){m.assets=m.assets.filter(o=>!mapSelection.has(o.id));clearMapSelection();saveLocal(false);renderSelectionInspector();renderMaps();draw();return}
+  if(!selected)return;const key=selected.type==='asset'?'assets':selected.type==='transition'?'transitions':selected.type==='npc'?'npcs':'questTargets';m[key]=m[key].filter(o=>o.id!==selected.id);selected=null;pathEditing=false;saveLocal(false);renderSelectionInspector();renderMaps();draw()
 }
 deleteSelected.onclick=deleteSelection;
 function duplicateMap(){
@@ -609,6 +691,8 @@ snapToggle.onclick=()=>{snap=!snap;snapToggle.classList.toggle('active',snap);sn
 $('#addCategory').onclick=()=>{const name=prompt('Category name');if(!name?.trim())return;const c={id:uid('cat'),name:name.trim()};project.editor.categories.push(c);categoryFilter=c.id;project.editor.activeCategory=c.id;saveLocal(false);renderCategories();renderAssets(assetSearch.value)};
 $('#organiseAssets').onclick=()=>{organiseMode=!organiseMode;if(!organiseMode)organisedSelection.clear();updateBulkCategoryBar();renderAssets(assetSearch.value)};
 $('#assignCategory').onclick=()=>{if(!organisedSelection.size){flashStatus('Select one or more assets first.');return}setAssetCategory([...organisedSelection],bulkCategorySelect.value);organisedSelection.clear();renderAssets(assetSearch.value);updateBulkCategoryBar()};
+$('#markNpcAssets').onclick=()=>{if(!organisedSelection.size){flashStatus('Select one or more animated character assets first.');return}setNpcClassification([...organisedSelection],true);organisedSelection.clear();renderAssets(assetSearch.value);updateBulkCategoryBar()};
+$('#unmarkNpcAssets').onclick=()=>{if(!organisedSelection.size){flashStatus('Select one or more assets first.');return}setNpcClassification([...organisedSelection],false);organisedSelection.clear();renderAssets(assetSearch.value);updateBulkCategoryBar()};
 $('#clearAssetSelection').onclick=()=>{organisedSelection.clear();renderAssets(assetSearch.value);updateBulkCategoryBar()};
 $$('.modeBtn[data-mode]').forEach(b=>b.onclick=()=>setMode(b.dataset.mode));
 
@@ -648,7 +732,7 @@ function setupPlayNpcs(){
   for(const m of project.maps)for(const n of m.npcs)play.npcs[n.id]={x:n.x,y:n.y,dir:'down',step:0,pathIndex:0,forward:true};
 }
 function startPlaytest(){
-  editorMapBeforePlay=project.activeMapId;selected=null;pathEditing=false;const m=activeMap();
+  editorMapBeforePlay=project.activeMapId;selected=null;clearMapSelection();pathEditing=false;const m=activeMap();
   play={mapId:m.id,x:m.spawn.x,y:m.spawn.y,dir:'down',moving:false,animStart:performance.now(),inventory:[],quests:{},collected:new Set(),npcs:{},transitionCooldown:0,rewards:[]};setupPlayNpcs();
   mode='play';playHud.hidden=false;$('#playtestBtn').classList.add('active');playMapName.textContent=m.name;resizeCanvas();renderMaps();renderSelectionInspector();updateModeStatus();centerPlayView();draw()
 }
@@ -741,8 +825,11 @@ addEventListener('keydown',e=>{
     if(['arrowup','arrowdown','arrowleft','arrowright',' ','enter'].includes(k))e.preventDefault();keys.add(k);
     if((k===' '||k==='enter')&&!dialogState&&!puzzleState)interactPlay();if(k==='escape')stopPlaytest();return
   }
-  if(k==='delete'||k==='backspace'){if(selected){e.preventDefault();deleteSelection()}}
-  if((e.metaKey||e.ctrlKey)&&k==='d'){if(selected){e.preventDefault();duplicateSelected()}}
+  if(k==='delete'||k==='backspace'){if(selected||mapSelection.size){e.preventDefault();deleteSelection()}}
+  if((e.metaKey||e.ctrlKey)&&k==='d'){if(selected||mapSelection.size){e.preventDefault();duplicateSelected()}}
+  if(mapSelection.size&&!selected&&['arrowup','arrowdown','arrowleft','arrowright'].includes(k)){
+    e.preventDefault();const d=e.shiftKey?grid():1;for(const o of selectedMapAssets()){if(k==='arrowleft')o.x-=d;if(k==='arrowright')o.x+=d;if(k==='arrowup')o.y-=d;if(k==='arrowdown')o.y+=d}saveLocal(false);draw();return
+  }
   if(selected&&['arrowup','arrowdown','arrowleft','arrowright'].includes(k)){
     e.preventDefault();const o=getSelected(),d=e.shiftKey?grid():1;if(k==='arrowleft')o.x-=d;if(k==='arrowright')o.x+=d;if(k==='arrowup')o.y-=d;if(k==='arrowdown')o.y+=d;saveLocal(false);renderSelectionInspector(false);draw()
   }
