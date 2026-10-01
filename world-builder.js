@@ -78,7 +78,7 @@ const STATIC_META={
 };
 const virtualCanvasCache=new Map();
 
-let assets=null, extraAssets=null, project=null, mode='select', selected=null, selectedAssetName=null, snap=true, zoom=1;
+let assets=null, extraAssets=null, sheetAssets=null, project=null, mode='select', selected=null, selectedAssetName=null, snap=true, zoom=1;
 let drag=null, draftRect=null, pathEditing=false, pointerDown=false, lastStampKey='';
 let organiseMode=false,categoryFilter='all';
 const organisedSelection=new Set();
@@ -100,7 +100,7 @@ const brushCols=()=>clamp(Number(brushWidthInput?.value)||1,1,32);
 const brushRows=()=>clamp(Number(brushHeightInput?.value)||1,1,32);
 
 function allAssetNames(){
-  return [...new Set([...BASE_ASSET_NAMES,...EXTRA_ASSET_NAMES])];
+  return [...new Set([...BASE_ASSET_NAMES,...EXTRA_ASSET_NAMES,...(sheetAssets?.names||[])])];
 }
 function isAssetDeleted(name){return !!project?.editor?.hiddenAssets?.includes(name)}
 function catalogNames(){
@@ -149,6 +149,7 @@ function assetProvider(name){
   }
   if(assets?.names?.includes(name))return assets;
   if(extraAssets?.names?.includes(name))return extraAssets;
+  if(sheetAssets?.names?.includes(name))return sheetAssets;
   throw new Error('Asset data is still loading: '+name);
 }
 function staticMeta(name){
@@ -202,6 +203,9 @@ function freshEditor(){
   return {categories:[],assetCategoryByAsset:{},assetNameOverrides:{},hiddenAssets:[],npcAssets:[...DEFAULT_NPC_ASSETS],lastNpcAsset:'character.png',brush:{w:1,h:1},activeCategory:'all'};
 }
 function categoryGuess(name){
+  if(sheetAssets?.names?.includes(name)){
+    try{return sheetAssets.metadata(name).category||'Props & Items'}catch(_){}
+  }
   const n=String(name).toLowerCase();
   if(DEFAULT_NPC_ASSETS.includes(name)||/(santa|mrs claus|misses|elf|gnome|reindeer|rudolph|jesus|polar bear|character)/i.test(name))return 'Characters & NPCs';
   if(/floor|snow-tilemap|igloo tiles/.test(n))return 'Floors & Ground';
@@ -228,6 +232,13 @@ function ensureDefaultCategories(p){
     }
   }
 }
+function applyDynamicCategorySuggestions(){
+  if(!project)return;
+  ensureDefaultCategories(project);
+  saveLocal(false);
+  renderCategories();
+  renderAssets(assetSearch.value)
+}
 
 function freshMap(name='New Map'){
   return {id:uid('map'),name,width:640,height:480,bg:'#edf0e6',spawn:{x:80,y:80},assets:[],transitions:[],npcs:[],questTargets:[]};
@@ -243,7 +254,7 @@ function normaliseProject(p){
   p.editor.categories=Array.isArray(p.editor.categories)?p.editor.categories:[];
   p.editor.assetCategoryByAsset=p.editor.assetCategoryByAsset&&typeof p.editor.assetCategoryByAsset==='object'?p.editor.assetCategoryByAsset:{};
   p.editor.assetNameOverrides=p.editor.assetNameOverrides&&typeof p.editor.assetNameOverrides==='object'?p.editor.assetNameOverrides:{};
-  p.editor.hiddenAssets=Array.isArray(p.editor.hiddenAssets)?p.editor.hiddenAssets.filter(name=>allAssetNames().includes(name)):[];
+  p.editor.hiddenAssets=Array.isArray(p.editor.hiddenAssets)?p.editor.hiddenAssets:[];
   p.editor.npcAssets=Array.isArray(p.editor.npcAssets)?p.editor.npcAssets:[...DEFAULT_NPC_ASSETS];
   p.editor.lastNpcAsset=p.editor.lastNpcAsset||p.editor.npcAssets[0]||'character.png';
   p.editor.brush=p.editor.brush&&typeof p.editor.brush==='object'?p.editor.brush:{w:1,h:1};
@@ -1001,7 +1012,7 @@ renderCategories();
 renderAssets();
 renderAllPanels();
 updateModeStatus();
-flashStatus('58 assets registered. Loading artwork…');
+flashStatus('58 core assets registered. Loading artwork…');
 requestAnimationFrame(loop);
 
 VillagePixelAssets.ready.then(api=>{
@@ -1020,10 +1031,22 @@ if(window.WorldBuilderExtraAssets?.ready){
     extraAssets=api;
     renderCategories();
     renderAssets(assetSearch.value);
-    flashStatus('All 58 assets loaded.');
+    flashStatus('Core Christmas assets loaded.');
   }).catch(err=>{
     console.error('New Christmas asset pack failed to load:',err);
-    modeStatus.textContent='New asset artwork failed to decode, but all 58 palette entries remain visible.';
+    modeStatus.textContent='New Christmas artwork failed to decode, but the core palette remains available.';
+  });
+}
+
+if(window.WorldBuilderSheetAssets?.ready){
+  window.WorldBuilderSheetAssets.ready.then(api=>{
+    sheetAssets=api;
+    applyDynamicCategorySuggestions();
+    renderAllPanels();
+    flashStatus('All '+catalogNames().length+' assets loaded, including 312 uploaded tiles.');
+  }).catch(err=>{
+    console.error('Uploaded tile sheets failed to load:',err);
+    modeStatus.textContent='Uploaded tile sheets failed to decode, but the existing palette remains available.';
   });
 }
 })();
