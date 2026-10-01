@@ -50,6 +50,10 @@ const DEFAULT_NPC_ASSETS=[
   'TF Rudolph Adult.png','TF Rudolph Adult B.png','TF Rudolph Child.png','TF Jesus.png','TF Mrs Claus.png',
   'TF Santa.png','TF Elf A.png','TF Elf B.png','TF Polar Bear.png','TF Polar Bear Cub.png'
 ];
+const DEFAULT_ASSET_CATEGORIES=[
+  'Floors & Ground','Walls & Structure','Roofs','Doors & Windows','Paths & Fences',
+  'Furniture','Decorations','Nature','Props & Items','Characters & NPCs','Tilesets'
+];
 const STATIC_META={
   'bench.png':[16,16],'chair.png':[16,16],'character.png':[256,16,16,16],'christmas-lights.png':[128,16,16,16],
   'couch-horizontal':[32,16],'couch-vertical':[16,32],'exit.png':[16,16],
@@ -197,6 +201,33 @@ function drawAsset(target,name,x,y,options={}){
 function freshEditor(){
   return {categories:[],assetCategoryByAsset:{},assetNameOverrides:{},hiddenAssets:[],npcAssets:[...DEFAULT_NPC_ASSETS],lastNpcAsset:'character.png',brush:{w:1,h:1},activeCategory:'all'};
 }
+function categoryGuess(name){
+  const n=String(name).toLowerCase();
+  if(DEFAULT_NPC_ASSETS.includes(name)||/(santa|mrs claus|misses|elf|gnome|reindeer|rudolph|jesus|polar bear|character)/i.test(name))return 'Characters & NPCs';
+  if(/floor|snow-tilemap|igloo tiles/.test(n))return 'Floors & Ground';
+  if(/wall|house/.test(n))return 'Walls & Structure';
+  if(/roof/.test(n))return 'Roofs';
+  if(/door|window|exit/.test(n))return 'Doors & Windows';
+  if(/path|fence|street-sign|sign-post|lamp-post/.test(n))return 'Paths & Fences';
+  if(/chair|couch|bench|table|rug|fireplace/.test(n))return 'Furniture';
+  if(/christmas-lights|wreath|stocking|snowman|decorations/.test(n))return 'Decorations';
+  if(/tree/.test(n))return 'Nature';
+  if(/present|hot-chocolate|toy|palette/.test(n))return 'Props & Items';
+  if(/tileset|tilemap|tiles|christmas presents|christmas trees/.test(n))return 'Tilesets';
+  return 'Props & Items'
+}
+function ensureDefaultCategories(p){
+  const byName=new Map((p.editor.categories||[]).map(c=>[c.name,c]));
+  for(const name of DEFAULT_ASSET_CATEGORIES){
+    if(!byName.has(name)){const c={id:uid('cat'),name};p.editor.categories.push(c);byName.set(name,c)}
+  }
+  for(const asset of allAssetNames()){
+    if(!p.editor.assetCategoryByAsset[asset]){
+      const guessed=categoryGuess(asset),cat=byName.get(guessed);
+      if(cat)p.editor.assetCategoryByAsset[asset]=cat.id
+    }
+  }
+}
 
 function freshMap(name='New Map'){
   return {id:uid('map'),name,width:640,height:480,bg:'#edf0e6',spawn:{x:80,y:80},assets:[],transitions:[],npcs:[],questTargets:[]};
@@ -219,6 +250,7 @@ function normaliseProject(p){
   p.editor.brush.w=clamp(Number(p.editor.brush.w)||1,1,32);p.editor.brush.h=clamp(Number(p.editor.brush.h)||1,1,32);
   p.editor.activeCategory='all';
   for(const c of p.editor.categories){c.id=c.id||uid('cat');c.name=c.name||'Category'}
+  ensureDefaultCategories(p);
   for(const m of p.maps){
     m.id=m.id||uid('map');m.name=m.name||'Map';m.width=Math.max(160,Number(m.width)||640);m.height=Math.max(120,Number(m.height)||480);m.bg=m.bg||'#edf0e6';
     m.spawn=m.spawn||{x:80,y:80};m.assets=Array.isArray(m.assets)?m.assets:[];m.transitions=Array.isArray(m.transitions)?m.transitions:[];m.npcs=Array.isArray(m.npcs)?m.npcs:[];m.questTargets=Array.isArray(m.questTargets)?m.questTargets:[];
