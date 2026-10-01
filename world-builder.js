@@ -16,7 +16,7 @@ const puzzleOverlay=$('#puzzleOverlay'),puzzleHeading=$('#puzzleHeading'),puzzle
 const STORE='chipin-world-builder-v1';
 const RECOVERY_STORE='chipin-world-builder-recovery-v1';
 const HISTORY_STORE='chipin-world-builder-history-v1';
-const SCHEMA_VERSION=4;
+const SCHEMA_VERSION=5;
 
 const VIRTUAL_ASSETS={
   'couch-horizontal':{label:'Couch — Horizontal',source:'couch.png',sx:0,sy:0,sw:32,sh:16},
@@ -95,11 +95,34 @@ const snapV=v=>snap?Math.round(v/grid())*grid():Math.round(v);
 const brushCols=()=>clamp(Number(brushWidthInput?.value)||1,1,32);
 const brushRows=()=>clamp(Number(brushHeightInput?.value)||1,1,32);
 
+function allAssetNames(){
+  return [...new Set([...BASE_ASSET_NAMES,...EXTRA_ASSET_NAMES])];
+}
+function isAssetDeleted(name){return !!project?.editor?.hiddenAssets?.includes(name)}
 function catalogNames(){
-  return [...new Set([...BASE_ASSET_NAMES,...EXTRA_ASSET_NAMES])]
+  return allAssetNames().filter(name=>!isAssetDeleted(name))
     .sort((a,b)=>assetLabel(a).localeCompare(assetLabel(b)));
 }
-function assetLabel(name){return VIRTUAL_ASSETS[name]?.label||String(name).replace('.png','')}
+function assetLabel(name){
+  return project?.editor?.assetNameOverrides?.[name]||VIRTUAL_ASSETS[name]?.label||String(name).replace('.png','')
+}
+function renameAssetId(name,newLabel){
+  const label=String(newLabel||'').trim();if(!label)return;
+  project.editor.assetNameOverrides[name]=label;
+  saveLocal(false);renderCategories();renderAssets(assetSearch.value);renderSelectionInspector()
+}
+function deleteAssetIds(names){
+  const hidden=new Set(project.editor.hiddenAssets||[]);
+  for(const name of names)hidden.add(name);
+  project.editor.hiddenAssets=[...hidden];
+  if(names.includes(selectedAssetName)){selectedAssetName=null;if(mode==='place')setMode('select')}
+  organisedSelection.clear();saveLocal(false);renderCategories();renderAssets(assetSearch.value);updateBulkCategoryBar()
+}
+function restoreAssetIds(names){
+  const restore=new Set(names);
+  project.editor.hiddenAssets=(project.editor.hiddenAssets||[]).filter(name=>!restore.has(name));
+  organisedSelection.clear();saveLocal(false);renderCategories();renderAssets(assetSearch.value);updateBulkCategoryBar()
+}
 function npcAssetNames(){
   const list=project?.editor?.npcAssets||DEFAULT_NPC_ASSETS;
   return list.filter(name=>catalogNames().includes(name));
@@ -172,7 +195,7 @@ function drawAsset(target,name,x,y,options={}){
   target.restore();
 }
 function freshEditor(){
-  return {categories:[],assetCategoryByAsset:{},npcAssets:[...DEFAULT_NPC_ASSETS],lastNpcAsset:'character.png',brush:{w:1,h:1},activeCategory:'all'};
+  return {categories:[],assetCategoryByAsset:{},assetNameOverrides:{},hiddenAssets:[],npcAssets:[...DEFAULT_NPC_ASSETS],lastNpcAsset:'character.png',brush:{w:1,h:1},activeCategory:'all'};
 }
 
 function freshMap(name='New Map'){
@@ -188,6 +211,8 @@ function normaliseProject(p){
   p.editor=p.editor&&typeof p.editor==='object'?p.editor:freshEditor();
   p.editor.categories=Array.isArray(p.editor.categories)?p.editor.categories:[];
   p.editor.assetCategoryByAsset=p.editor.assetCategoryByAsset&&typeof p.editor.assetCategoryByAsset==='object'?p.editor.assetCategoryByAsset:{};
+  p.editor.assetNameOverrides=p.editor.assetNameOverrides&&typeof p.editor.assetNameOverrides==='object'?p.editor.assetNameOverrides:{};
+  p.editor.hiddenAssets=Array.isArray(p.editor.hiddenAssets)?p.editor.hiddenAssets.filter(name=>allAssetNames().includes(name)):[];
   p.editor.npcAssets=Array.isArray(p.editor.npcAssets)?p.editor.npcAssets:[...DEFAULT_NPC_ASSETS];
   p.editor.lastNpcAsset=p.editor.lastNpcAsset||p.editor.npcAssets[0]||'character.png';
   p.editor.brush=p.editor.brush&&typeof p.editor.brush==='object'?p.editor.brush:{w:1,h:1};
@@ -529,11 +554,12 @@ function setAssetCategory(names,categoryId){
 }
 function renderCategories(){
   categoryList.innerHTML='';
-  const names=catalogNames();
+  const names=catalogNames(),deleted=allAssetNames().filter(name=>isAssetDeleted(name));
   const specs=[
     {id:'all',baseName:'All',count:names.length,system:true},
     {id:'npcs',baseName:'NPCs',count:names.filter(name=>isNpcAsset(name)).length,system:true},
     {id:'uncategorised',baseName:'Uncategorised',count:names.filter(name=>!assignedCategory(name)).length,system:true},
+    {id:'deleted',baseName:'Deleted',count:deleted.length,system:true},
     ...project.editor.categories.map(cat=>({
       id:cat.id,
       baseName:cat.name,
@@ -549,10 +575,10 @@ function renderCategories(){
     b.textContent=spec.baseName+' ('+spec.count+')';
     b.dataset.category=spec.id;
     b.onclick=()=>{categoryFilter=spec.id;renderCategories();renderAssets(assetSearch.value)};
-    b.ondragover=e=>{if(spec.id==='all')return;e.preventDefault();b.classList.add('dragOver')};
+    b.ondragover=e=>{if(spec.id==='all'||spec.id==='deleted')return;e.preventDefault();b.classList.add('dragOver')};
     b.ondragleave=()=>b.classList.remove('dragOver');
     b.ondrop=e=>{
-      if(spec.id==='all')return;
+      if(spec.id==='all'||spec.id==='deleted')return;
       e.preventDefault();b.classList.remove('dragOver');
       const name=e.dataTransfer.getData('text/asset-name');
       if(name){if(spec.id==='npcs')setNpcClassification([name],true);else setAssetCategory([name],spec.id==='uncategorised'?'':spec.id)}
@@ -583,10 +609,19 @@ function renderCategories(){
 }
 function updateBulkCategoryBar(){
   bulkCategoryBar.hidden=!organiseMode;assetSelectionCount.textContent=organisedSelection.size+' selected';
-  assetList.classList.toggle('organising',organiseMode);$('#organiseAssets').classList.toggle('active',organiseMode)
+  assetList.classList.toggle('organising',organiseMode);$('#organiseAssets').classList.toggle('active',organiseMode);
+  const one=organisedSelection.size===1,any=organisedSelection.size>0,inDeleted=categoryFilter==='deleted';
+  $('#renameAsset').disabled=!one;
+  $('#deleteAssets').disabled=!any||inDeleted;
+  $('#restoreAssets').disabled=!any||!inDeleted;
+  $('#assignCategory').disabled=!any||inDeleted;
+  $('#markNpcAssets').disabled=!any||inDeleted;
+  $('#unmarkNpcAssets').disabled=!any||inDeleted
 }
 function assetMatchesCategory(name){
   const assigned=assignedCategory(name);
+  if(categoryFilter==='deleted')return isAssetDeleted(name);
+  if(isAssetDeleted(name))return false;
   if(categoryFilter==='all')return true;
   if(categoryFilter==='npcs')return isNpcAsset(name);
   if(categoryFilter==='uncategorised')return !assigned;
@@ -595,7 +630,8 @@ function assetMatchesCategory(name){
 function renderAssets(filter=''){
   assetList.innerHTML='';
   const q=filter.trim().toLowerCase();
-  const names=catalogNames().filter(n=>(!q||assetLabel(n).toLowerCase().includes(q)||n.toLowerCase().includes(q))&&assetMatchesCategory(n));
+  const sourceNames=categoryFilter==='deleted'?allAssetNames():catalogNames();
+  const names=sourceNames.filter(n=>(!q||assetLabel(n).toLowerCase().includes(q)||n.toLowerCase().includes(q))&&assetMatchesCategory(n));
 
   if(!names.length){
     assetList.innerHTML='<div class="inspectorEmpty" style="grid-column:1/-1">No assets match this category/search. Choose <strong>All</strong> or clear the search box.</div>';
@@ -618,6 +654,7 @@ function renderAssets(filter=''){
       const category=categoryName(assignedCategory(name));
       if(category){const badge=document.createElement('span');badge.className='assetCategoryLabel';badge.textContent=category;b.appendChild(badge)}
       if(isNpcAsset(name)){const npcBadge=document.createElement('span');npcBadge.className='assetNpcBadge';npcBadge.textContent='NPC';b.appendChild(npcBadge)}
+      if(isAssetDeleted(name)){const delBadge=document.createElement('span');delBadge.className='assetDeletedBadge';delBadge.textContent='DELETED';b.appendChild(delBadge)}
 
       b.append(thumb,label,check);
       b.ondragstart=e=>{e.dataTransfer.setData('text/asset-name',name);e.dataTransfer.effectAllowed='move';b.classList.add('dragging')};
@@ -768,6 +805,9 @@ snapToggle.onclick=()=>{snap=!snap;snapToggle.classList.toggle('active',snap);sn
 $('#addCategory').onclick=()=>{const name=prompt('Category name');if(!name?.trim())return;const c={id:uid('cat'),name:name.trim()};project.editor.categories.push(c);categoryFilter=c.id;project.editor.activeCategory=c.id;saveLocal(false);renderCategories();renderAssets(assetSearch.value)};
 $('#organiseAssets').onclick=()=>{organiseMode=!organiseMode;if(!organiseMode)organisedSelection.clear();updateBulkCategoryBar();renderAssets(assetSearch.value)};
 $('#assignCategory').onclick=()=>{if(!organisedSelection.size){flashStatus('Select one or more assets first.');return}setAssetCategory([...organisedSelection],bulkCategorySelect.value);organisedSelection.clear();renderAssets(assetSearch.value);updateBulkCategoryBar()};
+$('#renameAsset').onclick=()=>{if(organisedSelection.size!==1){flashStatus('Select exactly one asset to rename.');return}const name=[...organisedSelection][0],next=prompt('Rename asset',assetLabel(name));if(next?.trim())renameAssetId(name,next.trim())};
+$('#deleteAssets').onclick=()=>{if(!organisedSelection.size)return;const names=[...organisedSelection],placed=project.maps.reduce((n,m)=>n+m.assets.filter(a=>names.includes(a.asset)).length,0),msg='Delete '+names.length+' asset'+(names.length===1?'':'s')+' from the palette?'+(placed?' '+placed+' placed map asset'+(placed===1?' will':'s will')+' remain on your maps.':'');if(confirm(msg))deleteAssetIds(names)};
+$('#restoreAssets').onclick=()=>{if(!organisedSelection.size)return;restoreAssetIds([...organisedSelection])};
 $('#markNpcAssets').onclick=()=>{if(!organisedSelection.size){flashStatus('Select one or more animated character assets first.');return}setNpcClassification([...organisedSelection],true);organisedSelection.clear();renderAssets(assetSearch.value);updateBulkCategoryBar()};
 $('#unmarkNpcAssets').onclick=()=>{if(!organisedSelection.size){flashStatus('Select one or more assets first.');return}setNpcClassification([...organisedSelection],false);organisedSelection.clear();renderAssets(assetSearch.value);updateBulkCategoryBar()};
 $('#clearAssetSelection').onclick=()=>{organisedSelection.clear();renderAssets(assetSearch.value);updateBulkCategoryBar()};
