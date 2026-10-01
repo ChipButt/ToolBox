@@ -8,6 +8,7 @@ const categoryList=$('#categoryList'),bulkCategoryBar=$('#bulkCategoryBar'),bulk
 const mapInspector=$('#mapInspector'),selectionInspector=$('#selectionInspector'),selectionTitle=$('#selectionTitle'),deleteSelected=$('#deleteSelected');
 const modeStatus=$('#modeStatus'),cursorStatus=$('#cursorStatus'),zoomSelect=$('#zoomSelect'),gridSizeInput=$('#gridSize'),snapToggle=$('#snapToggle');
 const brushWidthInput=$('#brushWidth'),brushHeightInput=$('#brushHeight');
+const undoProjectBtn=$('#undoProject'),redoProjectBtn=$('#redoProject');
 const playHud=$('#playHud'),playMapName=$('#playMapName');
 const dialogOverlay=$('#dialogOverlay'),dialogSpeaker=$('#dialogSpeaker'),dialogHeading=$('#dialogHeading'),dialogBody=$('#dialogBody'),dialogContinue=$('#dialogContinue');
 const puzzleOverlay=$('#puzzleOverlay'),puzzleHeading=$('#puzzleHeading'),puzzlePrompt=$('#puzzlePrompt'),puzzleSequence=$('#puzzleSequence'),puzzlePad=$('#puzzlePad');
@@ -15,7 +16,7 @@ const puzzleOverlay=$('#puzzleOverlay'),puzzleHeading=$('#puzzleHeading'),puzzle
 const STORE='chipin-world-builder-v1';
 const RECOVERY_STORE='chipin-world-builder-recovery-v1';
 const HISTORY_STORE='chipin-world-builder-history-v1';
-const SCHEMA_VERSION=3;
+const SCHEMA_VERSION=4;
 
 const VIRTUAL_ASSETS={
   'couch-horizontal':{label:'Couch — Horizontal',source:'couch.png',sx:0,sy:0,sw:32,sh:16},
@@ -82,6 +83,9 @@ let marquee=null;
 let play=null, editorMapBeforePlay=null, lastTime=performance.now();
 let dialogState=null, puzzleState=null;
 const keys=new Set();
+const undoStack=[],redoStack=[];
+const MAX_UNDO_STEPS=100;
+let historyState=null,applyingHistory=false;
 
 const uid=(prefix='id')=>prefix+'-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,7);
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
@@ -193,7 +197,11 @@ function normaliseProject(p){
   for(const m of p.maps){
     m.id=m.id||uid('map');m.name=m.name||'Map';m.width=Math.max(160,Number(m.width)||640);m.height=Math.max(120,Number(m.height)||480);m.bg=m.bg||'#edf0e6';
     m.spawn=m.spawn||{x:80,y:80};m.assets=Array.isArray(m.assets)?m.assets:[];m.transitions=Array.isArray(m.transitions)?m.transitions:[];m.npcs=Array.isArray(m.npcs)?m.npcs:[];m.questTargets=Array.isArray(m.questTargets)?m.questTargets:[];
-    for(const a of m.assets){a.id=a.id||uid('asset');a.layer=Number(a.layer)||0;a.solid=!!a.solid;a.flipX=!!a.flipX;a.flipY=!!a.flipY}
+    for(const a of m.assets){
+      a.id=a.id||uid('asset');a.layer=Number(a.layer)||0;a.solid=!!a.solid;a.flipX=!!a.flipX;a.flipY=!!a.flipY;
+      if(typeof a.animated!=='boolean')a.animated=a.asset==='fireplace.png';
+      a.animationFps=clamp(Number(a.animationFps)||6,1,30)
+    }
     for(const t of m.transitions){t.id=t.id||uid('link');t.label=t.label||'Map Link'}
     for(const n of m.npcs){n.id=n.id||uid('npc');n.name=n.name||'Elf';n.characterAsset=n.characterAsset||'character.png';n.dialogue=n.dialogue||'Hello!';n.path=Array.isArray(n.path)?n.path:[];n.speed=Number(n.speed)||24;n.quest=n.quest||{enabled:false,title:'',description:'',itemName:'',reward:'Christmas Present',completeText:'Thank you!'}}
     for(const q of m.questTargets){q.id=q.id||uid('quest');q.label=q.label||'Quest Item';q.itemName=q.itemName||'Quest Item';q.puzzle=q.puzzle||{enabled:false,prompt:'Repeat the sequence.',sequence:[1,2,3,4]}}
@@ -208,9 +216,35 @@ function recordHistory(raw){
     localStorage.setItem(HISTORY_STORE,JSON.stringify(list.slice(0,4)));
   }catch(_){}
 }
+function snapshotProject(){
+  const copy=JSON.parse(JSON.stringify(project));
+  delete copy.updatedAt;
+  delete copy.activeMapId;
+  return JSON.stringify(copy)
+}
+function updateHistoryButtons(){
+  if(undoProjectBtn)undoProjectBtn.disabled=!undoStack.length;
+  if(redoProjectBtn)redoProjectBtn.disabled=!redoStack.length
+}
+function initialiseUndoHistory(){
+  undoStack.length=0;redoStack.length=0;
+  historyState=project?snapshotProject():null;
+  updateHistoryButtons()
+}
 function saveLocal(show=true){
   if(!project)return;
-  project.version=SCHEMA_VERSION;project.updatedAt=new Date().toISOString();
+  project.version=SCHEMA_VERSION;
+  const snapshot=snapshotProject();
+  if(!applyingHistory){
+    if(historyState!==null&&snapshot!==historyState){
+      undoStack.push(historyState);
+      if(undoStack.length>MAX_UNDO_STEPS)undoStack.shift();
+      redoStack.length=0
+    }
+    historyState=snapshot;
+    updateHistoryButtons()
+  }
+  project.updatedAt=new Date().toISOString();
   const next=JSON.stringify(project),previous=localStorage.getItem(STORE);
   if(previous&&previous!==next)localStorage.setItem(RECOVERY_STORE,previous);
   localStorage.setItem(STORE,next);
@@ -221,6 +255,40 @@ function loadLocal(){
   try{for(const h of JSON.parse(localStorage.getItem(HISTORY_STORE)||'[]'))candidates.push(h.raw)}catch(_){}
   for(const raw of candidates){if(!raw)continue;try{return normaliseProject(JSON.parse(raw))}catch(e){console.warn('World Builder save could not be loaded:',e)}}
   return freshProject()
+}
+function refreshAfterHistory(label){
+  selected=null;clearMapSelection();pathEditing=false;drag=null;draftRect=null;marquee=null;
+  categoryFilter='all';
+  brushWidthInput.value=project.editor.brush.w;brushHeightInput.value=project.editor.brush.h;
+  resizeCanvas();renderCategories();renderAssets(assetSearch.value);renderAllPanels();draw();updateHistoryButtons();
+  flashStatus(label)
+}
+function undoProject(){
+  if(play){flashStatus('Stop Playtest before undoing edits.');return}
+  if(!undoStack.length)return;
+  const current=snapshotProject(),previous=undoStack.pop(),keepMap=project.activeMapId;
+  redoStack.push(current);
+  applyingHistory=true;
+  try{
+    project=normaliseProject(JSON.parse(previous));
+    if(project.maps.some(m=>m.id===keepMap))project.activeMapId=keepMap;
+    historyState=previous;saveLocal(false)
+  }finally{applyingHistory=false}
+  refreshAfterHistory('Undo')
+}
+function redoProject(){
+  if(play){flashStatus('Stop Playtest before redoing edits.');return}
+  if(!redoStack.length)return;
+  const current=snapshotProject(),next=redoStack.pop(),keepMap=project.activeMapId;
+  undoStack.push(current);
+  if(undoStack.length>MAX_UNDO_STEPS)undoStack.shift();
+  applyingHistory=true;
+  try{
+    project=normaliseProject(JSON.parse(next));
+    if(project.maps.some(m=>m.id===keepMap))project.activeMapId=keepMap;
+    historyState=next;saveLocal(false)
+  }finally{applyingHistory=false}
+  refreshAfterHistory('Redo')
 }
 function activeMap(){
   const id=play?play.mapId:project.activeMapId;
@@ -285,7 +353,7 @@ function addAssetAt(x,y){
   const key=selectedAssetName+'|'+gx+'|'+gy+'|'+cols+'x'+rows;if(key===lastStampKey)return;lastStampKey=key;
   let last=null;
   for(let row=0;row<rows;row++)for(let col=0;col<cols;col++){
-    const a={id:uid('asset'),asset:selectedAssetName,x:gx+col*d.w,y:gy+row*d.h,w:d.w,h:d.h,frame:d.frame,layer:0,flipX:false,flipY:false,solid:false};
+    const a={id:uid('asset'),asset:selectedAssetName,x:gx+col*d.w,y:gy+row*d.h,w:d.w,h:d.h,frame:d.frame,layer:0,flipX:false,flipY:false,solid:false,animated:selectedAssetName==='fireplace.png',animationFps:6};
     const v=VIRTUAL_ASSETS[selectedAssetName];
     if(v){a.sourceAsset=v.source;a.crop={x:v.sx,y:v.sy,w:v.sw,h:v.sh}}
     m.assets.push(a);last=a;
@@ -375,7 +443,12 @@ function drawGrid(m){
   ctx.beginPath();for(let x=0;x<=m.width;x+=g){ctx.moveTo(x+.5,0);ctx.lineTo(x+.5,m.height)}for(let y=0;y<=m.height;y+=g){ctx.moveTo(0,y+.5);ctx.lineTo(m.width,y+.5)}ctx.stroke();ctx.restore();
 }
 function drawPlacedAsset(a){
-  const opt={width:a.w,height:a.h,flipX:a.flipX,flipY:a.flipY};if(a.frame!=null)opt.frame=a.frame;
+  const opt={width:a.w,height:a.h,flipX:a.flipX,flipY:a.flipY};
+  const count=frameCount(a.asset);
+  if(a.animated&&count>1){
+    const fps=clamp(Number(a.animationFps)||6,1,30),start=Number(a.frame)||0;
+    opt.frame=(start+Math.floor(performance.now()/1000*fps))%count
+  }else if(a.frame!=null)opt.frame=a.frame;
   try{drawAsset(ctx,a.asset,a.x,a.y,opt)}catch(_){
     ctx.save();ctx.fillStyle='rgba(44,128,106,.18)';ctx.fillRect(a.x,a.y,a.w,a.h);ctx.restore()
   }
@@ -607,10 +680,14 @@ function renderSelectionInspector(updateTitle=true){
     const count=frameCount(o.asset);
     selectionInspector.innerHTML=
       input('X','selX',o.x,'number')+input('Y','selY',o.y,'number')+input('Width','selW',o.w,'number')+input('Height','selH',o.h,'number')+
-      (count>1?input('Frame','selFrame',o.frame??0,'number'):'')+input('Layer','selLayer',o.layer||0,'number')+
-      '<div class="inlineChecks"><label><input id="selFlipX" type="checkbox" '+(o.flipX?'checked':'')+'> Flip X</label><label><input id="selFlipY" type="checkbox" '+(o.flipY?'checked':'')+'> Flip Y</label><label><input id="selSolid" type="checkbox" '+(o.solid?'checked':'')+'> Solid collision</label></div>'+
+      (count>1?input(o.animated?'Start frame':'Frame','selFrame',o.frame??0,'number')+input('Animation FPS','selAnimFps',o.animationFps||6,'number'):'')+input('Layer','selLayer',o.layer||0,'number')+
+      '<div class="inlineChecks">'+(count>1?'<label><input id="selAnimated" type="checkbox" '+(o.animated?'checked':'')+'> Animated</label>':'')+'<label><input id="selFlipX" type="checkbox" '+(o.flipX?'checked':'')+'> Flip X</label><label><input id="selFlipY" type="checkbox" '+(o.flipY?'checked':'')+'> Flip Y</label><label><input id="selSolid" type="checkbox" '+(o.solid?'checked':'')+'> Solid collision</label></div>'+
       '<div class="inspectorActions"><button id="dupSelected" type="button">DUPLICATE</button><button id="layerUp" type="button">LAYER +</button><button id="layerDown" type="button">LAYER −</button></div>';
-    bindNumber('selX',o,'x');bindNumber('selY',o,'y');bindNumber('selW',o,'w');bindNumber('selH',o,'h');if($('#selFrame'))$('#selFrame').onchange=e=>{o.frame=clamp(Number(e.target.value)||0,0,count-1);saveLocal(false);draw()};bindNumber('selLayer',o,'layer');
+    bindNumber('selX',o,'x');bindNumber('selY',o,'y');bindNumber('selW',o,'w');bindNumber('selH',o,'h');
+    if($('#selFrame'))$('#selFrame').onchange=e=>{o.frame=clamp(Number(e.target.value)||0,0,count-1);saveLocal(false);draw()};
+    if($('#selAnimFps'))$('#selAnimFps').onchange=e=>{o.animationFps=clamp(Number(e.target.value)||6,1,30);e.target.value=o.animationFps;saveLocal(false);draw()};
+    if($('#selAnimated'))$('#selAnimated').onchange=e=>{o.animated=e.target.checked;saveLocal(false);renderSelectionInspector();draw()};
+    bindNumber('selLayer',o,'layer');
     $('#selFlipX').onchange=e=>{o.flipX=e.target.checked;saveLocal(false);draw()};$('#selFlipY').onchange=e=>{o.flipY=e.target.checked;saveLocal(false);draw()};$('#selSolid').onchange=e=>{o.solid=e.target.checked;saveLocal(false);draw()};
     $('#dupSelected').onclick=duplicateSelected;$('#layerUp').onclick=()=>{o.layer=(o.layer||0)+1;saveLocal(false);renderSelectionInspector();draw()};$('#layerDown').onclick=()=>{o.layer=(o.layer||0)-1;saveLocal(false);renderSelectionInspector();draw()};
   } else if(selected.type==='transition'){
@@ -699,6 +776,8 @@ $$('.modeBtn[data-mode]').forEach(b=>b.onclick=()=>setMode(b.dataset.mode));
 function download(name,text,type='text/javascript'){
   const blob=new Blob([text],{type}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),500)
 }
+undoProjectBtn.onclick=undoProject;
+redoProjectBtn.onclick=redoProject;
 $('#saveProject').onclick=()=>saveLocal(true);
 $('#backupProject').onclick=()=>{
   saveLocal(true);
@@ -821,6 +900,8 @@ $('#puzzleClose').onclick=()=>{puzzleState=null;puzzleOverlay.hidden=true};
 addEventListener('keydown',e=>{
   const tag=e.target?.tagName?.toLowerCase();if(['input','textarea','select'].includes(tag))return;
   const k=e.key.toLowerCase();
+  if((e.metaKey||e.ctrlKey)&&k==='z'){e.preventDefault();e.shiftKey?redoProject():undoProject();return}
+  if(e.ctrlKey&&!e.metaKey&&k==='y'){e.preventDefault();redoProject();return}
   if(play){
     if(['arrowup','arrowdown','arrowleft','arrowright',' ','enter'].includes(k))e.preventDefault();keys.add(k);
     if((k===' '||k==='enter')&&!dialogState&&!puzzleState)interactPlay();if(k==='escape')stopPlaytest();return
@@ -839,6 +920,7 @@ addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
 addEventListener('beforeunload',()=>{if(project)saveLocal(false)});
 
 project=loadLocal();
+initialiseUndoHistory();
 categoryFilter='all';
 brushWidthInput.value=project.editor.brush.w;
 brushHeightInput.value=project.editor.brush.h;
