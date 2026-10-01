@@ -323,24 +323,51 @@ function setAssetCategory(names,categoryId){
 }
 function renderCategories(){
   categoryList.innerHTML='';
-  const allCount=catalogNames().length;
-  const uncategorisedCount=catalogNames().filter(name=>!assignedCategory(name)).length;
+  const names=catalogNames();
   const specs=[
-    {id:'all',name:'All ('+allCount+')'},
-    {id:'uncategorised',name:'Uncategorised ('+uncategorisedCount+')'},
-    ...project.editor.categories.map(c=>({...c,name:c.name+' ('+catalogNames().filter(name=>assignedCategory(name)===c.id).length+')'}))
+    {id:'all',baseName:'All',count:names.length,system:true},
+    {id:'uncategorised',baseName:'Uncategorised',count:names.filter(name=>!assignedCategory(name)).length,system:true},
+    ...project.editor.categories.map(cat=>({
+      id:cat.id,
+      baseName:cat.name,
+      count:names.filter(name=>assignedCategory(name)===cat.id).length,
+      source:cat,
+      system:false
+    }))
   ];
-  for(const c of specs){
-    const b=document.createElement('button');b.type='button';b.className='categoryChip'+(categoryFilter===c.id?' active':'');b.textContent=c.name;
-    b.dataset.category=c.id;
-    b.onclick=()=>{categoryFilter=c.id;renderCategories();renderAssets(assetSearch.value)};
-    b.ondragover=e=>{if(c.id==='all')return;e.preventDefault();b.classList.add('dragOver')};
+  for(const spec of specs){
+    const b=document.createElement('button');
+    b.type='button';
+    b.className='categoryChip'+(categoryFilter===spec.id?' active':'');
+    b.textContent=spec.baseName+' ('+spec.count+')';
+    b.dataset.category=spec.id;
+    b.onclick=()=>{categoryFilter=spec.id;renderCategories();renderAssets(assetSearch.value)};
+    b.ondragover=e=>{if(spec.id==='all')return;e.preventDefault();b.classList.add('dragOver')};
     b.ondragleave=()=>b.classList.remove('dragOver');
-    b.ondrop=e=>{if(c.id==='all')return;e.preventDefault();b.classList.remove('dragOver');const name=e.dataTransfer.getData('text/asset-name');if(name)setAssetCategory([name],c.id==='uncategorised'?'':c.id)};
-    if(c.id!=='all'&&c.id!=='uncategorised'){
+    b.ondrop=e=>{
+      if(spec.id==='all')return;
+      e.preventDefault();b.classList.remove('dragOver');
+      const name=e.dataTransfer.getData('text/asset-name');
+      if(name)setAssetCategory([name],spec.id==='uncategorised'?'':spec.id)
+    };
+    if(!spec.system){
       b.title='Click to filter · double-click to rename · right-click to delete';
-      b.ondblclick=e=>{e.preventDefault();const next=prompt('Rename category',c.name);if(next?.trim()){c.name=next.trim();saveLocal(false);renderCategories();renderAssets(assetSearch.value)}};
-      b.oncontextmenu=e=>{e.preventDefault();if(!confirm('Delete category "'+c.name+'"? Assets will become uncategorised.'))return;project.editor.categories=project.editor.categories.filter(x=>x.id!==c.id);for(const [name,id] of Object.entries(project.editor.assetCategoryByAsset))if(id===c.id)delete project.editor.assetCategoryByAsset[name];if(categoryFilter===c.id)categoryFilter='all';saveLocal(false);renderCategories();renderAssets(assetSearch.value)}
+      b.ondblclick=e=>{
+        e.preventDefault();
+        const next=prompt('Rename category',spec.source.name);
+        if(next?.trim()){
+          spec.source.name=next.trim();
+          saveLocal(false);renderCategories();renderAssets(assetSearch.value)
+        }
+      };
+      b.oncontextmenu=e=>{
+        e.preventDefault();
+        if(!confirm('Delete category "'+spec.source.name+'"? Assets will become uncategorised.'))return;
+        project.editor.categories=project.editor.categories.filter(x=>x.id!==spec.id);
+        for(const [name,id] of Object.entries(project.editor.assetCategoryByAsset))if(id===spec.id)delete project.editor.assetCategoryByAsset[name];
+        if(categoryFilter===spec.id)categoryFilter='all';
+        saveLocal(false);renderCategories();renderAssets(assetSearch.value)
+      }
     }
     categoryList.appendChild(b)
   }
