@@ -49,25 +49,68 @@
 
   function base64Bytes(value){const raw=atob(value),out=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)out[i]=raw.charCodeAt(i);return out}
   async function gunzip(value){const bytes=base64Bytes(value);if(typeof DecompressionStream!=='function')throw new Error('This browser does not support DecompressionStream.');const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));return new Uint8Array(await new Response(stream).arrayBuffer())}
-  function readU16(b,p){return b[p]|(b[p+1]<<8)}
-  function readU32(b,p){return (b[p]|(b[p+1]<<8)|(b[p+2]<<16)|(b[p+3]<<24))>>>0}
   function parse(b){
-    let p=0,count=readU16(b,p);p+=2;const decoder=new TextDecoder();
+    let p=0;
+    const decoder=new TextDecoder();
+    const expected=new Set(STATIC_NAMES);
+    const fail=message=>{throw new Error('Uploaded tile pack: '+message)};
+    const ensure=(n,label)=>{if(p+n>b.length)fail(label+' exceeds decoded payload at byte '+p+' / '+b.length)};
+    const u8=label=>{ensure(1,label);return b[p++]};
+    const u16=label=>{ensure(2,label);const v=b[p]|(b[p+1]<<8);p+=2;return v};
+    const u32=label=>{ensure(4,label);const v=(b[p]|(b[p+1]<<8)|(b[p+2]<<16)|(b[p+3]<<24))>>>0;p+=4;return v};
+    const take=(n,label)=>{ensure(n,label);const out=b.slice(p,p+n);p+=n;return out};
+
+    const count=u16('asset count');
+    if(count!==STATIC_NAMES.length)fail('asset count mismatch: '+count+' / '+STATIC_NAMES.length);
+
+    const seen=new Set();
     for(let a=0;a<count;a++){
-      const nl=b[p++],name=decoder.decode(b.slice(p,p+nl));p+=nl;
-      const width=readU16(b,p);p+=2,height=readU16(b,p);p+=2,pc=b[p++];
-      const palette=b.slice(p,p+pc*4);p+=pc*4;const rc=readU32(b,p);p+=4;
-      const rgba=new Uint8ClampedArray(width*height*4);let pixel=0;
-      for(let r=0;r<rc;r++){const len=readU16(b,p);p+=2,ci=b[p++]*4;for(let n=0;n<len;n++,pixel++){const q=pixel*4;rgba[q]=palette[ci];rgba[q+1]=palette[ci+1];rgba[q+2]=palette[ci+2];rgba[q+3]=palette[ci+3]}}
-      if(pixel!==width*height)throw new Error('Corrupt uploaded tile asset: '+name);
-      assets.set(name,{name,width,height,rgba,category:categoryForName(name),pack:'uploaded-tiles'})
+      const nl=u8('name length for asset '+a);
+      const name=decoder.decode(take(nl,'name for asset '+a));
+      if(!expected.has(name))fail('unexpected asset name at index '+a+': '+name);
+      if(seen.has(name))fail('duplicate asset name: '+name);
+      seen.add(name);
+
+      const width=u16('width for '+name);
+      const height=u16('height for '+name);
+      const pc=u8('palette size for '+name);
+      if(width!==16||height!==16)fail(name+' has unexpected dimensions '+width+'x'+height);
+      if(pc<1)fail(name+' has an empty palette');
+
+      const palette=take(pc*4,'palette for '+name);
+      const rc=u32('run count for '+name);
+      const rgba=new Uint8ClampedArray(width*height*4);
+      let pixel=0;
+
+      for(let r=0;r<rc;r++){
+        const len=u16('run length '+r+' for '+name);
+        const paletteIndex=u8('palette index '+r+' for '+name);
+        if(paletteIndex>=pc)fail(name+' run '+r+' uses palette index '+paletteIndex+' / '+pc);
+        if(pixel+len>width*height)fail(name+' run '+r+' overflows pixel count');
+
+        const ci=paletteIndex*4;
+        for(let n=0;n<len;n++,pixel++){
+          const q=pixel*4;
+          rgba[q]=palette[ci];
+          rgba[q+1]=palette[ci+1];
+          rgba[q+2]=palette[ci+2];
+          rgba[q+3]=palette[ci+3];
+        }
+      }
+
+      if(pixel!==width*height)fail(name+' decoded '+pixel+' / '+(width*height)+' pixels');
+      assets.set(name,{name,width,height,rgba,category:categoryForName(name),pack:'uploaded-tiles'});
     }
+
+    if(p!==b.length)fail('trailing decoded bytes: '+(b.length-p));
+    if(assets.size!==STATIC_NAMES.length)fail('decoded asset count mismatch: '+assets.size+' / '+STATIC_NAMES.length);
+
     api.loaded=true;
     api.loadError=null;
     return api
   }
   function requireAsset(name){const a=assets.get(name);if(!a)throw new Error('Uploaded tile is still loading: '+name);return a}
-  function canvas(name){if(canvases.has(name))return canvases.get(name);const a=requireAsset(name),c=document.createElement('canvas');c.width=a.width;c.height=a.height;const x=c.getContext('2d');x.imageSmoothingEnabled=false;x.putImageData(new ImageData(new Uint8ClampedArray(a.rgba),a.width,a.height),0,0);canvases.set(name,c);return c}
+  function canvas(name){if(canvases.has(name))return canvases.get(name);const a=requireAsset(name),c=document.createElement('canvas');c.width=a.width;c.height=a.height;const x=c.getContext('2d');x.imageSmoothingEnabled=false;const image=x.createImageData(a.width,a.height);image.data.set(a.rgba);x.putImageData(image,0,0);canvases.set(name,c);return c}
   function frame(name){return canvas(name)}
   function draw(ctx,name,x,y,options={}){const src=canvas(name),w=options.width??src.width,h=options.height??src.height;ctx.save();ctx.imageSmoothingEnabled=false;ctx.globalAlpha=options.alpha??1;if(options.flipX||options.flipY){ctx.translate(x+(options.flipX?w:0),y+(options.flipY?h:0));ctx.scale(options.flipX?-1:1,options.flipY?-1:1);ctx.drawImage(src,0,0,w,h)}else ctx.drawImage(src,x,y,w,h);ctx.restore()}
   function metadata(name){const a=assets.get(name);return a?{name:a.name,width:a.width,height:a.height,cell:null,category:a.category,pack:a.pack}:{name,width:16,height:16,cell:null,category:categoryForName(name),pack:'uploaded-tiles'}}
