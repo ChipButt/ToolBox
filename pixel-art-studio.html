@@ -95,6 +95,10 @@ button,input,select,textarea{font:inherit}.app{width:min(1500px,calc(100% - 24px
         <summary>Palette Remap & Character Variants</summary>
         <div class="labBody">
           <div class="labRow"><button id="paletteScan" class="btn">Scan & set variant base</button><button id="paletteApply" class="btn primary">Apply palette</button></div>
+          <div class="labRow">
+            <label class="inlineCheck"><input id="paletteShadeFamily" type="checkbox" checked> Include related shades</label>
+            <div class="field"><label for="paletteTolerance">Shade tolerance</label><input id="paletteTolerance" type="range" min="0" max="120" value="48"></div>
+          </div>
           <div id="paletteMapList" class="paletteMapList"></div>
           <div class="labRow">
             <div class="field"><label for="variantName">Variant name</label><input id="variantName" type="text" placeholder="Red jacket / blonde hair"></div>
