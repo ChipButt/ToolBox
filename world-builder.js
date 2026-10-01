@@ -9,7 +9,7 @@ const mapInspector=$('#mapInspector'),selectionInspector=$('#selectionInspector'
 const modeStatus=$('#modeStatus'),cursorStatus=$('#cursorStatus'),zoomSelect=$('#zoomSelect'),gridSizeInput=$('#gridSize'),snapToggle=$('#snapToggle');
 const brushWidthInput=$('#brushWidth'),brushHeightInput=$('#brushHeight');
 const undoProjectBtn=$('#undoProject'),redoProjectBtn=$('#redoProject');
-const playHud=$('#playHud'),playMapName=$('#playMapName');
+const playHud=$('#playHud'),playMapName=$('#playMapName'),mobilePlayControls=$('#mobilePlayControls'),mobileInteract=$('#mobileInteract');
 const dialogOverlay=$('#dialogOverlay'),dialogSpeaker=$('#dialogSpeaker'),dialogHeading=$('#dialogHeading'),dialogBody=$('#dialogBody'),dialogContinue=$('#dialogContinue');
 const puzzleOverlay=$('#puzzleOverlay'),puzzleHeading=$('#puzzleHeading'),puzzlePrompt=$('#puzzlePrompt'),puzzleSequence=$('#puzzleSequence'),puzzlePad=$('#puzzlePad');
 
@@ -383,7 +383,7 @@ function setMode(next){
 
 function resizeCanvas(){
   const m=activeMap();canvas.width=m.width;canvas.height=m.height;
-  zoom=Number(zoomSelect.value)||1;
+  zoom=play?2:(Number(zoomSelect.value)||1);
   canvas.style.width=Math.round(m.width*zoom)+'px';canvas.style.height=Math.round(m.height*zoom)+'px';
   sizer.style.width=Math.round(m.width*zoom)+'px';sizer.style.height=Math.round(m.height*zoom)+'px';
 }
@@ -896,12 +896,39 @@ function setupPlayNpcs(){
 function startPlaytest(){
   editorMapBeforePlay=project.activeMapId;selected=null;clearMapSelection();pathEditing=false;const m=activeMap();
   play={mapId:m.id,x:m.spawn.x,y:m.spawn.y,dir:'down',moving:false,animStart:performance.now(),inventory:[],quests:{},collected:new Set(),npcs:{},transitionCooldown:0,rewards:[]};setupPlayNpcs();
-  mode='play';playHud.hidden=false;$('#playtestBtn').classList.add('active');playMapName.textContent=m.name;resizeCanvas();renderMaps();renderSelectionInspector();updateModeStatus();centerPlayView();draw()
+  mode='play';
+  document.body.classList.add('mobilePlaytest');
+  playHud.hidden=false;
+  mobilePlayControls.hidden=false;
+  $('#playtestBtn').classList.add('active');
+  playMapName.textContent=m.name;
+  resizeCanvas();renderMaps();renderSelectionInspector();updateModeStatus();
+  requestAnimationFrame(()=>{centerPlayView();draw()})
 }
 function stopPlaytest(){
-  if(!play)return;play=null;project.activeMapId=editorMapBeforePlay||project.maps[0].id;editorMapBeforePlay=null;mode='select';playHud.hidden=true;$('#playtestBtn').classList.remove('active');$$('.modeBtn[data-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mode==='select'));resizeCanvas();renderAllPanels();updateModeStatus();draw()
+  if(!play)return;
+  keys.clear();
+  play=null;project.activeMapId=editorMapBeforePlay||project.maps[0].id;editorMapBeforePlay=null;mode='select';
+  document.body.classList.remove('mobilePlaytest');
+  playHud.hidden=true;mobilePlayControls.hidden=true;
+  $('#playtestBtn').classList.remove('active');$('.modeBtn[data-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mode==='select'));
+  resizeCanvas();renderAllPanels();updateModeStatus();draw()
 }
 $('#playtestBtn').onclick=()=>play?stopPlaytest():startPlaytest();$('#stopPlaytest').onclick=stopPlaytest;
+
+$('.touchMove').forEach(button=>{
+  const key=button.dataset.key;
+  const press=e=>{e.preventDefault();if(play)keys.add(key)};
+  const release=e=>{e.preventDefault();keys.delete(key)};
+  button.addEventListener('pointerdown',press);
+  button.addEventListener('pointerup',release);
+  button.addEventListener('pointercancel',release);
+  button.addEventListener('pointerleave',release);
+});
+mobileInteract.addEventListener('pointerdown',e=>{
+  e.preventDefault();
+  if(play&&!dialogState&&!puzzleState)interactPlay()
+});
 
 function switchPlayMap(t){
   const target=mapById(t.targetMapId);if(!target)return;
@@ -999,6 +1026,7 @@ addEventListener('keydown',e=>{
   }
 });
 addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
+addEventListener('resize',()=>{if(play)requestAnimationFrame(centerPlayView)});
 
 addEventListener('beforeunload',()=>{if(project)saveLocal(false)});
 
