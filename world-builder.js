@@ -28,7 +28,7 @@ const VIRTUAL_ASSETS={
 const HIDDEN_COMBINED_ASSETS=new Set(['couch.png','fence.png','fence-shadow.png']);
 const virtualCanvasCache=new Map();
 
-let assets=null, project=null, mode='select', selected=null, selectedAssetName=null, snap=true, zoom=1;
+let assets=null, extraAssets=null, project=null, mode='select', selected=null, selectedAssetName=null, snap=true, zoom=1;
 let drag=null, draftRect=null, pathEditing=false, pointerDown=false, lastStampKey='';
 let organiseMode=false,categoryFilter='all';
 const organisedSelection=new Set();
@@ -45,14 +45,24 @@ const brushCols=()=>clamp(Number(brushWidthInput?.value)||1,1,32);
 const brushRows=()=>clamp(Number(brushHeightInput?.value)||1,1,32);
 
 function catalogNames(){
-  return [...assets.names.filter(n=>!HIDDEN_COMBINED_ASSETS.has(n)),...Object.keys(VIRTUAL_ASSETS)]
-    .sort((a,b)=>assetLabel(a).localeCompare(assetLabel(b)));
+  const names=[
+    ...assets.names.filter(n=>!HIDDEN_COMBINED_ASSETS.has(n)),
+    ...(extraAssets?.names||[]),
+    ...Object.keys(VIRTUAL_ASSETS)
+  ];
+  return [...new Set(names)].sort((a,b)=>assetLabel(a).localeCompare(assetLabel(b)));
 }
 function assetLabel(name){return VIRTUAL_ASSETS[name]?.label||String(name).replace('.png','')}
+function assetProvider(name){
+  if(VIRTUAL_ASSETS[name])return assets;
+  if(assets?.names?.includes(name))return assets;
+  if(extraAssets?.names?.includes(name))return extraAssets;
+  throw new Error('Unknown builder asset: '+name);
+}
 function assetMeta(name){
   const v=VIRTUAL_ASSETS[name];
   if(v)return {width:v.sw,height:v.sh,cell:null,virtual:true,source:v.source,crop:{x:v.sx,y:v.sy,w:v.sw,h:v.sh}};
-  return assets.metadata(name);
+  return assetProvider(name).metadata(name);
 }
 function virtualCanvas(name){
   if(virtualCanvasCache.has(name))return virtualCanvasCache.get(name);
@@ -63,11 +73,12 @@ function virtualCanvas(name){
 }
 function assetPreview(name){
   if(VIRTUAL_ASSETS[name])return virtualCanvas(name);
-  const meta=assets.metadata(name);return meta.cell?assets.frame(name,0):assets.canvas(name);
+  const provider=assetProvider(name),meta=provider.metadata(name);
+  return meta.cell?provider.frame(name,0):provider.canvas(name);
 }
 function drawAsset(target,name,x,y,options={}){
   const v=VIRTUAL_ASSETS[name];
-  if(!v){assets.draw(target,name,x,y,options);return}
+  if(!v){assetProvider(name).draw(target,name,x,y,options);return}
   const src=virtualCanvas(name),w=options.width??src.width,h=options.height??src.height;
   target.save();target.imageSmoothingEnabled=false;target.globalAlpha=options.alpha??1;
   if(options.flipX||options.flipY){
@@ -385,22 +396,52 @@ function assetMatchesCategory(name){
   return assigned===categoryFilter
 }
 function renderAssets(filter=''){
-  assetList.innerHTML='';const q=filter.trim().toLowerCase();
+  assetList.innerHTML='';
+  const q=filter.trim().toLowerCase();
   const names=catalogNames().filter(n=>(!q||assetLabel(n).toLowerCase().includes(q)||n.toLowerCase().includes(q))&&assetMatchesCategory(n));
+
+  if(!names.length){
+    assetList.innerHTML='<div class="inspectorEmpty" style="grid-column:1/-1">No assets match this category/search. Choose <strong>All</strong> or clear the search box.</div>';
+    return;
+  }
+
+  let rendered=0;
   for(const name of names){
-    const b=document.createElement('button');b.type='button';b.draggable=true;b.className='assetCard'+(name===selectedAssetName?' active':'')+(organisedSelection.has(name)?' multiSelected':'');
-    const thumb=document.createElement('span');thumb.className='assetThumb';const c=document.createElement('canvas'),src=assetPreview(name);c.width=src.width;c.height=src.height;c.getContext('2d').drawImage(src,0,0);thumb.appendChild(c);
-    const check=document.createElement('i');check.className='assetCheck';check.textContent=organisedSelection.has(name)?'✓':'';
-    const label=document.createElement('span');label.textContent=assetLabel(name);
-    const category=categoryName(assignedCategory(name));if(category){const badge=document.createElement('span');badge.className='assetCategoryLabel';badge.textContent=category;b.appendChild(badge)}
-    b.append(thumb,label,check);
-    b.ondragstart=e=>{e.dataTransfer.setData('text/asset-name',name);e.dataTransfer.effectAllowed='move';b.classList.add('dragging')};
-    b.ondragend=()=>b.classList.remove('dragging');
-    b.onclick=()=>{
-      if(organiseMode){organisedSelection.has(name)?organisedSelection.delete(name):organisedSelection.add(name);renderAssets(assetSearch.value);updateBulkCategoryBar();return}
-      selectedAssetName=name;renderAssets(assetSearch.value);setMode('place')
-    };
-    assetList.appendChild(b)
+    try{
+      const b=document.createElement('button');
+      b.type='button';b.draggable=true;
+      b.className='assetCard'+(name===selectedAssetName?' active':'')+(organisedSelection.has(name)?' multiSelected':'');
+
+      const thumb=document.createElement('span');thumb.className='assetThumb';
+      const c=document.createElement('canvas'),src=assetPreview(name);
+      c.width=src.width;c.height=src.height;c.getContext('2d').drawImage(src,0,0);thumb.appendChild(c);
+
+      const check=document.createElement('i');check.className='assetCheck';check.textContent=organisedSelection.has(name)?'✓':'';
+      const label=document.createElement('span');label.textContent=assetLabel(name);
+      const category=categoryName(assignedCategory(name));
+      if(category){const badge=document.createElement('span');badge.className='assetCategoryLabel';badge.textContent=category;b.appendChild(badge)}
+
+      b.append(thumb,label,check);
+      b.ondragstart=e=>{e.dataTransfer.setData('text/asset-name',name);e.dataTransfer.effectAllowed='move';b.classList.add('dragging')};
+      b.ondragend=()=>b.classList.remove('dragging');
+      b.onclick=()=>{
+        if(organiseMode){
+          organisedSelection.has(name)?organisedSelection.delete(name):organisedSelection.add(name);
+          renderAssets(assetSearch.value);updateBulkCategoryBar();return
+        }
+        selectedAssetName=name;renderAssets(assetSearch.value);setMode('place')
+      };
+      assetList.appendChild(b);rendered++;
+    }catch(error){
+      console.error('World Builder preview failed for',name,error);
+      const b=document.createElement('button');b.type='button';b.className='assetCard assetPreviewError';
+      b.innerHTML='<span class="assetThumb">!</span><span>'+esc(assetLabel(name))+'</span>';
+      b.title='Preview failed, but the rest of the palette remains available.';
+      assetList.appendChild(b);
+    }
+  }
+  if(!rendered&&assetList.children.length===0){
+    assetList.innerHTML='<div class="inspectorEmpty" style="grid-column:1/-1">Assets failed to render. Reload the builder.</div>';
   }
 }
 function input(label,id,value,type='text',extra=''){return '<label'+(extra.includes('full')?' class="full"':'')+'><span>'+label+'</span><input id="'+id+'" type="'+type+'" value="'+esc(value)+'"></label>'}
@@ -650,11 +691,22 @@ addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
 
 addEventListener('beforeunload',()=>{if(project)saveLocal(false)});
 
-VillagePixelAssets.ready.then(api=>{
-  assets=api;project=loadLocal();categoryFilter='all';
+Promise.allSettled([
+  VillagePixelAssets.ready,
+  window.WorldBuilderExtraAssets?.ready || Promise.resolve(null)
+]).then(results=>{
+  if(results[0].status!=='fulfilled')throw results[0].reason;
+  assets=results[0].value;
+  extraAssets=results[1].status==='fulfilled'?results[1].value:null;
+  if(results[1].status==='rejected')console.error('Time Fantasy asset pack failed to load:',results[1].reason);
+
+  project=loadLocal();categoryFilter='all';
   brushWidthInput.value=project.editor.brush.w;brushHeightInput.value=project.editor.brush.h;
-  resizeCanvas();renderCategories();renderAssets();renderAllPanels();updateModeStatus();requestAnimationFrame(loop)
+  resizeCanvas();renderCategories();renderAssets();renderAllPanels();updateModeStatus();
+  flashStatus('Loaded '+catalogNames().length+' assets.');
+  requestAnimationFrame(loop)
 }).catch(err=>{
-  console.error(err);modeStatus.textContent='Could not load the Christmas Village code-only asset pack: '+err.message
+  console.error(err);
+  modeStatus.textContent='Could not load the World Builder asset palette: '+err.message
 });
 })();
