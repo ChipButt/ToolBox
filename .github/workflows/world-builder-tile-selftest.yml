@@ -68,3 +68,78 @@ jobs:
           if(count!==312||names.length!==312)throw new Error('Expected 312 assets');
           if(p!==b.length)throw new Error('Trailing decoded bytes: '+(b.length-p));
           NODE
+      - name: Browser runtime diagnostic
+        run: |
+          python3 -m http.server 8000 >/tmp/world-builder-http.log 2>&1 &
+          python3 -m pip install --quiet selenium
+          python3 <<'PY'
+          import json, time, urllib.request
+          from selenium import webdriver
+          from selenium.webdriver.chrome.options import Options
+          from selenium.webdriver.support.ui import WebDriverWait
+
+          for _ in range(50):
+              try:
+                  urllib.request.urlopen('http://127.0.0.1:8000/world-builder.html', timeout=1).read(64)
+                  break
+              except Exception:
+                  time.sleep(0.1)
+          else:
+              raise RuntimeError('local web server did not start')
+
+          options=Options()
+          options.add_argument('--headless=new')
+          options.add_argument('--no-sandbox')
+          options.add_argument('--disable-dev-shm-usage')
+          options.add_argument('--window-size=1440,1200')
+          options.set_capability('goog:loggingPrefs', {'browser':'ALL'})
+          driver=webdriver.Chrome(options=options)
+          try:
+              driver.get('http://127.0.0.1:8000/world-builder.html')
+              WebDriverWait(driver, 15).until(lambda d: d.execute_script(
+                  "return !!window.WorldBuilderSheetAssets && (window.WorldBuilderSheetAssets.loaded || !!window.WorldBuilderSheetAssets.loadError)"
+              ))
+              state=driver.execute_script("""
+                const api=window.WorldBuilderSheetAssets;
+                const out={
+                  loaded:api.loaded,
+                  loadError:api.loadError ? String(api.loadError.stack||api.loadError.message||api.loadError) : null,
+                  names:api.names.length,
+                  cards:document.querySelectorAll('#assetList .assetCard').length,
+                  modeStatus:document.querySelector('#modeStatus')?.textContent||''
+                };
+                try{
+                  const c=api.canvas('Dungeon r00 c01');
+                  const d=c.getContext('2d').getImageData(0,0,c.width,c.height).data;
+                  let alpha=0, rgb=0;
+                  for(let i=0;i<d.length;i+=4){alpha+=d[i+3];rgb+=d[i]+d[i+1]+d[i+2];}
+                  out.canvas={width:c.width,height:c.height,alphaSum:alpha,rgbSum:rgb};
+                }catch(e){out.canvasError=String(e.stack||e.message||e)}
+                const cards=[...document.querySelectorAll('#assetList .assetCard')];
+                const card=cards.find(x=>x.textContent.includes('Dungeon r00 c01'));
+                out.dungeonCard=!!card;
+                if(card){
+                  const c=card.querySelector('canvas');
+                  if(c){
+                    const d=c.getContext('2d').getImageData(0,0,c.width,c.height).data;
+                    let alpha=0,rgb=0;
+                    for(let i=0;i<d.length;i+=4){alpha+=d[i+3];rgb+=d[i]+d[i+1]+d[i+2];}
+                    out.dungeonThumb={width:c.width,height:c.height,alphaSum:alpha,rgbSum:rgb};
+                  }
+                }
+                return out;
+              """)
+              print('BROWSER_STATE',json.dumps(state,sort_keys=True))
+              for entry in driver.get_log('browser'):
+                  print('BROWSER_LOG',entry['level'],entry['message'])
+              if state['names'] != 312:
+                  raise AssertionError(f"expected 312 uploaded names, got {state['names']}")
+              if not state['loaded']:
+                  raise AssertionError(f"uploaded runtime failed: {state['loadError']}")
+              if state.get('canvasError'):
+                  raise AssertionError(state['canvasError'])
+              if not state.get('canvas') or state['canvas']['alphaSum'] == 0:
+                  raise AssertionError('Dungeon canvas is blank')
+          finally:
+              driver.quit()
+          PY
