@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#10243d">
   <title>World Builder · ToolBox</title>
-  <link rel="stylesheet" href="world-builder.css?v=4">
+  <link rel="stylesheet" href="world-builder.css?v=5">
 </head>
 <body>
 <div class="builderApp">
@@ -50,6 +50,8 @@
             <strong id="assetSelectionCount">0 selected</strong>
             <select id="bulkCategorySelect"></select>
             <button id="assignCategory" class="smallBtn" type="button">ASSIGN</button>
+            <button id="markNpcAssets" class="smallBtn" type="button">MARK NPC</button>
+            <button id="unmarkNpcAssets" class="smallBtn" type="button">NOT NPC</button>
             <button id="clearAssetSelection" class="smallBtn" type="button">CLEAR</button>
           </div>
         </div>
@@ -61,10 +63,12 @@
       <div class="toolRow">
         <div class="modeGroup" id="modeGroup">
           <button class="modeBtn active" data-mode="select" type="button">SELECT</button>
+          <button class="modeBtn" data-mode="multi" type="button">MULTI SELECT</button>
           <button class="modeBtn" data-mode="place" type="button">STAMP</button>
           <button class="modeBtn" data-mode="transition" type="button">MAP LINK</button>
           <button class="modeBtn" data-mode="npc" type="button">NPC</button>
           <button class="modeBtn" data-mode="quest" type="button">QUEST ITEM</button>
+          <button class="modeBtn" data-mode="spawn" type="button">SET SPAWN</button>
           <button id="playtestBtn" class="modeBtn playBtn" type="button">▶ PLAYTEST</button>
         </div>
         <div class="viewGroup">
@@ -155,6 +159,6 @@
 <script src="world-builder-tf-data-8.js?v=1"></script>
 <script src="world-builder-tf-data-9.js?v=1"></script>
 <script src="world-builder-tf-runtime.js?v=1"></script>
-<script src="world-builder.js?v=6"></script>
+<script src="world-builder.js?v=7"></script>
 </body>
 </html>
