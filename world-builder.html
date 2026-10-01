@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#10243d">
   <title>World Builder · ToolBox</title>
-  <link rel="stylesheet" href="world-builder.css?v=1">
+  <link rel="stylesheet" href="world-builder.css?v=2">
 </head>
 <body>
 <div class="builderApp">
@@ -18,6 +18,7 @@
     </div>
     <div class="headerActions">
       <button id="saveProject" type="button">SAVE</button>
+      <button id="backupProject" type="button">BACKUP FILE</button>
       <button id="importProject" type="button">IMPORT</button>
       <button id="exportProject" class="primary" type="button">EXPORT CODE</button>
       <input id="importFile" type="file" accept=".json,.js,application/json,text/javascript" hidden>
@@ -39,6 +40,19 @@
           <div><span class="eyebrow">PALETTE</span><strong>Assets</strong></div>
           <input id="assetSearch" class="miniInput" placeholder="Search">
         </div>
+        <div class="categoryTools">
+          <div id="categoryList" class="categoryList"></div>
+          <div class="categoryActions">
+            <button id="addCategory" class="smallBtn" type="button">+ CATEGORY</button>
+            <button id="organiseAssets" class="smallBtn" type="button">ORGANISE</button>
+          </div>
+          <div id="bulkCategoryBar" class="bulkCategoryBar" hidden>
+            <strong id="assetSelectionCount">0 selected</strong>
+            <select id="bulkCategorySelect"></select>
+            <button id="assignCategory" class="smallBtn" type="button">ASSIGN</button>
+            <button id="clearAssetSelection" class="smallBtn" type="button">CLEAR</button>
+          </div>
+        </div>
         <div id="assetList" class="assetList"></div>
       </section>
     </aside>
@@ -54,6 +68,8 @@
           <button id="playtestBtn" class="modeBtn playBtn" type="button">▶ PLAYTEST</button>
         </div>
         <div class="viewGroup">
+          <label>BRUSH W <input id="brushWidth" type="number" min="1" max="32" value="1"></label>
+          <label>H <input id="brushHeight" type="number" min="1" max="32" value="1"></label>
           <label>GRID <input id="gridSize" type="number" min="1" max="64" value="16"></label>
           <label>ZOOM
             <select id="zoomSelect">
@@ -129,6 +145,6 @@
 </div>
 
 <script src="world-builder-assets.js?v=1"></script>
-<script src="world-builder.js?v=1"></script>
+<script src="world-builder.js?v=2"></script>
 </body>
 </html>
