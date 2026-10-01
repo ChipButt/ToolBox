@@ -26,6 +26,46 @@ const VIRTUAL_ASSETS={
   'fence-shadow-vertical':{label:'Fence Shadow — Vertical',source:'fence-shadow.png',sx:32,sy:0,sw:16,sh:32}
 };
 const HIDDEN_COMBINED_ASSETS=new Set(['couch.png','fence.png','fence-shadow.png']);
+
+const BASE_ASSET_NAMES=[
+  'bench.png','chair.png','character.png','christmas-lights.png',
+  'couch-horizontal','couch-vertical','exit.png',
+  'fence-horizontal','fence-vertical','fence-shadow-horizontal','fence-shadow-vertical',
+  'fireplace.png','floor-tile.png','floor-tileset.png','hot-chocolate.png',
+  'house1.png','house2.png','lamp-post.png','main-tree.png','old-christmas-palette.png',
+  'parchment-menu.png','path-tilemap.png','present1.png','present2.png','present3.png','present4.png',
+  'rug.png','sign-popup-background.png','sign-post.png','small-tree.png','snowman1.png',
+  'snow-tilemap.png','stocking.png','street-sign-post.png','table.png','wall-tileset.png','wreath.png'
+];
+const EXTRA_ASSET_NAMES=[
+  'TF Igloo Tiles.png','TF Christmas Presents.png','TF Christmas Trees & Gifts.png','TF Christmas Decorations.png',
+  'TF Gnome A.png','TF Gnome B.png','TF Reindeer.png','TF Reindeer Child.png','TF Reindeer B.png',
+  'TF Rudolph Adult.png','TF Rudolph Adult B.png','TF Rudolph Child.png','TF Jesus.png','TF Mrs Claus.png',
+  'TF Santa.png','TF Elf A.png','TF Elf B.png','TF Polar Bear.png','TF Polar Bear Cub.png',
+  'TF Snowmen Tiles.png','TF Toy Tiles.png'
+];
+const STATIC_META={
+  'bench.png':[16,16],'chair.png':[16,16],'character.png':[256,16,16,16],'christmas-lights.png':[128,16,16,16],
+  'couch-horizontal':[32,16],'couch-vertical':[16,32],'exit.png':[16,16],
+  'fence-horizontal':[32,16],'fence-vertical':[16,32],'fence-shadow-horizontal':[32,16],'fence-shadow-vertical':[16,32],
+  'fireplace.png':[64,16,16,16],'floor-tile.png':[16,16],'floor-tileset.png':[48,32,16,16],
+  'hot-chocolate.png':[32,8,8,8],'house1.png':[560,64,80,64],'house2.png':[80,48],
+  'lamp-post.png':[16,32],'main-tree.png':[48,64],'old-christmas-palette.png':[16,2],
+  'parchment-menu.png':[240,160],'path-tilemap.png':[64,64,16,16],
+  'present1.png':[10,10],'present2.png':[8,8],'present3.png':[8,8],'present4.png':[8,8],
+  'rug.png':[48,32],'sign-popup-background.png':[112,48],'sign-post.png':[16,16],
+  'small-tree.png':[16,32],'snowman1.png':[16,16],'snow-tilemap.png':[16,16],
+  'stocking.png':[8,8],'street-sign-post.png':[16,32],'table.png':[16,16],'wall-tileset.png':[48,48,16,16],'wreath.png':[8,8],
+  'TF Igloo Tiles.png':[144,96,16,16],'TF Christmas Presents.png':[192,256,16,16],
+  'TF Christmas Trees & Gifts.png':[80,112,16,16],'TF Christmas Decorations.png':[64,48,16,16],
+  'TF Gnome A.png':[78,144,26,36],'TF Gnome B.png':[78,144,26,36],
+  'TF Reindeer.png':[156,212,52,53],'TF Reindeer Child.png':[156,212,52,53],'TF Reindeer B.png':[156,212,52,53],
+  'TF Rudolph Adult.png':[156,212,52,53],'TF Rudolph Adult B.png':[156,212,52,53],'TF Rudolph Child.png':[156,212,52,53],
+  'TF Jesus.png':[78,144,26,36],'TF Mrs Claus.png':[78,144,26,36],'TF Santa.png':[78,144,26,36],
+  'TF Elf A.png':[78,144,26,36],'TF Elf B.png':[78,144,26,36],
+  'TF Polar Bear.png':[126,144,42,36],'TF Polar Bear Cub.png':[126,144,42,36],
+  'TF Snowmen Tiles.png':[112,96,16,16],'TF Toy Tiles.png':[112,112,16,16]
+};
 const virtualCanvasCache=new Map();
 
 let assets=null, extraAssets=null, project=null, mode='select', selected=null, selectedAssetName=null, snap=true, zoom=1;
@@ -45,24 +85,28 @@ const brushCols=()=>clamp(Number(brushWidthInput?.value)||1,1,32);
 const brushRows=()=>clamp(Number(brushHeightInput?.value)||1,1,32);
 
 function catalogNames(){
-  const names=[
-    ...assets.names.filter(n=>!HIDDEN_COMBINED_ASSETS.has(n)),
-    ...(extraAssets?.names||[]),
-    ...Object.keys(VIRTUAL_ASSETS)
-  ];
-  return [...new Set(names)].sort((a,b)=>assetLabel(a).localeCompare(assetLabel(b)));
+  return [...new Set([...BASE_ASSET_NAMES,...EXTRA_ASSET_NAMES])]
+    .sort((a,b)=>assetLabel(a).localeCompare(assetLabel(b)));
 }
 function assetLabel(name){return VIRTUAL_ASSETS[name]?.label||String(name).replace('.png','')}
 function assetProvider(name){
-  if(VIRTUAL_ASSETS[name])return assets;
+  if(VIRTUAL_ASSETS[name]){
+    if(assets)return assets;
+    throw new Error('Base asset pack is still loading.');
+  }
   if(assets?.names?.includes(name))return assets;
   if(extraAssets?.names?.includes(name))return extraAssets;
-  throw new Error('Unknown builder asset: '+name);
+  throw new Error('Asset data is still loading: '+name);
+}
+function staticMeta(name){
+  const m=STATIC_META[name];
+  if(!m)return null;
+  return {width:m[0],height:m[1],cell:m[2]?{width:m[2],height:m[3]}:null};
 }
 function assetMeta(name){
   const v=VIRTUAL_ASSETS[name];
   if(v)return {width:v.sw,height:v.sh,cell:null,virtual:true,source:v.source,crop:{x:v.sx,y:v.sy,w:v.sw,h:v.sh}};
-  return assetProvider(name).metadata(name);
+  try{return assetProvider(name).metadata(name)}catch(_){return staticMeta(name)||{width:16,height:16,cell:null}}
 }
 function virtualCanvas(name){
   if(virtualCanvasCache.has(name))return virtualCanvasCache.get(name);
@@ -71,10 +115,24 @@ function virtualCanvas(name){
   const x=c.getContext('2d');x.imageSmoothingEnabled=false;x.drawImage(src,v.sx,v.sy,v.sw,v.sh,0,0,v.sw,v.sh);
   virtualCanvasCache.set(name,c);return c;
 }
+function placeholderPreview(name){
+  const meta=assetMeta(name),cell=meta.cell,w=Math.min(64,cell?.width||meta.width||16),h=Math.min(52,cell?.height||meta.height||16);
+  const c=document.createElement('canvas');c.width=Math.max(16,w);c.height=Math.max(16,h);
+  const x=c.getContext('2d');x.imageSmoothingEnabled=false;
+  x.fillStyle='#e4ece8';x.fillRect(0,0,c.width,c.height);
+  x.fillStyle='#c5d7d0';for(let yy=0;yy<c.height;yy+=8)for(let xx=0;xx<c.width;xx+=8)if((xx+yy)/8%2===0)x.fillRect(xx,yy,8,8);
+  x.fillStyle='#2c806a';x.font='bold 8px monospace';x.textAlign='center';x.textBaseline='middle';
+  x.fillText('...',c.width/2,c.height/2);
+  return c;
+}
 function assetPreview(name){
-  if(VIRTUAL_ASSETS[name])return virtualCanvas(name);
-  const provider=assetProvider(name),meta=provider.metadata(name);
-  return meta.cell?provider.frame(name,0):provider.canvas(name);
+  try{
+    if(VIRTUAL_ASSETS[name])return virtualCanvas(name);
+    const provider=assetProvider(name),meta=provider.metadata(name);
+    return meta.cell?provider.frame(name,0):provider.canvas(name);
+  }catch(_){
+    return placeholderPreview(name);
+  }
 }
 function drawAsset(target,name,x,y,options={}){
   const v=VIRTUAL_ASSETS[name];
@@ -268,7 +326,9 @@ function drawGrid(m){
 }
 function drawPlacedAsset(a){
   const opt={width:a.w,height:a.h,flipX:a.flipX,flipY:a.flipY};if(a.frame!=null)opt.frame=a.frame;
-  drawAsset(ctx,a.asset,a.x,a.y,opt);
+  try{drawAsset(ctx,a.asset,a.x,a.y,opt)}catch(_){
+    ctx.save();ctx.fillStyle='rgba(44,128,106,.18)';ctx.fillRect(a.x,a.y,a.w,a.h);ctx.restore()
+  }
   if(selected?.type==='asset'&&selected.id===a.id&&!play){ctx.save();ctx.strokeStyle='#f7bd18';ctx.lineWidth=2;ctx.strokeRect(a.x-1,a.y-1,a.w+2,a.h+2);ctx.restore()}
 }
 function drawTransition(t){
@@ -691,22 +751,38 @@ addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
 
 addEventListener('beforeunload',()=>{if(project)saveLocal(false)});
 
-Promise.allSettled([
-  VillagePixelAssets.ready,
-  window.WorldBuilderExtraAssets?.ready || Promise.resolve(null)
-]).then(results=>{
-  if(results[0].status!=='fulfilled')throw results[0].reason;
-  assets=results[0].value;
-  extraAssets=results[1].status==='fulfilled'?results[1].value:null;
-  if(results[1].status==='rejected')console.error('Time Fantasy asset pack failed to load:',results[1].reason);
+project=loadLocal();
+categoryFilter='all';
+brushWidthInput.value=project.editor.brush.w;
+brushHeightInput.value=project.editor.brush.h;
+resizeCanvas();
+renderCategories();
+renderAssets();
+renderAllPanels();
+updateModeStatus();
+flashStatus('58 assets registered. Loading artwork…');
+requestAnimationFrame(loop);
 
-  project=loadLocal();categoryFilter='all';
-  brushWidthInput.value=project.editor.brush.w;brushHeightInput.value=project.editor.brush.h;
-  resizeCanvas();renderCategories();renderAssets();renderAllPanels();updateModeStatus();
-  flashStatus('Loaded '+catalogNames().length+' assets.');
-  requestAnimationFrame(loop)
+VillagePixelAssets.ready.then(api=>{
+  assets=api;
+  renderCategories();
+  renderAssets(assetSearch.value);
+  renderAllPanels();
+  flashStatus('Original Christmas assets loaded.');
 }).catch(err=>{
-  console.error(err);
-  modeStatus.textContent='Could not load the World Builder asset palette: '+err.message
+  console.error('Original asset pack failed to load:',err);
+  modeStatus.textContent='Original asset artwork failed to decode, but the palette remains available.';
 });
+
+if(window.WorldBuilderExtraAssets?.ready){
+  window.WorldBuilderExtraAssets.ready.then(api=>{
+    extraAssets=api;
+    renderCategories();
+    renderAssets(assetSearch.value);
+    flashStatus('All 58 assets loaded.');
+  }).catch(err=>{
+    console.error('New Christmas asset pack failed to load:',err);
+    modeStatus.textContent='New asset artwork failed to decode, but all 58 palette entries remain visible.';
+  });
+}
 })();
