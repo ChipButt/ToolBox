@@ -40,3 +40,105 @@ button{cursor:pointer}
 .dangerMini{border-color:#d4949b!important;color:#8f2431!important}
 .dangerMini:not(:disabled){background:#fff0f1!important}
 .smallBtn:disabled{opacity:.38;cursor:default}
+
+/* Mobile-sized Playtest preview */
+body.mobilePlaytest{
+  --phone-w:min(390px,calc(100vw - 28px));
+  --phone-h:min(760px,calc(100vh - 28px));
+  overflow:hidden;
+  background:#07131f;
+}
+body.mobilePlaytest .builderHeader,
+body.mobilePlaytest .leftPanel,
+body.mobilePlaytest .rightPanel,
+body.mobilePlaytest .toolRow,
+body.mobilePlaytest .statusBar{display:none!important}
+body.mobilePlaytest .builderApp{height:100vh;min-height:100vh;background:#07131f}
+body.mobilePlaytest .builderBody{display:block;height:100vh;min-height:0}
+body.mobilePlaytest .workspace{
+  width:100vw;height:100vh;min-width:0;min-height:0;
+  display:grid;place-items:center;background:
+  radial-gradient(circle at 50% 35%,#17304b 0,#0a1828 48%,#050b12 100%);
+}
+body.mobilePlaytest .canvasScroller{
+  width:var(--phone-w);height:var(--phone-h);min-height:0;
+  box-sizing:border-box;padding:0;margin:0;
+  overflow:hidden;overscroll-behavior:none;
+  border:10px solid #12161c;border-radius:34px;
+  background:#000;
+  box-shadow:0 28px 60px rgba(0,0,0,.52),0 0 0 2px #35404c;
+}
+body.mobilePlaytest .canvasSizer{
+  margin:0;box-shadow:none;
+}
+body.mobilePlaytest #worldCanvas{cursor:default}
+body.mobilePlaytest .playHud{
+  top:calc(50% - (var(--phone-h) / 2) + 14px);
+  width:calc(var(--phone-w) - 36px);
+  min-height:48px;padding:6px 8px;
+  border:1px solid rgba(255,255,255,.25);
+  border-radius:12px;
+  background:rgba(17,29,43,.82);
+  box-shadow:0 4px 14px rgba(0,0,0,.26);
+  backdrop-filter:blur(5px);
+  grid-template-columns:auto 1fr auto;
+}
+body.mobilePlaytest .playBadge span{font-size:6px;color:#c9deef}
+body.mobilePlaytest .playBadge strong{font-size:9px}
+body.mobilePlaytest .playHelp{font-size:7px;color:#e8f1f8}
+body.mobilePlaytest .playHud button{
+  height:27px;padding:0 8px;border:1px solid #ffffff55;
+  background:#f7f9fb;color:#692731;
+}
+.mobilePlayControls{
+  position:fixed;z-index:82;
+  left:50%;bottom:calc(50% - (var(--phone-h) / 2) + 24px);
+  transform:translateX(-50%);
+  width:calc(var(--phone-w) - 38px);
+  display:flex;align-items:flex-end;justify-content:space-between;
+  pointer-events:none;
+}
+.mobilePlayControls[hidden]{display:none}
+.mobileDpad{
+  position:relative;width:118px;height:118px;pointer-events:auto;
+}
+.mobileDpad button,.mobileInteract{
+  border:2px solid rgba(255,255,255,.7);
+  background:rgba(9,24,38,.66);color:#fff;
+  box-shadow:0 3px 10px rgba(0,0,0,.3);
+  backdrop-filter:blur(3px);
+  touch-action:none;user-select:none;-webkit-user-select:none;
+}
+.mobileDpad button{
+  position:absolute;width:40px;height:40px;border-radius:12px;
+  font-size:15px;font-weight:900;
+}
+.mobileDpad .up{left:39px;top:0}
+.mobileDpad .left{left:0;top:39px}
+.mobileDpad .down{left:39px;top:78px}
+.mobileDpad .right{left:78px;top:39px}
+.mobileInteract{
+  width:72px;height:72px;border-radius:50%;
+  display:grid;place-items:center;align-content:center;gap:1px;
+  pointer-events:auto;
+}
+.mobileInteract span{font-size:20px;font-weight:900;line-height:1}
+.mobileInteract small{font-size:6px;font-weight:900;letter-spacing:.08em}
+.mobileDpad button:active,.mobileInteract:active{transform:translateY(1px);background:rgba(44,128,106,.82)}
+body.mobilePlaytest .modal{
+  inset:auto;
+  top:50%;left:50%;transform:translate(-50%,-50%);
+  width:var(--phone-w);height:var(--phone-h);
+  box-sizing:border-box;border-radius:24px;padding:20px;
+  overflow:auto;
+}
+body.mobilePlaytest .modalCard{
+  width:min(330px,100%);max-height:calc(var(--phone-h) - 52px);overflow:auto;
+}
+@media(max-height:650px){
+  body.mobilePlaytest{--phone-h:calc(100vh - 20px)}
+  .mobileDpad{width:100px;height:100px}
+  .mobileDpad button{width:34px;height:34px}
+  .mobileDpad .up{left:33px}.mobileDpad .left{top:33px}.mobileDpad .down{left:33px;top:66px}.mobileDpad .right{left:66px;top:33px}
+  .mobileInteract{width:62px;height:62px}
+}
