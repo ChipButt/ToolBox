@@ -1072,14 +1072,42 @@ if(window.WorldBuilderExtraAssets?.ready){
 }
 
 if(window.WorldBuilderSheetAssets?.ready){
-  window.WorldBuilderSheetAssets.ready.then(api=>{
+  const tileApi=window.WorldBuilderSheetAssets;
+  sheetAssets=tileApi;
+
+  const redrawUploadedTiles=()=>{
+    renderAssets(assetSearch.value);
+    renderCategories();
+  };
+
+  const retryTimer=setInterval(()=>{
+    if(tileApi.loaded){
+      clearInterval(retryTimer);
+      redrawUploadedTiles();
+      flashStatus('All '+catalogNames().length+' assets loaded, including 312 uploaded tiles.');
+    }else if(tileApi.loadError){
+      clearInterval(retryTimer);
+      console.error('Uploaded tile decoder failed:',tileApi.loadError);
+      modeStatus.textContent='Uploaded tile artwork failed to decode: '+(tileApi.loadError.message||tileApi.loadError);
+    }
+  },250);
+
+  tileApi.ready.then(api=>{
     sheetAssets=api;
-    applyDynamicCategorySuggestions();
-    renderAllPanels();
+    redrawUploadedTiles();
+    flashStatus('Uploaded tile artwork decoded. Refreshing thumbnails…');
+    try{
+      applyDynamicCategorySuggestions();
+      renderAllPanels();
+    }catch(err){
+      console.error('Uploaded tile post-load setup failed:',err);
+      redrawUploadedTiles();
+    }
+    redrawUploadedTiles();
     flashStatus('All '+catalogNames().length+' assets loaded, including 312 uploaded tiles.');
   }).catch(err=>{
-    console.error('Uploaded tile sheets failed to load:',err);
-    modeStatus.textContent='Uploaded tile sheets failed to decode, but the existing palette remains available.';
+    console.error('Uploaded tile sheets failed to decode:',err);
+    modeStatus.textContent='Uploaded tile artwork failed to decode: '+(err.message||err);
   });
 }
 })();
