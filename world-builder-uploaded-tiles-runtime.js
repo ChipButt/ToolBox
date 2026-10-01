@@ -5,6 +5,25 @@
   const PACK=window.__WB_USER_TILE_PACK||'';
   try{delete window.__WB_USER_TILE_PACK}catch(_){}
   const assets=new Map(),canvases=new Map();
+  const STATIC_ROWS={
+    Dungeon:{
+      0:[1,2,3,4,5,6,8],1:[1,2,3,4,6,8,9],2:[1,2,3,4,5,6,7,8,9],3:[1,2,3,4,5,6,7,8,9],
+      4:[0,1,2,3,4,5,6,7,8,9],5:[0,1,2,3,4,5,6,7,8,9],6:[0,1,2,3,4,5,6,7,9],7:[0,1,2,3,4,5,6,8,9],
+      8:[2,3,4,5,7,8],9:[0,1,2,3,4,5,6,7,8],10:[0,1,2,3,4,5,6,7,8],11:[0,1,5,6,7,8],12:[0,1,5,6,7,8]
+    },
+    BigSet:{
+      0:[0,1,2,3,4,5,6,7],1:[0,1,2,3,4,5,6,7],2:[0,1,2,3,4,5,6,7],3:[0,1,2,3,4,5,6,7],
+      4:[0,1,2,3,4,5,6,7],5:[0,1,2,3,4,5,6,7],6:[0,1,2,3,4,5,6,7],7:[0,1,2,3,4,5,6,7],
+      8:[0,1,2,3,4,5,6,7],9:[0,1,2,3,4,5,6,7],10:[0,1,2,3,4,5,6,7],11:[0,1,2,3,4,5,6,7],
+      12:[0,1,2,3,4,5,6,7],13:[0,1,2,3,4,5,6,7],14:[0,1,2,3,4,5,6,7],15:[0,1,2,3,4,5,6,7],
+      16:[0,1,2,3,4,5,6,7],17:[0,1,2,3,4,5,6,7],18:[0,1,2,3,4,5,6],19:[0,1,2,3,5],
+      20:[0,1,2,3,4,5,6],21:[0,1,2,3,4,5,6,7],22:[0,1,2,3,4,5],23:[0,1,2,3,4,5,6,7],
+      24:[0,1,2,3,4,5,6,7],25:[0,1,2,3,4,5,6,7],26:[0,1,2,3,4]
+    }
+  };
+  const STATIC_NAMES=Object.freeze(Object.entries(STATIC_ROWS).flatMap(([sheet,rows])=>
+    Object.entries(rows).flatMap(([row,cols])=>cols.map(col=>`${sheet} r${String(row).padStart(2,'0')} c${String(col).padStart(2,'0')}`))
+  ));
 
   function categoryForName(name){
     const m=name.match(/^(Dungeon|BigSet) r(\d+) c(\d+)$/);
@@ -43,7 +62,7 @@
       if(pixel!==width*height)throw new Error('Corrupt uploaded tile asset: '+name);
       assets.set(name,{name,width,height,rgba,category:categoryForName(name),pack:'uploaded-tiles'})
     }
-    api.names=Object.freeze([...assets.keys()]);
+    if(assets.size!==STATIC_NAMES.length)throw new Error('Uploaded tile count mismatch: '+assets.size+' / '+STATIC_NAMES.length);
     return api
   }
   function requireAsset(name){const a=assets.get(name);if(!a)throw new Error('Uploaded tile is still loading: '+name);return a}
@@ -51,7 +70,7 @@
   function frame(name){return canvas(name)}
   function draw(ctx,name,x,y,options={}){const src=canvas(name),w=options.width??src.width,h=options.height??src.height;ctx.save();ctx.imageSmoothingEnabled=false;ctx.globalAlpha=options.alpha??1;if(options.flipX||options.flipY){ctx.translate(x+(options.flipX?w:0),y+(options.flipY?h:0));ctx.scale(options.flipX?-1:1,options.flipY?-1:1);ctx.drawImage(src,0,0,w,h)}else ctx.drawImage(src,x,y,w,h);ctx.restore()}
   function metadata(name){const a=assets.get(name);return a?{name:a.name,width:a.width,height:a.height,cell:null,category:a.category,pack:a.pack}:{name,width:16,height:16,cell:null,category:categoryForName(name),pack:'uploaded-tiles'}}
-  const api={ready:null,names:Object.freeze([]),canvas,frame,draw,metadata,categoryForName,get(name){return requireAsset(name)}};
+  const api={ready:null,names:STATIC_NAMES,canvas,frame,draw,metadata,categoryForName,get(name){return requireAsset(name)}};
   api.ready=gunzip(PACK).then(parse);
   window.WorldBuilderSheetAssets=api;
 })();
