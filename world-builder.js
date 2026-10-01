@@ -95,7 +95,7 @@ function normaliseProject(p){
   p.editor.assetCategoryByAsset=p.editor.assetCategoryByAsset&&typeof p.editor.assetCategoryByAsset==='object'?p.editor.assetCategoryByAsset:{};
   p.editor.brush=p.editor.brush&&typeof p.editor.brush==='object'?p.editor.brush:{w:1,h:1};
   p.editor.brush.w=clamp(Number(p.editor.brush.w)||1,1,32);p.editor.brush.h=clamp(Number(p.editor.brush.h)||1,1,32);
-  p.editor.activeCategory=p.editor.activeCategory||'all';
+  p.editor.activeCategory='all';
   for(const c of p.editor.categories){c.id=c.id||uid('cat');c.name=c.name||'Category'}
   for(const m of p.maps){
     m.id=m.id||uid('map');m.name=m.name||'Map';m.width=Math.max(160,Number(m.width)||640);m.height=Math.max(120,Number(m.height)||480);m.bg=m.bg||'#edf0e6';
@@ -314,16 +314,26 @@ function renderMaps(){
 function categoryName(id){return project.editor.categories.find(c=>c.id===id)?.name||''}
 function assignedCategory(name){return project.editor.assetCategoryByAsset[name]||''}
 function setAssetCategory(names,categoryId){
+  if(!names.length){
+    assetList.innerHTML='<div class="inspectorEmpty" style="grid-column:1/-1">No assets match this category/search. Choose <strong>All</strong> or clear the search box.</div>';
+    return;
+  }
   for(const name of names){if(categoryId)project.editor.assetCategoryByAsset[name]=categoryId;else delete project.editor.assetCategoryByAsset[name]}
   saveLocal(false);renderCategories();renderAssets(assetSearch.value)
 }
 function renderCategories(){
   categoryList.innerHTML='';
-  const specs=[{id:'all',name:'All'},{id:'uncategorised',name:'Uncategorised'},...project.editor.categories];
+  const allCount=catalogNames().length;
+  const uncategorisedCount=catalogNames().filter(name=>!assignedCategory(name)).length;
+  const specs=[
+    {id:'all',name:'All ('+allCount+')'},
+    {id:'uncategorised',name:'Uncategorised ('+uncategorisedCount+')'},
+    ...project.editor.categories.map(c=>({...c,name:c.name+' ('+catalogNames().filter(name=>assignedCategory(name)===c.id).length+')'}))
+  ];
   for(const c of specs){
     const b=document.createElement('button');b.type='button';b.className='categoryChip'+(categoryFilter===c.id?' active':'');b.textContent=c.name;
     b.dataset.category=c.id;
-    b.onclick=()=>{categoryFilter=c.id;project.editor.activeCategory=c.id;saveLocal(false);renderCategories();renderAssets(assetSearch.value)};
+    b.onclick=()=>{categoryFilter=c.id;renderCategories();renderAssets(assetSearch.value)};
     b.ondragover=e=>{if(c.id==='all')return;e.preventDefault();b.classList.add('dragOver')};
     b.ondragleave=()=>b.classList.remove('dragOver');
     b.ondrop=e=>{if(c.id==='all')return;e.preventDefault();b.classList.remove('dragOver');const name=e.dataTransfer.getData('text/asset-name');if(name)setAssetCategory([name],c.id==='uncategorised'?'':c.id)};
@@ -496,7 +506,7 @@ $('#importProject').onclick=()=>$('#importFile').click();
 $('#importFile').onchange=async e=>{
   const file=e.target.files?.[0];if(!file)return;
   try{const text=await file.text();let raw=text.trim();if(!raw.startsWith('{')){const a=raw.indexOf('{'),b=raw.lastIndexOf('}');if(a<0||b<a)throw new Error('No project object found.');raw=raw.slice(a,b+1)}
-    project=normaliseProject(JSON.parse(raw));selected=null;play=null;organisedSelection.clear();categoryFilter=project.editor.activeCategory||'all';brushWidthInput.value=project.editor.brush.w;brushHeightInput.value=project.editor.brush.h;saveLocal(false);resizeCanvas();renderCategories();renderAssets(assetSearch.value);renderAllPanels();draw();flashStatus('Imported '+file.name)
+    project=normaliseProject(JSON.parse(raw));selected=null;play=null;organisedSelection.clear();categoryFilter='all';brushWidthInput.value=project.editor.brush.w;brushHeightInput.value=project.editor.brush.h;saveLocal(false);resizeCanvas();renderCategories();renderAssets(assetSearch.value);renderAllPanels();draw();flashStatus('Imported '+file.name)
   }catch(err){alert('Could not import project: '+err.message)}finally{e.target.value=''}
 };
 
@@ -614,8 +624,7 @@ addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
 addEventListener('beforeunload',()=>{if(project)saveLocal(false)});
 
 VillagePixelAssets.ready.then(api=>{
-  assets=api;project=loadLocal();categoryFilter=project.editor.activeCategory||'all';
-  if(categoryFilter!=='all'&&categoryFilter!=='uncategorised'&&!project.editor.categories.some(c=>c.id===categoryFilter))categoryFilter='all';
+  assets=api;project=loadLocal();categoryFilter='all';
   brushWidthInput.value=project.editor.brush.w;brushHeightInput.value=project.editor.brush.h;
   resizeCanvas();renderCategories();renderAssets();renderAllPanels();updateModeStatus();requestAnimationFrame(loop)
 }).catch(err=>{
