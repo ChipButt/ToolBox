@@ -55,10 +55,14 @@ grid cuts -> modal-cell resampling -> optional custom-palette mapping.
 
   function quantizeImage(imageData,k=16){
     const {width,height,data}=imageData;
-    const pixels=[];
-    for(let i=0;i<data.length;i+=4) if(data[i+3]) pixels.push([data[i],data[i+1],data[i+2]]);
-    if(!pixels.length) return new ImageData(new Uint8ClampedArray(data),width,height);
-
+    const opaqueCount=(()=>{let n=0;for(let i=3;i<data.length;i+=4)if(data[i])n++;return n})();
+    if(!opaqueCount) return new ImageData(new Uint8ClampedArray(data),width,height);
+    const maxSamples=60000,step=Math.max(1,Math.ceil(opaqueCount/maxSamples)),pixels=[];
+    let seen=0;
+    for(let i=0;i<data.length;i+=4) if(data[i+3]){
+      if(seen%step===0)pixels.push([data[i],data[i+1],data[i+2]]);
+      seen++;
+    }
     k=Math.max(1,Math.min(Math.round(k)||16,pixels.length,256));
     const rng=seeded(42);
     const centroids=[pixels[Math.floor(rng()*pixels.length)].slice()];
