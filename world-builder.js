@@ -290,7 +290,7 @@ function renderSelectionInspector(updateTitle=true){
       input('Required item name','questItem',q.itemName||'','text','full')+input('Reward','questReward',q.reward||'Christmas Present','text','full')+
       '<label class="full"><span>Completion dialogue</span><textarea id="questComplete">'+esc(q.completeText||'')+'</textarea></label>';
     $('#npcName').onchange=e=>{o.name=e.target.value||'Elf';saveLocal(false);renderSelectionInspector();draw()};bindNumber('selX',o,'x');bindNumber('selY',o,'y');bindNumber('npcSpeed',o,'speed');
-    $('#npcDialogue').onchange=e=>{o.dialogue=e.target.value;saveLocal(false)};$('#editPath').onclick=()=>{pathEditing=!pathEditing;setMode('select');pathEditing=true;renderSelectionInspector();updateModeStatus()};$('#clearPath').onclick=()=>{o.path=[];saveLocal(false);renderSelectionInspector();draw()};
+    $('#npcDialogue').onchange=e=>{o.dialogue=e.target.value;saveLocal(false)};$('#editPath').onclick=()=>{const wasEditing=pathEditing;setMode('select');pathEditing=!wasEditing;renderSelectionInspector();updateModeStatus();draw()};$('#clearPath').onclick=()=>{o.path=[];saveLocal(false);renderSelectionInspector();draw()};
     $('#questEnabled').onchange=e=>{o.quest.enabled=e.target.checked;saveLocal(false)};$('#questTitle').onchange=e=>{o.quest.title=e.target.value;saveLocal(false)};$('#questDescription').onchange=e=>{o.quest.description=e.target.value;saveLocal(false)};$('#questItem').onchange=e=>{o.quest.itemName=e.target.value;saveLocal(false)};$('#questReward').onchange=e=>{o.quest.reward=e.target.value;saveLocal(false)};$('#questComplete').onchange=e=>{o.quest.completeText=e.target.value;saveLocal(false)};
   } else {
     if(updateTitle)selectionTitle.textContent=o.label||'Quest Item';
@@ -397,6 +397,12 @@ function updatePlay(dt,now){
   if(play.transitionCooldown>0)play.transitionCooldown-=dt;
   if(play.transitionCooldown<=0){for(const t of m.transitions)if(play.x>=t.x&&play.x<=t.x+t.w&&play.y>=t.y&&play.y<=t.y+t.h){switchPlayMap(t);break}}
   centerPlayView();
+  const interaction=nearestInteraction();
+  if(interaction){
+    modeStatus.textContent=interaction.type==='npc'?'SPACE / ENTER: talk to '+interaction.obj.name:'SPACE / ENTER: '+(interaction.obj.label||'collect item');
+  }else{
+    updateModeStatus();
+  }
 }
 function nearestInteraction(){
   if(!play)return null;const m=activeMap();let best=null,bd=Infinity;
