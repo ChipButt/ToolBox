@@ -916,7 +916,7 @@ function stopPlaytest(){
 }
 $('#playtestBtn').onclick=()=>play?stopPlaytest():startPlaytest();$('#stopPlaytest').onclick=stopPlaytest;
 
-$('.touchMove').forEach(button=>{
+$$('.touchMove').forEach(button=>{
   const key=button.dataset.key;
   const press=e=>{e.preventDefault();if(play)keys.add(key)};
   const release=e=>{e.preventDefault();keys.delete(key)};
