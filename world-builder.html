@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#10243d">
   <title>World Builder · ToolBox</title>
-  <link rel="stylesheet" href="world-builder.css?v=9">
+  <link rel="stylesheet" href="world-builder.css?v=10">
 </head>
 <body>
 <div class="builderApp">
@@ -128,9 +128,19 @@
 </div>
 
 <div id="playHud" class="playHud" hidden>
-  <div class="playBadge"><span>PLAYTEST</span><strong id="playMapName">Map</strong></div>
-  <div class="playHelp">WASD / arrows to move · Space / Enter to interact</div>
+  <div class="playBadge"><span>MOBILE PLAYTEST</span><strong id="playMapName">Map</strong></div>
+  <div class="playHelp">Phone preview · keyboard or touch controls</div>
   <button id="stopPlaytest" type="button">STOP</button>
+</div>
+
+<div id="mobilePlayControls" class="mobilePlayControls" hidden aria-label="Mobile playtest controls">
+  <div class="mobileDpad" aria-label="Movement controls">
+    <button class="touchMove up" data-key="arrowup" type="button" aria-label="Move up">▲</button>
+    <button class="touchMove left" data-key="arrowleft" type="button" aria-label="Move left">◀</button>
+    <button class="touchMove down" data-key="arrowdown" type="button" aria-label="Move down">▼</button>
+    <button class="touchMove right" data-key="arrowright" type="button" aria-label="Move right">▶</button>
+  </div>
+  <button id="mobileInteract" class="mobileInteract" type="button"><span>A</span><small>INTERACT</small></button>
 </div>
 
 <div id="dialogOverlay" class="modal" hidden>
@@ -169,6 +179,6 @@
 <script src="world-builder-uploaded-tiles-data-3.js?v=1"></script>
 <script src="world-builder-uploaded-tiles-data-4.js?v=1"></script>
 <script src="world-builder-uploaded-tiles-runtime.js?v=1"></script>
-<script src="world-builder.js?v=11"></script>
+<script src="world-builder.js?v=12"></script>
 </body>
 </html>
