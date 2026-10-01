@@ -382,7 +382,12 @@ editCanvas.addEventListener('pointerdown',ev=>{ev.preventDefault();editCanvas.se
 editCanvas.addEventListener('pointermove',ev=>{const q=cellFromEvent(ev);$('pixelPos').textContent=`x ${q.x}, y ${q.y}`;if(!drawing)return;if(['pencil','brush','eraser','spray'].includes(tool))applyFreehand(q.x,q.y,false);else if(['line','rect','ellipse'].includes(tool))shapePreview(q);else if(tool==='select'){if(selectionMove)moveSelectionTo(q);else if(dragStart){selection=normSel(dragStart,q);drawEditor()}}});
 function end(ev){if(tool==='select'&&selectionMove)selectionMove=null;dragStart=null;dragBase=null;drawing=false;updateSelectionUI();try{editCanvas.releasePointerCapture(ev.pointerId)}catch(_){}}
 editCanvas.addEventListener('pointerup',end);editCanvas.addEventListener('pointercancel',end);
-function drawFrameTo(ctx,f,w,h){ctx.clearRect(0,0,w,h);ctx.imageSmoothingEnabled=false;const cw=w/canvasW,ch=h/canvasH;for(let y=0;y<canvasH;y++)for(let x=0;x<canvasW;x++){const c=f[idx(x,y)];if(c){ctx.fillStyle=c;ctx.fillRect(Math.floor(x*cw),Math.floor(y*ch),Math.ceil(cw),Math.ceil(ch))}}}
+function drawFrameTo(ctx,f,w,h,frameIndex=current){
+  ctx.clearRect(0,0,w,h);ctx.imageSmoothingEnabled=false;
+  const source=window.PixelStudioOverlays?.compose?window.PixelStudioOverlays.compose(f,frameIndex,canvasW,canvasH):f;
+  const cw=w/canvasW,ch=h/canvasH;
+  for(let y=0;y<canvasH;y++)for(let x=0;x<canvasW;x++){const c=source[idx(x,y)];if(c){ctx.fillStyle=c;ctx.fillRect(Math.floor(x*cw),Math.floor(y*ch),Math.ceil(cw),Math.ceil(ch))}}
+}
 function drawEditor(){
   const shell=$('canvasShell').getBoundingClientRect();
   const maxW=Math.max(280,Math.min(shell.width-24,720)),maxH=720;
@@ -402,7 +407,7 @@ function drawEditor(){
   $('frameLabel').textContent=`Frame ${current+1} / ${frames.length} · ${canvasW}×${canvasH} · ${zoomLevel==='auto'?'auto':scale+'×'}`
 }
 function renderPalette(){paletteEl.innerHTML='';BASEPAL.forEach(c=>{const b=document.createElement('button');b.className='sw'+(c===colour?' active':'');b.style.background=c;b.title=c;b.onclick=()=>{colour=c;$('customColor').value=c;renderPalette()};paletteEl.appendChild(b)})}
-function renderFrames(){const host=$('frames');host.innerHTML='';frames.forEach((f,i)=>{const b=document.createElement('button');b.className='frame'+(i===current?' active':'');const c=document.createElement('canvas');c.width=canvasW;c.height=canvasH;c.style.aspectRatio=canvasW+'/'+canvasH;drawFrameTo(c.getContext('2d'),f,canvasW,canvasH);const n=document.createElement('span');n.textContent=i+1;b.append(c,n);b.onclick=()=>{current=i;renderAll()};host.appendChild(b)});$('delFrame').disabled=frames.length<=1}
+function renderFrames(){const host=$('frames');host.innerHTML='';frames.forEach((f,i)=>{const b=document.createElement('button');b.className='frame'+(i===current?' active':'');const c=document.createElement('canvas');c.width=canvasW;c.height=canvasH;c.style.aspectRatio=canvasW+'/'+canvasH;drawFrameTo(c.getContext('2d'),f,canvasW,canvasH,i);const n=document.createElement('span');n.textContent=i+1;b.append(c,n);b.onclick=()=>{current=i;renderAll()};host.appendChild(b)});$('delFrame').disabled=frames.length<=1}
 function drawPreview(){preview.width=canvasW;preview.height=canvasH;drawFrameTo(pctx,chosenFrame(),canvasW,canvasH)}
 function updateSelectionUI(){$('selectionActions').classList.toggle('show',!!selection);$('pasteSel').disabled=!clipboard}
 function renderAll(){renderPalette();renderFrames();drawEditor();drawPreview();updateSelectionUI();syncCanvasFields();updateUndoButtons()}
@@ -430,17 +435,22 @@ function cropSelection(){
 }
 function togglePlay(){playing=!playing;$('play').textContent=playing?'Stop':'Play';clearInterval(timer);if(playing){timer=setInterval(()=>{current=(current+1)%frames.length;renderFrames();drawEditor();drawPreview()},1000/Math.max(1,Number($('fps').value)||6))}}
 function downloadBlob(blob,name){const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),15000)}
-function frameCanvas(f){const c=document.createElement('canvas');c.width=canvasW;c.height=canvasH;drawFrameTo(c.getContext('2d'),f,canvasW,canvasH);return c}
+function frameCanvas(f,frameIndex=current){const c=document.createElement('canvas');c.width=canvasW;c.height=canvasH;drawFrameTo(c.getContext('2d'),f,canvasW,canvasH,frameIndex);return c}
 function canvasBlob(c){return new Promise((res,rej)=>c.toBlob(b=>b?res(b):rej(new Error('PNG export failed')),'image/png'))}
 function safeName(){return (($('prompt').value.trim()||'pixel-sprite').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,''))||'pixel-sprite'}
-async function exportFrame(){downloadBlob(await canvasBlob(frameCanvas(chosenFrame())),`${safeName()}-frame-${String(current+1).padStart(2,'0')}.png`)}
-async function exportSheet(){const c=document.createElement('canvas');c.width=canvasW*frames.length;c.height=canvasH;const x=c.getContext('2d');x.imageSmoothingEnabled=false;frames.forEach((f,i)=>x.drawImage(frameCanvas(f),i*canvasW,0));downloadBlob(await canvasBlob(c),`${safeName()}-spritesheet.png`)}
-function dataObject(){const pal=[],map=new Map();for(const f of frames)for(const c of f)if(c&&!map.has(c)){map.set(c,pal.length);pal.push(c)}const runs=frames.map(f=>{const out=[];for(let y=0;y<canvasH;y++){let x=0;while(x<canvasW){const c=f[idx(x,y)];if(!c){x++;continue}const ci=map.get(c),start=x;while(x<canvasW&&f[idx(x,y)]===c)x++;out.push([y,start,x-start,ci])}}return out});return{name:safeName(),width:canvasW,height:canvasH,fps:Math.max(1,Number($('fps').value)||6),palette:pal,frames:runs}}
+async async function exportFrame(){downloadBlob(await canvasBlob(frameCanvas(chosenFrame(),current)),safeName()+'-frame-'+String(current+1).padStart(2,'0')+'.png')}
+async async function exportSheet(){const c=document.createElement('canvas');c.width=canvasW*frames.length;c.height=canvasH;const x=c.getContext('2d');x.imageSmoothingEnabled=false;frames.forEach((f,i)=>x.drawImage(frameCanvas(f,i),i*canvasW,0));downloadBlob(await canvasBlob(c),safeName()+'-spritesheet.png')}
+function dataObject(){
+  const sourceFrames=frames.map((f,i)=>window.PixelStudioOverlays?.compose?window.PixelStudioOverlays.compose(f,i,canvasW,canvasH):f);
+  const pal=[],map=new Map();for(const f of sourceFrames)for(const c of f)if(c&&!map.has(c)){map.set(c,pal.length);pal.push(c)}
+  const runs=sourceFrames.map(f=>{const out=[];for(let y=0;y<canvasH;y++){let x=0;while(x<canvasW){const c=f[idx(x,y)];if(!c){x++;continue}const ci=map.get(c),start=x;while(x<canvasW&&f[idx(x,y)]===c)x++;out.push([y,start,x-start,ci])}}return out});
+  return{name:safeName(),width:canvasW,height:canvasH,fps:Math.max(1,Number($('fps').value)||6),palette:pal,frames:runs,animations:window.PixelStudioAdvanced?.getAnimationMap?.()||{}}
+}
 function exportJson(){downloadBlob(new Blob([JSON.stringify(dataObject(),null,2)],{type:'application/json'}),`${safeName()}.pixel.json`)}
 function exportJs(){const d=dataObject();const js=`/* Generated by Chip In ToolBox Pixel Art Studio */\nwindow.GeneratedPixelSprite = ${JSON.stringify(d,null,2)};\nwindow.buildGeneratedPixelFrame = function(frameIndex){\n  if(!window.GBPixel) throw new Error('GBPixel toolkit is required');\n  const s=window.GeneratedPixelSprite;\n  const g=new GBPixel.Grid(s.width,s.height);\n  const runs=s.frames[((frameIndex % s.frames.length)+s.frames.length)%s.frames.length];\n  for(const [y,x,len,ci] of runs) g.hline(x,x+len-1,y,s.palette[ci]);\n  return g;\n};\nwindow.generatedPixelCanvas = function(frameIndex){ return window.buildGeneratedPixelFrame(frameIndex).toCanvas(); };\n`;downloadBlob(new Blob([js],{type:'text/javascript'}),`${safeName()}.pixel.js`)}
 const crcTable=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=(c&1)?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0}return t})();function crc32(b){let c=0xFFFFFFFF;for(const v of b)c=crcTable[(c^v)&255]^(c>>>8);return(c^0xFFFFFFFF)>>>0}function u16(n){const b=new Uint8Array(2);new DataView(b.buffer).setUint16(0,n&65535,true);return b}function u32(n){const b=new Uint8Array(4);new DataView(b.buffer).setUint32(0,n>>>0,true);return b}function concat(a){const n=a.reduce((s,p)=>s+p.length,0),o=new Uint8Array(n);let q=0;for(const p of a){o.set(p,q);q+=p.length}return o}
 async function zip(entries){const enc=new TextEncoder(),locals=[],centrals=[];let off=0;const d=new Date(),tm=((d.getHours()&31)<<11)|((d.getMinutes()&63)<<5)|(Math.floor(d.getSeconds()/2)&31),dt=(((Math.max(1980,d.getFullYear())-1980)&127)<<9)|(((d.getMonth()+1)&15)<<5)|(d.getDate()&31);for(const e of entries){const nb=enc.encode(e.name),data=e.bytes,crc=crc32(data),local=concat([u32(0x04034b50),u16(20),u16(0x0800),u16(0),u16(tm),u16(dt),u32(crc),u32(data.length),u32(data.length),u16(nb.length),u16(0),nb,data]);locals.push(local);centrals.push(concat([u32(0x02014b50),u16(20),u16(20),u16(0x0800),u16(0),u16(tm),u16(dt),u32(crc),u32(data.length),u32(data.length),u16(nb.length),u16(0),u16(0),u16(0),u16(0),u32(0),u32(off),nb]));off+=local.length}const cs=centrals.reduce((s,p)=>s+p.length,0),end=concat([u32(0x06054b50),u16(0),u16(0),u16(entries.length),u16(entries.length),u32(cs),u32(off),u16(0)]);return new Blob([...locals,...centrals,end],{type:'application/zip'})}
-async function exportZip(){const entries=[];for(let i=0;i<frames.length;i++){const b=await canvasBlob(frameCanvas(frames[i]));entries.push({name:`${safeName()}-frame-${String(i+1).padStart(2,'0')}.png`,bytes:new Uint8Array(await b.arrayBuffer())})}downloadBlob(await zip(entries),`${safeName()}-frames.zip`)}
+async async function exportZip(){const entries=[];for(let i=0;i<frames.length;i++){const b=await canvasBlob(frameCanvas(frames[i],i));entries.push({name:safeName()+'-frame-'+String(i+1).padStart(2,'0')+'.png',bytes:new Uint8Array(await b.arrayBuffer())})}downloadBlob(await zip(entries),safeName()+'-frames.zip')}
 document.querySelectorAll('.tool').forEach(b=>b.onclick=()=>{tool=b.dataset.tool;document.querySelectorAll('.tool').forEach(x=>x.classList.toggle('active',x===b));$('textControls').classList.toggle('show',tool==='text');if(tool!=='select'){selection=null;updateSelectionUI();drawEditor()}});
 function setBrushSize(v){brushSize=Math.max(1,Math.min(32,Number(v)||1));$('brushSize').value=brushSize;$('brushSizeNumber').value=brushSize;$('brushSizeLabel').textContent=brushSize+' px'}
 $('brushSize').oninput=e=>setBrushSize(e.target.value);$('brushSizeNumber').oninput=e=>setBrushSize(e.target.value);
@@ -475,6 +485,22 @@ document.addEventListener('keydown',ev=>{
   }
   if(key==='d'){ev.preventDefault();dupFrame()}else if(ev.code==='Space'){ev.preventDefault();togglePlay()}
 });
+window.PixelStudioCore={
+  getState:()=>({width:canvasW,height:canvasH,current,frameCount:frames.length,frames}),
+  getFrame:(i=current)=>frames[i]?.slice()||null,
+  getFrames:()=>frames.map(cloneFrame),
+  getSelection:()=>selection?{...selection}:null,
+  getSelectionData:()=>{if(!selection)return null;const f=chosenFrame(),data=[];for(let y=0;y<selection.h;y++)for(let x=0;x<selection.w;x++)data.push(f[idx(selection.x+x,selection.y+y)]);return{...selection,data}},
+  replaceDocument:(doc)=>{if(!doc||!doc.width||!doc.height||!Array.isArray(doc.frames)||!doc.frames.length)throw new Error('Invalid Pixel Studio document.');canvasW=doc.width;canvasH=doc.height;size=Math.min(canvasW,canvasH);frames=doc.frames.map(f=>f.slice());current=0;selection=null;clipboard=null;history=[];redoStack=[];syncCanvasFields();updateUndoButtons();renderAll()},
+  replaceFrames:(next)=>{if(!Array.isArray(next)||!next.length)return;pushHistory();frames=next.map(f=>f.slice());current=Math.min(current,frames.length-1);renderAll()},
+  setCurrent:(i)=>{current=Math.max(0,Math.min(frames.length-1,Number(i)||0));renderAll()},
+  pushHistory,renderAll,setStatus,
+  setPrompt:(v)=>{$('prompt').value=v||''},
+  setFps:(v)=>{$('fps').value=Math.max(1,Math.min(60,Number(v)||6))},
+  getFps:()=>Math.max(1,Number($('fps').value)||6),
+  setColour:(v)=>{if(/^#[0-9a-f]{6}$/i.test(v)){colour=v;$('customColor').value=v;renderPalette()}},
+  getColour:()=>colour,frameCanvas,downloadBlob,canvasBlob
+};
 setBrushSize(1);syncCanvasFields();updateSelectionUI();generate();
 })();
 </script>
