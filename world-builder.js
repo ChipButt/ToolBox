@@ -4,15 +4,34 @@
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const canvas=$('#worldCanvas'),ctx=canvas.getContext('2d'),scroller=$('#canvasScroller'),sizer=$('#canvasSizer');
 const mapList=$('#mapList'),assetList=$('#assetList'),assetSearch=$('#assetSearch');
+const categoryList=$('#categoryList'),bulkCategoryBar=$('#bulkCategoryBar'),bulkCategorySelect=$('#bulkCategorySelect'),assetSelectionCount=$('#assetSelectionCount');
 const mapInspector=$('#mapInspector'),selectionInspector=$('#selectionInspector'),selectionTitle=$('#selectionTitle'),deleteSelected=$('#deleteSelected');
 const modeStatus=$('#modeStatus'),cursorStatus=$('#cursorStatus'),zoomSelect=$('#zoomSelect'),gridSizeInput=$('#gridSize'),snapToggle=$('#snapToggle');
+const brushWidthInput=$('#brushWidth'),brushHeightInput=$('#brushHeight');
 const playHud=$('#playHud'),playMapName=$('#playMapName');
 const dialogOverlay=$('#dialogOverlay'),dialogSpeaker=$('#dialogSpeaker'),dialogHeading=$('#dialogHeading'),dialogBody=$('#dialogBody'),dialogContinue=$('#dialogContinue');
 const puzzleOverlay=$('#puzzleOverlay'),puzzleHeading=$('#puzzleHeading'),puzzlePrompt=$('#puzzlePrompt'),puzzleSequence=$('#puzzleSequence'),puzzlePad=$('#puzzlePad');
 
 const STORE='chipin-world-builder-v1';
+const RECOVERY_STORE='chipin-world-builder-recovery-v1';
+const HISTORY_STORE='chipin-world-builder-history-v1';
+const SCHEMA_VERSION=2;
+
+const VIRTUAL_ASSETS={
+  'couch-horizontal':{label:'Couch — Horizontal',source:'couch.png',sx:0,sy:0,sw:32,sh:16},
+  'couch-vertical':{label:'Couch — Vertical',source:'couch.png',sx:32,sy:0,sw:16,sh:32},
+  'fence-horizontal':{label:'Fence — Horizontal',source:'fence.png',sx:0,sy:0,sw:32,sh:16},
+  'fence-vertical':{label:'Fence — Vertical',source:'fence.png',sx:32,sy:0,sw:16,sh:32},
+  'fence-shadow-horizontal':{label:'Fence Shadow — Horizontal',source:'fence-shadow.png',sx:0,sy:0,sw:32,sh:16},
+  'fence-shadow-vertical':{label:'Fence Shadow — Vertical',source:'fence-shadow.png',sx:32,sy:0,sw:16,sh:32}
+};
+const HIDDEN_COMBINED_ASSETS=new Set(['couch.png','fence.png','fence-shadow.png']);
+const virtualCanvasCache=new Map();
+
 let assets=null, project=null, mode='select', selected=null, selectedAssetName=null, snap=true, zoom=1;
 let drag=null, draftRect=null, pathEditing=false, pointerDown=false, lastStampKey='';
+let organiseMode=false,categoryFilter='all';
+const organisedSelection=new Set();
 let play=null, editorMapBeforePlay=null, lastTime=performance.now();
 let dialogState=null, puzzleState=null;
 const keys=new Set();
@@ -22,17 +41,62 @@ const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const grid=()=>Math.max(1,Number(gridSizeInput.value)||16);
 const snapV=v=>snap?Math.round(v/grid())*grid():Math.round(v);
+const brushCols=()=>clamp(Number(brushWidthInput?.value)||1,1,32);
+const brushRows=()=>clamp(Number(brushHeightInput?.value)||1,1,32);
+
+function catalogNames(){
+  return [...assets.names.filter(n=>!HIDDEN_COMBINED_ASSETS.has(n)),...Object.keys(VIRTUAL_ASSETS)]
+    .sort((a,b)=>assetLabel(a).localeCompare(assetLabel(b)));
+}
+function assetLabel(name){return VIRTUAL_ASSETS[name]?.label||String(name).replace('.png','')}
+function assetMeta(name){
+  const v=VIRTUAL_ASSETS[name];
+  if(v)return {width:v.sw,height:v.sh,cell:null,virtual:true,source:v.source,crop:{x:v.sx,y:v.sy,w:v.sw,h:v.sh}};
+  return assets.metadata(name);
+}
+function virtualCanvas(name){
+  if(virtualCanvasCache.has(name))return virtualCanvasCache.get(name);
+  const v=VIRTUAL_ASSETS[name];if(!v)return null;
+  const src=assets.canvas(v.source),c=document.createElement('canvas');c.width=v.sw;c.height=v.sh;
+  const x=c.getContext('2d');x.imageSmoothingEnabled=false;x.drawImage(src,v.sx,v.sy,v.sw,v.sh,0,0,v.sw,v.sh);
+  virtualCanvasCache.set(name,c);return c;
+}
+function assetPreview(name){
+  if(VIRTUAL_ASSETS[name])return virtualCanvas(name);
+  const meta=assets.metadata(name);return meta.cell?assets.frame(name,0):assets.canvas(name);
+}
+function drawAsset(target,name,x,y,options={}){
+  const v=VIRTUAL_ASSETS[name];
+  if(!v){assets.draw(target,name,x,y,options);return}
+  const src=virtualCanvas(name),w=options.width??src.width,h=options.height??src.height;
+  target.save();target.imageSmoothingEnabled=false;target.globalAlpha=options.alpha??1;
+  if(options.flipX||options.flipY){
+    target.translate(x+(options.flipX?w:0),y+(options.flipY?h:0));
+    target.scale(options.flipX?-1:1,options.flipY?-1:1);target.drawImage(src,0,0,w,h);
+  }else target.drawImage(src,x,y,w,h);
+  target.restore();
+}
+function freshEditor(){
+  return {categories:[],assetCategoryByAsset:{},brush:{w:1,h:1},activeCategory:'all'};
+}
 
 function freshMap(name='New Map'){
   return {id:uid('map'),name,width:640,height:480,bg:'#edf0e6',spawn:{x:80,y:80},assets:[],transitions:[],npcs:[],questTargets:[]};
 }
 function freshProject(){
   const map=freshMap('Player House - Bedroom');
-  return {version:1,name:'Christmas World',activeMapId:map.id,maps:[map]};
+  return {version:SCHEMA_VERSION,name:'Christmas World',activeMapId:map.id,maps:[map],editor:freshEditor()};
 }
 function normaliseProject(p){
   if(!p||!Array.isArray(p.maps)||!p.maps.length)throw new Error('No maps found in project.');
-  p.version=p.version||1;p.name=p.name||'Christmas World';
+  p.version=SCHEMA_VERSION;p.name=p.name||'Christmas World';
+  p.editor=p.editor&&typeof p.editor==='object'?p.editor:freshEditor();
+  p.editor.categories=Array.isArray(p.editor.categories)?p.editor.categories:[];
+  p.editor.assetCategoryByAsset=p.editor.assetCategoryByAsset&&typeof p.editor.assetCategoryByAsset==='object'?p.editor.assetCategoryByAsset:{};
+  p.editor.brush=p.editor.brush&&typeof p.editor.brush==='object'?p.editor.brush:{w:1,h:1};
+  p.editor.brush.w=clamp(Number(p.editor.brush.w)||1,1,32);p.editor.brush.h=clamp(Number(p.editor.brush.h)||1,1,32);
+  p.editor.activeCategory=p.editor.activeCategory||'all';
+  for(const c of p.editor.categories){c.id=c.id||uid('cat');c.name=c.name||'Category'}
   for(const m of p.maps){
     m.id=m.id||uid('map');m.name=m.name||'Map';m.width=Math.max(160,Number(m.width)||640);m.height=Math.max(120,Number(m.height)||480);m.bg=m.bg||'#edf0e6';
     m.spawn=m.spawn||{x:80,y:80};m.assets=Array.isArray(m.assets)?m.assets:[];m.transitions=Array.isArray(m.transitions)?m.transitions:[];m.npcs=Array.isArray(m.npcs)?m.npcs:[];m.questTargets=Array.isArray(m.questTargets)?m.questTargets:[];
@@ -44,12 +108,26 @@ function normaliseProject(p){
   if(!p.maps.some(m=>m.id===p.activeMapId))p.activeMapId=p.maps[0].id;
   return p;
 }
+function recordHistory(raw){
+  try{
+    const list=JSON.parse(localStorage.getItem(HISTORY_STORE)||'[]');
+    list.unshift({savedAt:new Date().toISOString(),raw});
+    localStorage.setItem(HISTORY_STORE,JSON.stringify(list.slice(0,4)));
+  }catch(_){}
+}
 function saveLocal(show=true){
-  localStorage.setItem(STORE,JSON.stringify(project));
-  if(show)flashStatus('Project saved in this browser.');
+  if(!project)return;
+  project.version=SCHEMA_VERSION;project.updatedAt=new Date().toISOString();
+  const next=JSON.stringify(project),previous=localStorage.getItem(STORE);
+  if(previous&&previous!==next)localStorage.setItem(RECOVERY_STORE,previous);
+  localStorage.setItem(STORE,next);
+  if(show){recordHistory(next);flashStatus('Saved. This project will reopen after a hard refresh.')}
 }
 function loadLocal(){
-  try{const raw=localStorage.getItem(STORE);return raw?normaliseProject(JSON.parse(raw)):freshProject()}catch(e){console.warn(e);return freshProject()}
+  const candidates=[localStorage.getItem(STORE),localStorage.getItem(RECOVERY_STORE)];
+  try{for(const h of JSON.parse(localStorage.getItem(HISTORY_STORE)||'[]'))candidates.push(h.raw)}catch(_){}
+  for(const raw of candidates){if(!raw)continue;try{return normaliseProject(JSON.parse(raw))}catch(e){console.warn('World Builder save could not be loaded:',e)}}
+  return freshProject()
 }
 function activeMap(){
   const id=play?play.mapId:project.activeMapId;
@@ -63,7 +141,7 @@ function setActiveMap(id){
 }
 function flashStatus(text){modeStatus.textContent=text;clearTimeout(flashStatus.t);flashStatus.t=setTimeout(updateModeStatus,1800)}
 function updateModeStatus(){
-  const labels={select:'Select and drag objects. Use the inspector for exact values.',place:selectedAssetName?'Stamp '+selectedAssetName+' onto the map.':'Choose an asset from the palette.',transition:'Drag a rectangle where walking should load another map.',npc:'Click to place an NPC, then edit dialogue, movement and quest settings.',quest:'Click to place a quest item / puzzle point.',play:'Playtest is live. Walk through links and interact with NPCs.'};
+  const labels={select:'Select and drag objects. Use the inspector for exact values.',place:selectedAssetName?'Stamp '+assetLabel(selectedAssetName)+' · brush '+brushCols()+'×'+brushRows()+'.':'Choose an asset from the palette.',transition:'Drag a rectangle where walking should load another map.',npc:'Click to place an NPC, then edit dialogue, movement and quest settings.',quest:'Click to place a quest item / puzzle point.',play:'Playtest is live. Walk through links and interact with NPCs.'};
   modeStatus.textContent=pathEditing?'NPC PATH: click map points in walking order.':labels[mode];
 }
 function setMode(next){
@@ -86,11 +164,11 @@ function pointerWorld(e){
 }
 function hitRect(p,o){return p.x>=o.x&&p.x<=o.x+o.w&&p.y>=o.y&&p.y<=o.y+o.h}
 function frameCount(name){
-  const meta=assets.metadata(name);if(!meta.cell)return 1;
+  const meta=assetMeta(name);if(!meta.cell)return 1;
   return Math.max(1,Math.floor(meta.width/meta.cell.width)*Math.floor(meta.height/meta.cell.height));
 }
 function defaultAssetSize(name){
-  const meta=assets.metadata(name);
+  const meta=assetMeta(name);
   return meta.cell?{w:meta.cell.width,h:meta.cell.height,frame:0}:{w:meta.width,h:meta.height,frame:null};
 }
 function getSelected(){
@@ -110,10 +188,17 @@ function hitTest(p){
 }
 function addAssetAt(x,y){
   if(!selectedAssetName)return;
-  const m=activeMap(),d=defaultAssetSize(selectedAssetName),gx=snapV(x),gy=snapV(y);
-  const key=selectedAssetName+'|'+gx+'|'+gy;if(key===lastStampKey)return;lastStampKey=key;
-  const a={id:uid('asset'),asset:selectedAssetName,x:gx,y:gy,w:d.w,h:d.h,frame:d.frame,layer:0,flipX:false,flipY:false,solid:false};
-  m.assets.push(a);selectObject('asset',a.id);saveLocal(false);draw();
+  const m=activeMap(),d=defaultAssetSize(selectedAssetName),gx=snapV(x),gy=snapV(y),cols=brushCols(),rows=brushRows();
+  const key=selectedAssetName+'|'+gx+'|'+gy+'|'+cols+'x'+rows;if(key===lastStampKey)return;lastStampKey=key;
+  let last=null;
+  for(let row=0;row<rows;row++)for(let col=0;col<cols;col++){
+    const a={id:uid('asset'),asset:selectedAssetName,x:gx+col*d.w,y:gy+row*d.h,w:d.w,h:d.h,frame:d.frame,layer:0,flipX:false,flipY:false,solid:false};
+    const v=VIRTUAL_ASSETS[selectedAssetName];
+    if(v){a.sourceAsset=v.source;a.crop={x:v.sx,y:v.sy,w:v.sw,h:v.sh}}
+    m.assets.push(a);last=a;
+  }
+  if(last){selected={type:'asset',id:last.id};renderSelectionInspector()}
+  saveLocal(false);renderMaps();draw();
 }
 function addNpcAt(x,y){
   const n={id:uid('npc'),name:'Elf',x:snapV(x),y:snapV(y),speed:24,dialogue:'Hello!\nIt is lovely to see you.',path:[],quest:{enabled:false,title:'A Little Favour',description:'Could you fetch something for me?',itemName:'Quest Item',reward:'Christmas Present',completeText:'You found it! Thank you so much.'}};
@@ -172,7 +257,7 @@ function drawGrid(m){
 }
 function drawPlacedAsset(a){
   const opt={width:a.w,height:a.h,flipX:a.flipX,flipY:a.flipY};if(a.frame!=null)opt.frame=a.frame;
-  assets.draw(ctx,a.asset,a.x,a.y,opt);
+  drawAsset(ctx,a.asset,a.x,a.y,opt);
   if(selected?.type==='asset'&&selected.id===a.id&&!play){ctx.save();ctx.strokeStyle='#f7bd18';ctx.lineWidth=2;ctx.strokeRect(a.x-1,a.y-1,a.w+2,a.h+2);ctx.restore()}
 }
 function drawTransition(t){
@@ -182,8 +267,8 @@ function drawTransition(t){
 }
 function drawQuestTarget(q){
   if(play&&play.collected.has(q.id))return;
-  const name=q.asset&&assets.names.includes(q.asset)?q.asset:null;
-  if(name){const meta=assets.metadata(name),cw=meta.cell?.width||meta.width,ch=meta.cell?.height||meta.height;assets.draw(ctx,name,q.x-cw/2,q.y-ch/2,{frame:meta.cell?0:null,width:cw,height:ch})}
+  const name=q.asset&&catalogNames().includes(q.asset)?q.asset:null;
+  if(name){const meta=assetMeta(name),cw=meta.cell?.width||meta.width,ch=meta.cell?.height||meta.height;drawAsset(ctx,name,q.x-cw/2,q.y-ch/2,{frame:meta.cell?0:null,width:cw,height:ch})}
   else{ctx.fillStyle='#f7bd18';ctx.fillRect(q.x-6,q.y-6,12,12)}
   if(!play){ctx.save();ctx.strokeStyle=selected?.type==='quest'&&selected.id===q.id?'#f7bd18':'#c75b20';ctx.lineWidth=2;ctx.strokeRect(q.x-9,q.y-9,18,18);ctx.restore()}
 }
@@ -226,13 +311,59 @@ function renderMaps(){
     b.onclick=()=>{if(play)return;setActiveMap(m.id)};mapList.appendChild(b)
   }
 }
+function categoryName(id){return project.editor.categories.find(c=>c.id===id)?.name||''}
+function assignedCategory(name){return project.editor.assetCategoryByAsset[name]||''}
+function setAssetCategory(names,categoryId){
+  for(const name of names){if(categoryId)project.editor.assetCategoryByAsset[name]=categoryId;else delete project.editor.assetCategoryByAsset[name]}
+  saveLocal(false);renderCategories();renderAssets(assetSearch.value)
+}
+function renderCategories(){
+  categoryList.innerHTML='';
+  const specs=[{id:'all',name:'All'},{id:'uncategorised',name:'Uncategorised'},...project.editor.categories];
+  for(const c of specs){
+    const b=document.createElement('button');b.type='button';b.className='categoryChip'+(categoryFilter===c.id?' active':'');b.textContent=c.name;
+    b.dataset.category=c.id;
+    b.onclick=()=>{categoryFilter=c.id;project.editor.activeCategory=c.id;saveLocal(false);renderCategories();renderAssets(assetSearch.value)};
+    b.ondragover=e=>{if(c.id==='all')return;e.preventDefault();b.classList.add('dragOver')};
+    b.ondragleave=()=>b.classList.remove('dragOver');
+    b.ondrop=e=>{if(c.id==='all')return;e.preventDefault();b.classList.remove('dragOver');const name=e.dataTransfer.getData('text/asset-name');if(name)setAssetCategory([name],c.id==='uncategorised'?'':c.id)};
+    if(c.id!=='all'&&c.id!=='uncategorised'){
+      b.title='Click to filter · double-click to rename · right-click to delete';
+      b.ondblclick=e=>{e.preventDefault();const next=prompt('Rename category',c.name);if(next?.trim()){c.name=next.trim();saveLocal(false);renderCategories();renderAssets(assetSearch.value)}};
+      b.oncontextmenu=e=>{e.preventDefault();if(!confirm('Delete category "'+c.name+'"? Assets will become uncategorised.'))return;project.editor.categories=project.editor.categories.filter(x=>x.id!==c.id);for(const [name,id] of Object.entries(project.editor.assetCategoryByAsset))if(id===c.id)delete project.editor.assetCategoryByAsset[name];if(categoryFilter===c.id)categoryFilter='all';saveLocal(false);renderCategories();renderAssets(assetSearch.value)}
+    }
+    categoryList.appendChild(b)
+  }
+  bulkCategorySelect.innerHTML='<option value="">Uncategorised</option>'+project.editor.categories.map(c=>'<option value="'+c.id+'">'+esc(c.name)+'</option>').join('');
+  updateBulkCategoryBar()
+}
+function updateBulkCategoryBar(){
+  bulkCategoryBar.hidden=!organiseMode;assetSelectionCount.textContent=organisedSelection.size+' selected';
+  assetList.classList.toggle('organising',organiseMode);$('#organiseAssets').classList.toggle('active',organiseMode)
+}
+function assetMatchesCategory(name){
+  const assigned=assignedCategory(name);
+  if(categoryFilter==='all')return true;
+  if(categoryFilter==='uncategorised')return !assigned;
+  return assigned===categoryFilter
+}
 function renderAssets(filter=''){
   assetList.innerHTML='';const q=filter.trim().toLowerCase();
-  for(const name of assets.names.filter(n=>!q||n.toLowerCase().includes(q))){
-    const b=document.createElement('button');b.type='button';b.className='assetCard'+(name===selectedAssetName?' active':'');
-    const thumb=document.createElement('span');thumb.className='assetThumb';const c=document.createElement('canvas');const meta=assets.metadata(name),src=meta.cell?assets.frame(name,0):assets.canvas(name);c.width=src.width;c.height=src.height;c.getContext('2d').drawImage(src,0,0);thumb.appendChild(c);
-    const label=document.createElement('span');label.textContent=name.replace('.png','');b.append(thumb,label);
-    b.onclick=()=>{selectedAssetName=name;renderAssets(assetSearch.value);setMode('place')};assetList.appendChild(b)
+  const names=catalogNames().filter(n=>(!q||assetLabel(n).toLowerCase().includes(q)||n.toLowerCase().includes(q))&&assetMatchesCategory(n));
+  for(const name of names){
+    const b=document.createElement('button');b.type='button';b.draggable=true;b.className='assetCard'+(name===selectedAssetName?' active':'')+(organisedSelection.has(name)?' multiSelected':'');
+    const thumb=document.createElement('span');thumb.className='assetThumb';const c=document.createElement('canvas'),src=assetPreview(name);c.width=src.width;c.height=src.height;c.getContext('2d').drawImage(src,0,0);thumb.appendChild(c);
+    const check=document.createElement('i');check.className='assetCheck';check.textContent=organisedSelection.has(name)?'✓':'';
+    const label=document.createElement('span');label.textContent=assetLabel(name);
+    const category=categoryName(assignedCategory(name));if(category){const badge=document.createElement('span');badge.className='assetCategoryLabel';badge.textContent=category;b.appendChild(badge)}
+    b.append(thumb,label,check);
+    b.ondragstart=e=>{e.dataTransfer.setData('text/asset-name',name);e.dataTransfer.effectAllowed='move';b.classList.add('dragging')};
+    b.ondragend=()=>b.classList.remove('dragging');
+    b.onclick=()=>{
+      if(organiseMode){organisedSelection.has(name)?organisedSelection.delete(name):organisedSelection.add(name);renderAssets(assetSearch.value);updateBulkCategoryBar();return}
+      selectedAssetName=name;renderAssets(assetSearch.value);setMode('place')
+    };
+    assetList.appendChild(b)
   }
 }
 function input(label,id,value,type='text',extra=''){return '<label'+(extra.includes('full')?' class="full"':'')+'><span>'+label+'</span><input id="'+id+'" type="'+type+'" value="'+esc(value)+'"></label>'}
@@ -253,14 +384,14 @@ function renderMapInspector(){
   $('#duplicateMap').onclick=duplicateMap;$('#deleteMap').onclick=deleteMap;
 }
 function mapOptions(selectedId){return project.maps.map(m=>'<option value="'+m.id+'" '+(m.id===selectedId?'selected':'')+'>'+esc(m.name)+'</option>').join('')}
-function assetOptions(selectedName){return '<option value="">Marker only</option>'+assets.names.map(n=>'<option value="'+n+'" '+(n===selectedName?'selected':'')+'>'+esc(n.replace('.png',''))+'</option>').join('')}
+function assetOptions(selectedName){return '<option value="">Marker only</option>'+catalogNames().map(n=>'<option value="'+n+'" '+(n===selectedName?'selected':'')+'>'+esc(assetLabel(n))+'</option>').join('')}
 function bindNumber(id,obj,key,after=draw){const el=$('#'+id);if(el)el.onchange=e=>{obj[key]=Number(e.target.value)||0;saveLocal(false);after()}}
 function renderSelectionInspector(updateTitle=true){
   const o=getSelected();deleteSelected.disabled=!o;
   if(!o){if(updateTitle)selectionTitle.textContent='Nothing selected';selectionInspector.className='inspectorEmpty';selectionInspector.innerHTML='Select an asset, map link, NPC or quest item.';return}
   selectionInspector.className='inspectorForm';
   if(selected.type==='asset'){
-    if(updateTitle)selectionTitle.textContent=o.asset.replace('.png','');
+    if(updateTitle)selectionTitle.textContent=assetLabel(o.asset);
     const count=frameCount(o.asset);
     selectionInspector.innerHTML=
       input('X','selX',o.x,'number')+input('Y','selY',o.y,'number')+input('Width','selW',o.w,'number')+input('Height','selH',o.h,'number')+
@@ -334,16 +465,29 @@ $('#addMap').onclick=()=>{const m=freshMap('Map '+(project.maps.length+1));proje
 assetSearch.oninput=e=>renderAssets(e.target.value);
 zoomSelect.onchange=()=>{resizeCanvas();draw()};
 gridSizeInput.onchange=()=>draw();
+brushWidthInput.onchange=()=>{project.editor.brush.w=brushCols();brushWidthInput.value=project.editor.brush.w;saveLocal(false);updateModeStatus()};
+brushHeightInput.onchange=()=>{project.editor.brush.h=brushRows();brushHeightInput.value=project.editor.brush.h;saveLocal(false);updateModeStatus()};
 snapToggle.onclick=()=>{snap=!snap;snapToggle.classList.toggle('active',snap);snapToggle.textContent=snap?'SNAP':'FREE'};
-$$('.modeBtn[data-mode]').forEach(b=>b.onclick=()=>setMode(b.dataset.mode));
+$('#addCategory').onclick=()=>{const name=prompt('Category name');if(!name?.trim())return;const c={id:uid('cat'),name:name.trim()};project.editor.categories.push(c);categoryFilter=c.id;project.editor.activeCategory=c.id;saveLocal(false);renderCategories();renderAssets(assetSearch.value)};
+$('#organiseAssets').onclick=()=>{organiseMode=!organiseMode;if(!organiseMode)organisedSelection.clear();updateBulkCategoryBar();renderAssets(assetSearch.value)};
+$('#assignCategory').onclick=()=>{if(!organisedSelection.size){flashStatus('Select one or more assets first.');return}setAssetCategory([...organisedSelection],bulkCategorySelect.value);organisedSelection.clear();renderAssets(assetSearch.value);updateBulkCategoryBar()};
+$('#clearAssetSelection').onclick=()=>{organisedSelection.clear();renderAssets(assetSearch.value);updateBulkCategoryBar()};
+$('.modeBtn[data-mode]').forEach(b=>b.onclick=()=>setMode(b.dataset.mode));
 
 function download(name,text,type='text/javascript'){
   const blob=new Blob([text],{type}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),500)
 }
 $('#saveProject').onclick=()=>saveLocal(true);
+$('#backupProject').onclick=()=>{
+  saveLocal(true);
+  const filename=(project.name||'world-project').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')+'.world-backup.json';
+  download(filename,JSON.stringify(project,null,2),'application/json');flashStatus('Downloaded editable backup: '+filename)
+};
 $('#exportProject').onclick=()=>{
   saveLocal(false);
-  const clean=JSON.stringify(project,null,2);
+  const payload=JSON.parse(JSON.stringify(project));
+  payload.assetAliases=Object.fromEntries(Object.entries(VIRTUAL_ASSETS).map(([id,v])=>[id,{source:v.source,crop:{x:v.sx,y:v.sy,w:v.sw,h:v.sh},label:v.label}]));
+  const clean=JSON.stringify(payload,null,2);
   const code='/* Chip In World Builder export\n   Give this file to ChatGPT to turn the layout into the finished interactive game. */\nwindow.CHIPIN_WORLD_PROJECT = '+clean+';\n';
   const filename=(project.name||'world-project').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')+'.world.js';
   download(filename,code);flashStatus('Exported '+filename);
@@ -352,7 +496,7 @@ $('#importProject').onclick=()=>$('#importFile').click();
 $('#importFile').onchange=async e=>{
   const file=e.target.files?.[0];if(!file)return;
   try{const text=await file.text();let raw=text.trim();if(!raw.startsWith('{')){const a=raw.indexOf('{'),b=raw.lastIndexOf('}');if(a<0||b<a)throw new Error('No project object found.');raw=raw.slice(a,b+1)}
-    project=normaliseProject(JSON.parse(raw));selected=null;play=null;saveLocal(false);resizeCanvas();renderAllPanels();draw();flashStatus('Imported '+file.name)
+    project=normaliseProject(JSON.parse(raw));selected=null;play=null;organisedSelection.clear();categoryFilter=project.editor.activeCategory||'all';brushWidthInput.value=project.editor.brush.w;brushHeightInput.value=project.editor.brush.h;saveLocal(false);resizeCanvas();renderCategories();renderAssets(assetSearch.value);renderAllPanels();draw();flashStatus('Imported '+file.name)
   }catch(err){alert('Could not import project: '+err.message)}finally{e.target.value=''}
 };
 
@@ -467,8 +611,13 @@ addEventListener('keydown',e=>{
 });
 addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
 
+addEventListener('beforeunload',()=>{if(project)saveLocal(false)});
+
 VillagePixelAssets.ready.then(api=>{
-  assets=api;project=loadLocal();resizeCanvas();renderAssets();renderAllPanels();updateModeStatus();requestAnimationFrame(loop)
+  assets=api;project=loadLocal();categoryFilter=project.editor.activeCategory||'all';
+  if(categoryFilter!=='all'&&categoryFilter!=='uncategorised'&&!project.editor.categories.some(c=>c.id===categoryFilter))categoryFilter='all';
+  brushWidthInput.value=project.editor.brush.w;brushHeightInput.value=project.editor.brush.h;
+  resizeCanvas();renderCategories();renderAssets();renderAllPanels();updateModeStatus();requestAnimationFrame(loop)
 }).catch(err=>{
   console.error(err);modeStatus.textContent='Could not load the Christmas Village code-only asset pack: '+err.message
 });
