@@ -68,7 +68,20 @@ jobs:
           if(count!==312||names.length!==312)throw new Error('Expected 312 assets');
           if(p!==b.length)throw new Error('Trailing decoded bytes: '+(b.length-p));
           NODE
-      - name: Browser runtime diagnostic
+      - name: Guard against single-selector forEach regression
+        run: |
+          node <<'NODE'
+          const fs=require('fs');
+          const src=fs.readFileSync('world-builder.js','utf8');
+          const bad=src.split(/\r?\n/).map((line,i)=>({line:i+1,text:line}))
+            .filter(x=>/(?<!\$)\$\([^\n]*?\)\.forEach\s*\(/.test(x.text));
+          if(bad.length){
+            console.error('Invalid $().forEach() usage:',bad);
+            process.exit(1);
+          }
+          console.log('world-builder.js selector iteration check passed');
+          NODE
+      - name: Browser runtime and persistence diagnostic
         run: |
           python3 -m http.server 8000 >/tmp/world-builder-http.log 2>&1 &
           python3 -m pip install --quiet selenium
@@ -78,9 +91,12 @@ jobs:
           from selenium.webdriver.chrome.options import Options
           from selenium.webdriver.support.ui import WebDriverWait
 
+          URL='http://127.0.0.1:8000/world-builder.html'
+          STORE='chipin-world-builder-v1'
+
           for _ in range(50):
               try:
-                  urllib.request.urlopen('http://127.0.0.1:8000/world-builder.html', timeout=1).read(64)
+                  urllib.request.urlopen(URL, timeout=1).read(64)
                   break
               except Exception:
                   time.sleep(0.1)
@@ -94,52 +110,140 @@ jobs:
           options.add_argument('--window-size=1440,1200')
           options.set_capability('goog:loggingPrefs', {'browser':'ALL'})
           driver=webdriver.Chrome(options=options)
-          try:
-              driver.get('http://127.0.0.1:8000/world-builder.html')
-              WebDriverWait(driver, 15).until(lambda d: d.execute_script(
+
+          def wait_ready():
+              WebDriverWait(driver, 20).until(lambda d: d.execute_script(
                   "return !!window.WorldBuilderSheetAssets && (window.WorldBuilderSheetAssets.loaded || !!window.WorldBuilderSheetAssets.loadError)"
               ))
-              state=driver.execute_script("""
+              WebDriverWait(driver, 20).until(lambda d: d.execute_script(
+                  "return document.querySelectorAll('#assetList .assetCard').length===370"
+              ))
+
+          def snapshot():
+              return driver.execute_script("""
                 const api=window.WorldBuilderSheetAssets;
-                const out={
+                const pixelData=c=>Array.from(c.getContext('2d').getImageData(0,0,c.width,c.height).data);
+                const summary=c=>{
+                  const d=pixelData(c);let alpha=0,rgb=0;
+                  for(let i=0;i<d.length;i+=4){alpha+=d[i+3];rgb+=d[i]+d[i+1]+d[i+2];}
+                  return {width:c.width,height:c.height,alphaSum:alpha,rgbSum:rgb};
+                };
+                const compareThumb=name=>{
+                  const direct=api.canvas(name);
+                  const card=[...document.querySelectorAll('#assetList .assetCard')]
+                    .find(x=>x.textContent.includes(name));
+                  const thumb=card?.querySelector('canvas')||null;
+                  if(!thumb)return {card:false,match:false,direct:summary(direct),thumb:null};
+                  const a=pixelData(direct),b=pixelData(thumb);
+                  return {
+                    card:true,
+                    match:direct.width===thumb.width && direct.height===thumb.height &&
+                      a.length===b.length && a.every((v,i)=>v===b[i]),
+                    direct:summary(direct),
+                    thumb:summary(thumb)
+                  };
+                };
+                const allChip=document.querySelector('.categoryChip[data-category="all"]')?.textContent||'';
+                return {
                   loaded:api.loaded,
                   loadError:api.loadError ? String(api.loadError.stack||api.loadError.message||api.loadError) : null,
-                  names:api.names.length,
+                  uploadedNames:api.names.length,
                   cards:document.querySelectorAll('#assetList .assetCard').length,
+                  allChip,
+                  dungeon:compareThumb('Dungeon r00 c01'),
+                  bigset:compareThumb('BigSet r00 c00'),
                   modeStatus:document.querySelector('#modeStatus')?.textContent||''
                 };
+              """)
+
+          try:
+              driver.get(URL)
+              wait_ready()
+              state=snapshot()
+              print('BROWSER_STATE',json.dumps(state,sort_keys=True))
+
+              if state['uploadedNames'] != 312:
+                  raise AssertionError(f"expected 312 uploaded names, got {state['uploadedNames']}")
+              if not state['loaded']:
+                  raise AssertionError(f"uploaded runtime failed: {state['loadError']}")
+              if state['cards'] != 370 or 'All (370)' not in state['allChip']:
+                  raise AssertionError(f"expected All (370) and 370 cards, got {state['allChip']!r}, {state['cards']}")
+              for family in ('dungeon','bigset'):
+                  item=state[family]
+                  if not item['card'] or not item['match']:
+                      raise AssertionError(f"{family} palette thumbnail does not exactly match decoded artwork: {item}")
+                  if item['direct']['alphaSum'] == 0:
+                      raise AssertionError(f"{family} decoded artwork is blank")
+
+              # Select a real uploaded Dungeon tile through the palette and stamp it through the actual canvas pointer handler.
+              stamp=driver.execute_script("""
+                const name='Dungeon r00 c01';
+                const card=[...document.querySelectorAll('#assetList .assetCard')]
+                  .find(x=>x.textContent.includes(name));
+                if(!card)throw new Error('Dungeon palette card not found');
+                card.click();
+                const canvas=document.querySelector('#worldCanvas'),r=canvas.getBoundingClientRect();
+                const x=r.left+96*(r.width/canvas.width),y=r.top+96*(r.height/canvas.height);
+                canvas.dispatchEvent(new PointerEvent('pointerdown',{
+                  bubbles:true,cancelable:true,pointerId:91,pointerType:'mouse',button:0,buttons:1,clientX:x,clientY:y
+                }));
+                canvas.dispatchEvent(new PointerEvent('pointerup',{
+                  bubbles:true,cancelable:true,pointerId:91,pointerType:'mouse',button:0,buttons:0,clientX:x,clientY:y
+                }));
+                document.querySelector('#saveProject').click();
+                const p=JSON.parse(localStorage.getItem('chipin-world-builder-v1'));
+                const m=p.maps.find(x=>x.id===p.activeMapId)||p.maps[0];
+                const placed=m.assets.filter(a=>a.asset===name);
+                return {
+                  placed:placed.length,
+                  last:placed.at(-1)||null,
+                  totalMapAssets:m.assets.length,
+                  status:document.querySelector('#modeStatus')?.textContent||''
+                };
+              """)
+              print('STAMP_STATE',json.dumps(stamp,sort_keys=True))
+              if stamp['placed'] < 1 or not stamp['last']:
+                  raise AssertionError('Dungeon tile was not stamped into the map')
+              if stamp['last']['w'] != 16 or stamp['last']['h'] != 16:
+                  raise AssertionError(f"stamped uploaded tile has wrong size: {stamp['last']}")
+
+              # Hard refresh and prove the saved uploaded-tile placement and artwork survive reload.
+              driver.refresh()
+              wait_ready()
+              persisted=driver.execute_script("""
+                const p=JSON.parse(localStorage.getItem('chipin-world-builder-v1'));
+                const m=p.maps.find(x=>x.id===p.activeMapId)||p.maps[0];
+                const placed=m.assets.filter(a=>a.asset==='Dungeon r00 c01');
+                const api=window.WorldBuilderSheetAssets;
+                let canvasOk=false;
                 try{
                   const c=api.canvas('Dungeon r00 c01');
                   const d=c.getContext('2d').getImageData(0,0,c.width,c.height).data;
-                  let alpha=0, rgb=0;
-                  for(let i=0;i<d.length;i+=4){alpha+=d[i+3];rgb+=d[i]+d[i+1]+d[i+2];}
-                  out.canvas={width:c.width,height:c.height,alphaSum:alpha,rgbSum:rgb};
-                }catch(e){out.canvasError=String(e.stack||e.message||e)}
-                const cards=[...document.querySelectorAll('#assetList .assetCard')];
-                const card=cards.find(x=>x.textContent.includes('Dungeon r00 c01'));
-                out.dungeonCard=!!card;
-                if(card){
-                  const c=card.querySelector('canvas');
-                  if(c){
-                    const d=c.getContext('2d').getImageData(0,0,c.width,c.height).data;
-                    let alpha=0,rgb=0;
-                    for(let i=0;i<d.length;i+=4){alpha+=d[i+3];rgb+=d[i]+d[i+1]+d[i+2];}
-                    out.dungeonThumb={width:c.width,height:c.height,alphaSum:alpha,rgbSum:rgb};
-                  }
-                }
-                return out;
+                  canvasOk=Array.from(d).some((v,i)=>i%4===3&&v>0);
+                }catch(_){}
+                return {
+                  placed:placed.length,
+                  allChip:document.querySelector('.categoryChip[data-category="all"]')?.textContent||'',
+                  cards:document.querySelectorAll('#assetList .assetCard').length,
+                  loaded:api.loaded,
+                  canvasOk
+                };
               """)
-              print('BROWSER_STATE',json.dumps(state,sort_keys=True))
+              print('REFRESH_STATE',json.dumps(persisted,sort_keys=True))
+              if persisted['placed'] < 1:
+                  raise AssertionError('saved Dungeon placement did not survive hard refresh')
+              if persisted['cards'] != 370 or 'All (370)' not in persisted['allChip']:
+                  raise AssertionError('asset catalogue did not survive hard refresh at 370 assets')
+              if not persisted['loaded'] or not persisted['canvasOk']:
+                  raise AssertionError('uploaded artwork did not survive hard refresh')
+
+              severe=[]
               for entry in driver.get_log('browser'):
                   print('BROWSER_LOG',entry['level'],entry['message'])
-              if state['names'] != 312:
-                  raise AssertionError(f"expected 312 uploaded names, got {state['names']}")
-              if not state['loaded']:
-                  raise AssertionError(f"uploaded runtime failed: {state['loadError']}")
-              if state.get('canvasError'):
-                  raise AssertionError(state['canvasError'])
-              if not state.get('canvas') or state['canvas']['alphaSum'] == 0:
-                  raise AssertionError('Dungeon canvas is blank')
+                  if entry['level']=='SEVERE' and 'favicon.ico' not in entry['message']:
+                      severe.append(entry['message'])
+              if severe:
+                  raise AssertionError('unexpected severe browser logs: '+json.dumps(severe))
           finally:
               driver.quit()
           PY
