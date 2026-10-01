@@ -62,7 +62,8 @@
       if(pixel!==width*height)throw new Error('Corrupt uploaded tile asset: '+name);
       assets.set(name,{name,width,height,rgba,category:categoryForName(name),pack:'uploaded-tiles'})
     }
-    if(assets.size!==STATIC_NAMES.length)throw new Error('Uploaded tile count mismatch: '+assets.size+' / '+STATIC_NAMES.length);
+    api.loaded=true;
+    api.loadError=null;
     return api
   }
   function requireAsset(name){const a=assets.get(name);if(!a)throw new Error('Uploaded tile is still loading: '+name);return a}
@@ -70,7 +71,7 @@
   function frame(name){return canvas(name)}
   function draw(ctx,name,x,y,options={}){const src=canvas(name),w=options.width??src.width,h=options.height??src.height;ctx.save();ctx.imageSmoothingEnabled=false;ctx.globalAlpha=options.alpha??1;if(options.flipX||options.flipY){ctx.translate(x+(options.flipX?w:0),y+(options.flipY?h:0));ctx.scale(options.flipX?-1:1,options.flipY?-1:1);ctx.drawImage(src,0,0,w,h)}else ctx.drawImage(src,x,y,w,h);ctx.restore()}
   function metadata(name){const a=assets.get(name);return a?{name:a.name,width:a.width,height:a.height,cell:null,category:a.category,pack:a.pack}:{name,width:16,height:16,cell:null,category:categoryForName(name),pack:'uploaded-tiles'}}
-  const api={ready:null,names:STATIC_NAMES,canvas,frame,draw,metadata,categoryForName,get(name){return requireAsset(name)}};
-  api.ready=gunzip(PACK).then(parse);
+  const api={ready:null,names:STATIC_NAMES,loaded:false,loadError:null,canvas,frame,draw,metadata,categoryForName,get(name){return requireAsset(name)}};
+  api.ready=gunzip(PACK).then(parse).catch(err=>{api.loadError=err;throw err});
   window.WorldBuilderSheetAssets=api;
 })();
