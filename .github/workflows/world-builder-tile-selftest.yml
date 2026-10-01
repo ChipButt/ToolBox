@@ -1,0 +1,70 @@
+name: World Builder tile self-test
+
+on:
+  push:
+    paths:
+      - 'world-builder-uploaded-tiles-data-*.js'
+      - 'world-builder-uploaded-tiles-runtime.js'
+      - 'world-builder.js'
+      - 'world-builder.html'
+      - '.github/workflows/world-builder-tile-selftest.yml'
+  workflow_dispatch:
+
+jobs:
+  decode-uploaded-tiles:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Decode and validate 312 uploaded tiles
+        run: |
+          node <<'NODE'
+          const fs=require('fs'), zlib=require('zlib');
+          const files=[1,2,3,4].map(n=>`world-builder-uploaded-tiles-data-${n}.js`);
+          let pack='';
+          for(const file of files){
+            const src=fs.readFileSync(file,'utf8');
+            const m=src.match(/\+"([A-Za-z0-9+/=]+)";?\s*$/);
+            if(!m) throw new Error('Could not extract base64 chunk from '+file);
+            pack += m[1];
+          }
+          console.log('base64 chars',pack.length);
+          const compressed=Buffer.from(pack,'base64');
+          console.log('gzip bytes',compressed.length,'header',compressed.subarray(0,10).toString('hex'));
+          const b=zlib.gunzipSync(compressed);
+          console.log('decoded bytes',b.length,'first32',b.subarray(0,32).toString('hex'));
+          let p=0;
+          const u16=()=>{ if(p+2>b.length)throw new Error('u16 OOB @'+p); const v=b[p]|(b[p+1]<<8); p+=2; return v; };
+          const u32=()=>{ if(p+4>b.length)throw new Error('u32 OOB @'+p); const v=(b[p]|(b[p+1]<<8)|(b[p+2]<<16)|(b[p+3]<<24))>>>0; p+=4; return v; };
+          const u8=()=>{ if(p>=b.length)throw new Error('u8 OOB @'+p); return b[p++]; };
+          const count=u16();
+          console.log('asset count',count);
+          const names=[];
+          for(let a=0;a<count;a++){
+            const start=p;
+            const nl=u8();
+            if(p+nl>b.length)throw new Error(`name OOB asset ${a} start ${start} nl ${nl}`);
+            const name=b.subarray(p,p+nl).toString('utf8'); p+=nl;
+            const width=u16(),height=u16(),pc=u8();
+            const paletteBytes=pc*4;
+            if(p+paletteBytes>b.length)throw new Error(`palette OOB asset ${a} ${name} pc ${pc} @${p}`);
+            p+=paletteBytes;
+            const rc=u32();
+            let pixel=0;
+            for(let r=0;r<rc;r++){
+              const len=u16(),ci=u8();
+              if(ci>=pc)throw new Error(`palette index OOB asset ${a} ${name} run ${r}: ci ${ci}, pc ${pc}, start ${start}`);
+              pixel+=len;
+              if(pixel>width*height)throw new Error(`pixel overflow asset ${a} ${name}: ${pixel}/${width*height}, rc ${rc}, start ${start}`);
+            }
+            if(pixel!==width*height)throw new Error(`pixel mismatch asset ${a} ${name}: ${pixel}/${width*height}, pc ${pc}, rc ${rc}, start ${start}, end ${p}`);
+            names.push(name);
+          }
+          console.log('parsed',names.length,'assets; remaining bytes',b.length-p);
+          console.log('first',names.slice(0,5));
+          console.log('last',names.slice(-5));
+          if(count!==312||names.length!==312)throw new Error('Expected 312 assets');
+          if(p!==b.length)throw new Error('Trailing decoded bytes: '+(b.length-p));
+          NODE
