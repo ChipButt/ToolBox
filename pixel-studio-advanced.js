@@ -209,18 +209,41 @@
   }
 
   function capturePaletteBase(){paletteBaseFrames=core().getFrames();renderPaletteMapper();status('Captured the current artwork as the base for reusable character variants.')}
+  function colourDistance(a,b){const x=hexRgb(a),y=hexRgb(b),dr=x[0]-y[0],dg=x[1]-y[1],db=x[2]-y[2];return Math.sqrt(dr*dr+dg*dg+db*db)}
+  function remapColour(c,mapping){
+    if(!c)return c;
+    const key=c.toLowerCase(),exact=mapping[key];
+    if(exact&&exact.target.toLowerCase()!==key)return exact.target;
+    if(!$('paletteShadeFamily')?.checked)return exact?.target||c;
+    const tolerance=Math.max(0,Number($('paletteTolerance')?.value)||0);
+    if(!tolerance)return exact?.target||c;
+    let best=null,bestD=Infinity,bestSource=null;
+    for(const [source,entry] of Object.entries(mapping)){
+      if(!entry?.target||entry.target.toLowerCase()===source.toLowerCase())continue;
+      const d=colourDistance(key,source);
+      if(d<=tolerance&&d<bestD){bestD=d;best=entry;bestSource=source}
+    }
+    if(!best)return exact?.target||c;
+    const src=hexRgb(bestSource),tar=hexRgb(best.target),cur=hexRgb(key);
+    return hex(
+      Math.max(0,Math.min(255,Math.round(tar[0]+(cur[0]-src[0])*.72))),
+      Math.max(0,Math.min(255,Math.round(tar[1]+(cur[1]-src[1])*.72))),
+      Math.max(0,Math.min(255,Math.round(tar[2]+(cur[2]-src[2])*.72)))
+    );
+  }
   function applyPaletteMapping(mapping=currentPaletteMapping()){
     const base=paletteBaseFrames||core().getFrames();
-    const next=base.map(frame=>frame.map(c=>c?(mapping[c.toLowerCase()]?.target||c):null));
+    const next=base.map(frame=>frame.map(c=>remapColour(c,mapping)));
     core().replaceFrames(next);
     if(window.PixelStudioOverlays?.remap)window.PixelStudioOverlays.remap(mapping);
-    renderPaletteMapper();status('Applied palette remap across every animation frame and overlay.');
+    renderPaletteMapper();status('Applied palette remap across every animation frame and overlay, including related shades.');
   }
 
   function variantsStore(){try{return JSON.parse(localStorage.getItem('pixelStudioVariants')||'{}')}catch(_){return{}}}
   function saveVariant(){
     const name=safeLabel($('variantName').value);if(!name)return status('Give the palette variant a name first.');
-    const all=variantsStore();all[name]=currentPaletteMapping();localStorage.setItem('pixelStudioVariants',JSON.stringify(all));renderVariantSelect(name);status('Saved palette variant "'+name+'" on this device.');
+    const all=variantsStore();all[name]={mapping:currentPaletteMapping(),shadeFamily:$('paletteShadeFamily').checked,tolerance:Number($('paletteTolerance').value)||0};
+    localStorage.setItem('pixelStudioVariants',JSON.stringify(all));renderVariantSelect(name);status('Saved palette variant "'+name+'" on this device.');
   }
   function renderVariantSelect(selectName){
     const sel=$('variantSelect'),all=variantsStore();sel.innerHTML='<option value="">Saved variants…</option>';
@@ -228,7 +251,9 @@
     if(selectName)sel.value=selectName;
   }
   function loadVariant(){
-    const name=$('variantSelect').value,all=variantsStore(),map=all[name];if(!map)return;
+    const name=$('variantSelect').value,all=variantsStore(),record=all[name];if(!record)return;
+    const map=record.mapping||record;
+    if(record.mapping){$('paletteShadeFamily').checked=record.shadeFamily!==false;$('paletteTolerance').value=record.tolerance??48}
     document.querySelectorAll('.paletteMapRow').forEach(row=>{
       const saved=map[row.dataset.source.toLowerCase()];if(saved){row.querySelector('.paletteTarget').value=saved.target;row.querySelector('.paletteSlotName').value=saved.name||''}
     });status('Loaded variant "'+name+'". Press Apply palette to commit it.');
@@ -314,7 +339,7 @@
     clearOverlays();core().replaceFrames(next);status('Baked all overlays into the editable animation frames.');
   }
   function remapOverlays(mapping){
-    for(const layer of overlays)layer.pixels=layer.pixels.map(c=>c?(mapping[c.toLowerCase()]?.target||c):null);
+    for(const layer of overlays)layer.pixels=layer.pixels.map(c=>remapColour(c,mapping));
     core().renderAll();
   }
 
