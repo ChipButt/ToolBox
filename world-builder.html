@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#10243d">
+  <title>World Builder · ToolBox</title>
+  <link rel="stylesheet" href="world-builder.css?v=1">
+</head>
+<body>
+<div class="builderApp">
+  <header class="builderHeader">
+    <a class="backBtn" href="./">TOOLBOX</a>
+    <div class="builderTitle">
+      <span class="eyebrow">CHIP IN GAME TOOLS</span>
+      <strong>World Builder</strong>
+      <small>Christmas Village Asset Pack</small>
+    </div>
+    <div class="headerActions">
+      <button id="saveProject" type="button">SAVE</button>
+      <button id="importProject" type="button">IMPORT</button>
+      <button id="exportProject" class="primary" type="button">EXPORT CODE</button>
+      <input id="importFile" type="file" accept=".json,.js,application/json,text/javascript" hidden>
+    </div>
+  </header>
+
+  <div class="builderBody">
+    <aside class="leftPanel">
+      <section class="panelSection">
+        <div class="sectionHead">
+          <div><span class="eyebrow">WORLD</span><strong>Maps</strong></div>
+          <button id="addMap" class="smallBtn" type="button">+ MAP</button>
+        </div>
+        <div id="mapList" class="mapList"></div>
+      </section>
+
+      <section class="panelSection grow">
+        <div class="sectionHead">
+          <div><span class="eyebrow">PALETTE</span><strong>Assets</strong></div>
+          <input id="assetSearch" class="miniInput" placeholder="Search">
+        </div>
+        <div id="assetList" class="assetList"></div>
+      </section>
+    </aside>
+
+    <main class="workspace">
+      <div class="toolRow">
+        <div class="modeGroup" id="modeGroup">
+          <button class="modeBtn active" data-mode="select" type="button">SELECT</button>
+          <button class="modeBtn" data-mode="place" type="button">STAMP</button>
+          <button class="modeBtn" data-mode="transition" type="button">MAP LINK</button>
+          <button class="modeBtn" data-mode="npc" type="button">NPC</button>
+          <button class="modeBtn" data-mode="quest" type="button">QUEST ITEM</button>
+          <button id="playtestBtn" class="modeBtn playBtn" type="button">▶ PLAYTEST</button>
+        </div>
+        <div class="viewGroup">
+          <label>GRID <input id="gridSize" type="number" min="1" max="64" value="16"></label>
+          <label>ZOOM
+            <select id="zoomSelect">
+              <option value=".5">50%</option>
+              <option value=".75">75%</option>
+              <option value="1" selected>100%</option>
+              <option value="1.5">150%</option>
+              <option value="2">200%</option>
+            </select>
+          </label>
+          <button id="snapToggle" class="toggleBtn active" type="button">SNAP</button>
+        </div>
+      </div>
+
+      <div id="canvasScroller" class="canvasScroller">
+        <div id="canvasSizer" class="canvasSizer">
+          <canvas id="worldCanvas" width="640" height="480"></canvas>
+        </div>
+      </div>
+
+      <div class="statusBar">
+        <span id="modeStatus">Select objects to edit them.</span>
+        <span id="cursorStatus">X 0 · Y 0</span>
+      </div>
+    </main>
+
+    <aside class="rightPanel">
+      <section class="panelSection">
+        <div class="sectionHead"><div><span class="eyebrow">MAP</span><strong id="mapInspectorTitle">Map settings</strong></div></div>
+        <div id="mapInspector" class="formGrid"></div>
+      </section>
+
+      <section class="panelSection grow">
+        <div class="sectionHead">
+          <div><span class="eyebrow">SELECTION</span><strong id="selectionTitle">Nothing selected</strong></div>
+          <button id="deleteSelected" class="dangerBtn" type="button" disabled>DELETE</button>
+        </div>
+        <div id="selectionInspector" class="inspectorEmpty">Select an asset, map link, NPC or quest item.</div>
+      </section>
+
+      <section class="panelSection helpBlock">
+        <span class="eyebrow">SHORTCUTS</span>
+        <p><kbd>Del</kbd> remove · <kbd>Arrows</kbd> nudge · <kbd>Cmd/Ctrl+D</kbd> duplicate · <kbd>Space</kbd> interact in Playtest</p>
+      </section>
+    </aside>
+  </div>
+</div>
+
+<div id="playHud" class="playHud" hidden>
+  <div class="playBadge"><span>PLAYTEST</span><strong id="playMapName">Map</strong></div>
+  <div class="playHelp">WASD / arrows to move · Space / Enter to interact</div>
+  <button id="stopPlaytest" type="button">STOP</button>
+</div>
+
+<div id="dialogOverlay" class="modal" hidden>
+  <div class="modalCard dialogueCard">
+    <span class="eyebrow" id="dialogSpeaker">NPC</span>
+    <h2 id="dialogHeading">Dialogue</h2>
+    <p id="dialogBody"></p>
+    <button id="dialogContinue" class="primaryAction" type="button">CONTINUE</button>
+  </div>
+</div>
+
+<div id="puzzleOverlay" class="modal" hidden>
+  <div class="modalCard">
+    <span class="eyebrow">PLAYTEST PUZZLE</span>
+    <h2 id="puzzleHeading">Sequence</h2>
+    <p id="puzzlePrompt"></p>
+    <div id="puzzleSequence" class="puzzleSequence"></div>
+    <div id="puzzlePad" class="puzzlePad"></div>
+    <button id="puzzleClose" class="secondaryAction" type="button">CANCEL</button>
+  </div>
+</div>
+
+<script src="world-builder-assets.js?v=1"></script>
+<script src="world-builder.js?v=1"></script>
+</body>
+</html>
