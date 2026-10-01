@@ -911,7 +911,7 @@ function stopPlaytest(){
   play=null;project.activeMapId=editorMapBeforePlay||project.maps[0].id;editorMapBeforePlay=null;mode='select';
   document.body.classList.remove('mobilePlaytest');
   playHud.hidden=true;mobilePlayControls.hidden=true;
-  $('#playtestBtn').classList.remove('active');$('.modeBtn[data-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mode==='select'));
+  $('#playtestBtn').classList.remove('active');$$('.modeBtn[data-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mode==='select'));
   resizeCanvas();renderAllPanels();updateModeStatus();draw()
 }
 $('#playtestBtn').onclick=()=>play?stopPlaytest():startPlaytest();$('#stopPlaytest').onclick=stopPlaytest;
