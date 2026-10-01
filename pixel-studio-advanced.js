@@ -14,6 +14,7 @@
   let mapPreviewKey = null;
   let overlaySeq = 1;
   let activeOverlayId = null;
+  let paletteBaseFrames = null;
   const overlays = [];
 
   function status(message){ core()?.setStatus(message); if($('assetStatus')) $('assetStatus').textContent=message; }
@@ -101,6 +102,7 @@
     if(!snappedResult)runSnap();
     const img=snappedResult.imageData;
     core().replaceDocument({width:img.width,height:img.height,frames:[imageDataToFrame(img)]});
+    paletteBaseFrames=null;
     core().setPrompt(sourceName||'snapped-pixel-art');
     clearAnimationMap();
     clearOverlays();
@@ -135,6 +137,7 @@
     }
     if(!frames.length)throw new Error('No complete cells fit the selected frame size.');
     core().replaceDocument({width:cw,height:ch,frames});
+    paletteBaseFrames=null;
     core().setPrompt(sourceJson?.character?.name||sourceName||'imported-sprite');
     clearOverlays();
     animationMap=sourceJson?mappingFromJson(sourceJson,cols):{};
@@ -183,7 +186,7 @@
 
   function renderPaletteMapper(){
     const host=$('paletteMapList');host.innerHTML='';
-    const entries=uniquePalette(core().getFrames()).slice(0,96);
+    const entries=uniquePalette(paletteBaseFrames||core().getFrames()).slice(0,96);
     if(!entries.length){host.innerHTML='<div class="labEmpty">No colours in the current artwork.</div>';return}
     for(const [source,count] of entries){
       const row=document.createElement('div');row.className='paletteMapRow';row.dataset.source=source;
@@ -205,8 +208,10 @@
     return map;
   }
 
+  function capturePaletteBase(){paletteBaseFrames=core().getFrames();renderPaletteMapper();status('Captured the current artwork as the base for reusable character variants.')}
   function applyPaletteMapping(mapping=currentPaletteMapping()){
-    const next=core().getFrames().map(frame=>frame.map(c=>c?(mapping[c.toLowerCase()]?.target||c):null));
+    const base=paletteBaseFrames||core().getFrames();
+    const next=base.map(frame=>frame.map(c=>c?(mapping[c.toLowerCase()]?.target||c):null));
     core().replaceFrames(next);
     if(window.PixelStudioOverlays?.remap)window.PixelStudioOverlays.remap(mapping);
     renderPaletteMapper();status('Applied palette remap across every animation frame and overlay.');
@@ -327,7 +332,7 @@
     $('snapOpen').onclick=()=>{try{openSnapped()}catch(err){status(err.message)}};
     $('sheetImport').onclick=()=>{try{importSheet()}catch(err){status(err.message)}};
     $('mapAdd').onclick=addAnimationMapping;$('mapClear').onclick=clearAnimationMap;
-    $('paletteScan').onclick=renderPaletteMapper;$('paletteApply').onclick=()=>applyPaletteMapping();$('variantSave').onclick=saveVariant;$('variantSelect').onchange=loadVariant;
+    $('paletteScan').onclick=capturePaletteBase;$('paletteApply').onclick=()=>applyPaletteMapping();$('variantSave').onclick=saveVariant;$('variantSelect').onchange=loadVariant;
     $('overlayCopy').onclick=()=>selectionOverlay(false);$('overlayLift').onclick=()=>selectionOverlay(true);$('overlayImportBtn').onclick=()=>$('overlayImport').click();
     $('overlayImport').addEventListener('change',e=>importOverlay(e.target.files[0]).catch(err=>status(err.message)));
     ['overlayX','overlayY','overlayTint','overlayTintAmount'].forEach(id=>$(id).addEventListener('input',updateOverlayTransform));
