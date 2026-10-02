@@ -1047,9 +1047,9 @@ function renderSelectionInspector(updateTitle=true){
     if($('#selAnimFps'))$('#selAnimFps').onchange=e=>{o.animationFps=clamp(Number(e.target.value)||6,1,30);e.target.value=o.animationFps;saveLocal(false);draw()};
     if($('#selAnimated'))$('#selAnimated').onchange=e=>{o.animated=e.target.checked;saveLocal(false);renderSelectionInspector();draw()};
     bindNumber('selLayer',o,'layer');
-    $('#selFlipX').onchange=e=>{o.flipX=e.target.checked;saveLocal(false);draw()};$('#selFlipY').onchange=e=>{o.flipY=e.target.checked;saveLocal(false);draw()};$('#selSolid').onchange=e=>{o.solid=e.target.checked;saveLocal(false);draw()};$('#selAboveCharacters').onchange=e=>{o.aboveCharacters=e.target.checked;saveLocal(false);draw()};
+    $('#selFlipX').onchange=e=>{if(o.flipX!==e.target.checked)flipDepthMask(o,'x');o.flipX=e.target.checked;saveLocal(false);renderSelectionInspector();draw()};$('#selFlipY').onchange=e=>{if(o.flipY!==e.target.checked)flipDepthMask(o,'y');o.flipY=e.target.checked;saveLocal(false);renderSelectionInspector();draw()};$('#selSolid').onchange=e=>{o.solid=e.target.checked;saveLocal(false);draw()};$('#selAboveCharacters').onchange=e=>{o.aboveCharacters=e.target.checked;saveLocal(false);draw()};
     if($('#tileDepthEnabled'))$('#tileDepthEnabled').onchange=e=>{o.tileDepthEnabled=e.target.checked;saveLocal(false);renderSelectionInspector();draw()};
-    $('#depthTileGrid .depthTileCell').forEach(b=>b.onclick=()=>{const key=b.dataset.depthCell,list=new Set(o.depthAboveTiles||[]);list.has(key)?list.delete(key):list.add(key);o.depthAboveTiles=[...list];saveLocal(false);renderSelectionInspector();draw()});
+    $('#depthTileGrid .depthTileCell').forEach(b=>b.onclick=()=>{const key=b.dataset.depthCell,list=new Set(o.depthAboveTiles||[]);list.has(key)?list.delete(key):list.add(key);o.depthAboveTiles=[...list];o.tileDepthEnabled=true;saveLocal(false);renderSelectionInspector();draw()});
     bindSignInspector(o);
     const rotateAsset=delta=>{rotateDepthMask(o,delta);o.rotation=((o.rotation||0)+delta+360)%360;[o.w,o.h]=[o.h,o.w];saveLocal(false);renderSelectionInspector();draw()};
     $('#rotateLeft').onclick=()=>rotateAsset(-90);$('#rotateRight').onclick=()=>rotateAsset(90);
