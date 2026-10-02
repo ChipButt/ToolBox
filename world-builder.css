@@ -167,3 +167,11 @@ body.mobilePlaytest .signOverlay{width:var(--phone-w);height:var(--phone-h);left
 
 /* NPC movement controls */
 .npcMovementSummary{grid-column:1/-1;padding:8px;border:2px solid #a7c5b9;border-radius:6px;background:#eef8f4;font-size:8px;line-height:1.4;color:#2b5d4c}
+
+.assetFileName{display:block!important;width:100%;padding:1px 2px 0;color:#6b7d74!important;font-size:6px!important;font-weight:800!important;line-height:1.2;white-space:normal!important;overflow-wrap:anywhere;text-align:center}
+.assetNpcBadge{top:4px!important;bottom:auto!important}
+.signPixelCanvas{display:block;width:100%;height:auto;image-rendering:pixelated;image-rendering:crisp-edges}
+.signPopupPreview,.signPopupCard{position:relative}
+.signPopupPreview strong,.signPopupPreview p,.signPopupCard strong,.signPopupCard p{position:absolute!important;width:1px!important;height:1px!important;overflow:hidden!important;opacity:0!important;pointer-events:none!important;margin:0!important}
+.signPopupPreview{grid-template-rows:1fr!important}
+.signPopupCard{grid-template-rows:1fr auto!important}
