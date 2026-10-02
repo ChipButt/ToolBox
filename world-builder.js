@@ -953,6 +953,15 @@ function rotateDepthMask(a,delta){
   }
   a.depthAboveTiles=[...new Set(next)]
 }
+function flipDepthMask(a,axis){
+  if(!a.tileDepthEnabled||!Array.isArray(a.depthAboveTiles)||!a.depthAboveTiles.length)return;
+  const d=depthGridSpec(a),next=[];
+  for(const key of a.depthAboveTiles){
+    const [c,r]=key.split(',').map(Number);if(!Number.isFinite(c)||!Number.isFinite(r))continue;
+    next.push(axis==='x'?depthTileKey(d.cols-1-c,r):depthTileKey(c,d.rows-1-r))
+  }
+  a.depthAboveTiles=[...new Set(next)]
+}
 function depthEditorHtml(a){
   const d=depthGridSpec(a);if(d.cols<=1&&d.rows<=1)return '';
   let cells='';for(let row=0;row<d.rows;row++)for(let col=0;col<d.cols;col++){const above=depthTileAbove(a,col,row);cells+='<button type="button" class="depthTileCell '+(above?'above':'')+'" data-depth-cell="'+col+','+row+'" title="Tile '+(col+1)+','+(row+1)+'">'+(above?'ABOVE':'BELOW')+'</button>'}
