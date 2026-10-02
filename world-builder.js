@@ -1144,7 +1144,8 @@ function renderSelectionInspector(updateTitle=true){
     const q=o.quest||{},walking=o.movementMode==='path';
     const npcChoices=npcAssetNames(),npcOptions=(npcChoices.includes(o.characterAsset)?npcChoices:[o.characterAsset,...npcChoices]).filter(Boolean).map(name=>'<option value="'+esc(name)+'" '+(name===o.characterAsset?'selected':'')+'>'+esc(assetLabel(name))+'</option>').join('');
     selectionInspector.innerHTML=
-      input('Name','npcName',o.name,'text','full')+'<label class="full"><span>Character</span><select id="npcCharacter">'+npcOptions+'</select></label>'+input('X','selX',o.x,'number')+input('Y','selY',o.y,'number')+
+      input('Name','npcName',o.name,'text','full')+'<label class="full"><span>Character</span><select id="npcCharacter">'+npcOptions+'</select></label>'+input('X','selX',o.x,'number')+input('Y','selY',o.y,'number')+input('Width','npcWidth',o.w,'number')+input('Height','npcHeight',o.h,'number')+
+      '<div class="inspectorActions"><button id="resetNpcSize" type="button">RESET ORIGINAL SIZE</button></div>'+
       '<label class="full"><span>Movement</span><select id="npcMovement"><option value="idle" '+(!walking?'selected':'')+'>Stay here / idle</option><option value="path" '+(walking?'selected':'')+'>Walk a route</option></select></label>'+
       (walking?input('Walk speed','npcSpeed',o.speed||24,'number'):'')+
       '<div class="inlineChecks"><label><input id="npcIdleAnimated" type="checkbox" '+(o.idleAnimated?'checked':'')+'> Idle animation</label></div>'+
@@ -1156,9 +1157,13 @@ function renderSelectionInspector(updateTitle=true){
       '<label class="full"><span>Quest description</span><textarea id="questDescription">'+esc(q.description||'')+'</textarea></label>'+
       input('Required item name','questItem',q.itemName||'','text','full')+input('Reward','questReward',q.reward||'Christmas Present','text','full')+
       '<label class="full"><span>Completion dialogue</span><textarea id="questComplete">'+esc(q.completeText||'')+'</textarea></label>';
-    $('#npcName').onchange=e=>{o.name=e.target.value||'Elf';saveLocal(false);renderSelectionInspector();draw()};$('#npcCharacter').onchange=e=>{o.characterAsset=e.target.value;project.editor.lastNpcAsset=e.target.value;saveLocal(false);draw()};
+    $('#npcName').onchange=e=>{o.name=e.target.value||'Elf';saveLocal(false);renderSelectionInspector();draw()};
+    $('#npcCharacter').onchange=e=>{o.characterAsset=e.target.value;project.editor.lastNpcAsset=e.target.value;saveLocal(false);renderSelectionInspector();draw()};
     $('#selX').onchange=e=>{const m=activeMap();o.x=snapCellCenter(Number(e.target.value)||0,m.width);e.target.value=o.x;saveLocal(false);draw()};
     $('#selY').onchange=e=>{const m=activeMap();o.y=snapCellCenter(Number(e.target.value)||0,m.height);e.target.value=o.y;saveLocal(false);draw()};
+    $('#npcWidth').onchange=e=>{o.w=clamp(Number(e.target.value)||8,8,256);e.target.value=o.w;saveLocal(false);draw()};
+    $('#npcHeight').onchange=e=>{o.h=clamp(Number(e.target.value)||8,8,256);e.target.value=o.h;saveLocal(false);draw()};
+    $('#resetNpcSize').onclick=()=>{const s=npcNaturalSize(o.characterAsset);o.w=s.w;o.h=s.h;saveLocal(false);renderSelectionInspector();draw()};
     $('#npcMovement').onchange=e=>{o.movementMode=e.target.value==='path'?'path':'idle';pathEditing=false;saveLocal(false);renderSelectionInspector();draw()};
     $('#npcIdleAnimated').onchange=e=>{o.idleAnimated=e.target.checked;saveLocal(false);draw()};
     if($('#npcSpeed'))bindNumber('npcSpeed',o,'speed');
@@ -1355,7 +1360,7 @@ function updatePlay(dt,now){
 }
 function nearestInteraction(){
   if(!play)return null;const m=activeMap();let best=null,bd=Infinity;
-  for(const n of m.npcs){const r=play.npcs[n.id],d=Math.hypot(play.x-(r?.x??n.x),play.y-(r?.y??n.y));if(d<30&&d<bd){best={type:'npc',obj:n};bd=d}}
+  for(const n of m.npcs){const r=play.npcs[n.id],d=Math.hypot(play.x-(r?.x??n.x),play.y-(r?.y??n.y)),reach=Math.max(30,(Number(n.w)||16)/2+14,(Number(n.h)||24)/2+14);if(d<reach&&d<bd){best={type:'npc',obj:n};bd=d}}
   for(const a of m.assets){if(a.asset!=='sign-post.png'||!a.sign?.enabled)continue;const cx=a.x+a.w/2,cy=a.y+a.h/2,d=Math.hypot(play.x-cx,play.y-cy);if(d<30&&d<bd){best={type:'sign',obj:a};bd=d}}
   for(const q of m.questTargets){if(play.collected.has(q.id))continue;const d=Math.hypot(play.x-q.x,play.y-q.y);if(d<25&&d<bd){best={type:'quest',obj:q};bd=d}}
   return best
