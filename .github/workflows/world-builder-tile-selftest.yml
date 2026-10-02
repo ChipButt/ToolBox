@@ -238,6 +238,60 @@ jobs:
               if not persisted['loaded'] or not persisted['canvasOk']:
                   raise AssertionError('uploaded artwork did not survive hard refresh')
 
+              # Prove a non-square placed asset rotates by 90 degrees with its bounding box swapped.
+              rotation=driver.execute_script("""
+                const name='couch-horizontal';
+                const card=[...document.querySelectorAll('#assetList .assetCard')]
+                  .find(x=>x.textContent.includes('Couch — Horizontal')||x.textContent.includes(name));
+                if(!card)throw new Error('Couch — Horizontal palette card not found');
+                card.click();
+                const canvas=document.querySelector('#worldCanvas'),r=canvas.getBoundingClientRect();
+                const x=r.left+160*(r.width/canvas.width),y=r.top+96*(r.height/canvas.height);
+                canvas.dispatchEvent(new PointerEvent('pointerdown',{
+                  bubbles:true,cancelable:true,pointerId:92,pointerType:'mouse',button:0,buttons:1,clientX:x,clientY:y
+                }));
+                canvas.dispatchEvent(new PointerEvent('pointerup',{
+                  bubbles:true,cancelable:true,pointerId:92,pointerType:'mouse',button:0,buttons:0,clientX:x,clientY:y
+                }));
+                const before={
+                  rotation:Number(document.querySelector('.rotationReadout')?.textContent?.replace('°',''))||0,
+                  w:Number(document.querySelector('#selW')?.value)||0,
+                  h:Number(document.querySelector('#selH')?.value)||0
+                };
+                document.querySelector('#rotateRight')?.click();
+                document.querySelector('#saveProject').click();
+                const p=JSON.parse(localStorage.getItem('chipin-world-builder-v1'));
+                const m=p.maps.find(x=>x.id===p.activeMapId)||p.maps[0];
+                const placed=m.assets.filter(a=>a.asset===name).at(-1);
+                return {
+                  before,
+                  after:placed?{rotation:placed.rotation,w:placed.w,h:placed.h,x:placed.x,y:placed.y}:null,
+                  readout:document.querySelector('.rotationReadout')?.textContent||''
+                };
+              """)
+              print('ROTATION_STATE',json.dumps(rotation,sort_keys=True))
+              if not rotation.get('after'):
+                  raise AssertionError('Couch rotation test asset was not placed')
+              if rotation['before']['w'] != 32 or rotation['before']['h'] != 16:
+                  raise AssertionError(f"unexpected Couch — Horizontal starting size: {rotation['before']}")
+              if rotation['after']['rotation'] != 90 or rotation['after']['w'] != 16 or rotation['after']['h'] != 32:
+                  raise AssertionError(f"90 degree rotation did not swap bounds correctly: {rotation['after']}")
+              if rotation['readout'] != '90°':
+                  raise AssertionError(f"rotation inspector readout is wrong: {rotation['readout']!r}")
+
+              driver.execute_cdp_cmd('Network.clearBrowserCache', {})
+              driver.refresh()
+              wait_ready()
+              rotation_persisted=driver.execute_script("""
+                const p=JSON.parse(localStorage.getItem('chipin-world-builder-v1'));
+                const m=p.maps.find(x=>x.id===p.activeMapId)||p.maps[0];
+                const placed=m.assets.filter(a=>a.asset==='couch-horizontal').at(-1);
+                return placed?{rotation:placed.rotation,w:placed.w,h:placed.h}:null;
+              """)
+              print('ROTATION_REFRESH_STATE',json.dumps(rotation_persisted,sort_keys=True))
+              if rotation_persisted != {'rotation':90,'w':16,'h':32}:
+                  raise AssertionError(f"rotated asset did not survive hard refresh: {rotation_persisted}")
+
               severe=[]
               for entry in driver.get_log('browser'):
                   print('BROWSER_LOG',entry['level'],entry['message'])
