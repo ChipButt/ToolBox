@@ -689,10 +689,12 @@ jobs:
                 };
                 point(304,160,160);
                 const movement=document.querySelector('#npcMovement'),dialogue=document.querySelector('#npcDialogue'),quest=document.querySelector('#questEnabled');
-                const width=document.querySelector('#npcWidth'),height=document.querySelector('#npcHeight'),resetSize=document.querySelector('#resetNpcSize');
+                const width=document.querySelector('#npcWidth'),height=document.querySelector('#npcHeight'),resetSize=document.querySelector('#resetNpcSize'),character=document.querySelector('#npcCharacter');
                 const initialMovement=movement?.value,hasIdle=!!document.querySelector('#npcIdleAnimated'),hasResize=!!width&&!!height&&!!resetSize;
-                width.value='40';width.dispatchEvent(new Event('change',{bubbles:true}));
-                height.value='56';height.dispatchEvent(new Event('change',{bubbles:true}));
+                character.value='TF Reindeer.png';character.dispatchEvent(new Event('change',{bubbles:true}));
+                const nativeAfterCharacterChange={w:Number(document.querySelector('#npcWidth').value),h:Number(document.querySelector('#npcHeight').value)};
+                document.querySelector('#npcWidth').value='40';document.querySelector('#npcWidth').dispatchEvent(new Event('change',{bubbles:true}));
+                document.querySelector('#npcHeight').value='56';document.querySelector('#npcHeight').dispatchEvent(new Event('change',{bubbles:true}));
                 movement.value='path';movement.dispatchEvent(new Event('change',{bubbles:true}));
                 document.querySelector('#editPath').click();
                 point(305,176,160);point(306,176,176);
@@ -701,11 +703,13 @@ jobs:
                 quest.checked=true;quest.dispatchEvent(new Event('change',{bubbles:true}));
                 const p=JSON.parse(localStorage.getItem('chipin-world-builder-v1'));
                 const m=p.maps.find(x=>x.id===p.startMapId),n=m.npcs.at(-1);
-                return {initialMovement,hasIdle,hasResize,movement:n.movementMode,path:n.path.length,dialogue:n.dialogue,quest:n.quest.enabled,idleAnimated:n.idleAnimated,x:n.x,y:n.y,w:n.w,h:n.h,xMod:n.x%16,yMod:n.y%16,pathMods:n.path.map(p=>[p.x%16,p.y%16])};
+                return {initialMovement,hasIdle,hasResize,nativeAfterCharacterChange,movement:n.movementMode,path:n.path.length,dialogue:n.dialogue,quest:n.quest.enabled,idleAnimated:n.idleAnimated,x:n.x,y:n.y,w:n.w,h:n.h,xMod:n.x%16,yMod:n.y%16,pathMods:n.path.map(p=>[p.x%16,p.y%16])};
               """)
               print('NPC_STATE',json.dumps(npc_state,sort_keys=True))
               if npc_state['initialMovement'] != 'idle' or not npc_state['hasIdle'] or not npc_state['hasResize'] or npc_state['movement'] != 'path' or npc_state['path'] != 2:
                   raise AssertionError(f"NPC movement/resize controls failed: {npc_state}")
+              if npc_state['nativeAfterCharacterChange'] != {'w':52,'h':53}:
+                  raise AssertionError(f"NPC character did not reset to native asset size: {npc_state}")
               if npc_state['w'] != 40 or npc_state['h'] != 56:
                   raise AssertionError(f"NPC resize was not stored: {npc_state}")
               if npc_state['dialogue'] != 'Hello traveller!' or not npc_state['quest'] or not npc_state['idleAnimated']:
