@@ -1061,19 +1061,28 @@ function renderSelectionInspector(updateTitle=true){
     $('#linkTargetY').onchange=e=>{const m=mapById(o.targetMapId),raw=e.target.value.trim();o.targetY=raw===''?null:snapCellCenter(Number(raw)||0,m.height);o.arrivalSet=Number.isFinite(Number(o.targetX))&&Number.isFinite(Number(o.targetY));e.target.value=o.targetY??'';saveLocal(false);renderSelectionInspector();draw()};
   } else if(selected.type==='npc'){
     if(updateTitle)selectionTitle.textContent=o.name;
-    const q=o.quest||{};
+    const q=o.quest||{},walking=o.movementMode==='path';
     const npcChoices=npcAssetNames(),npcOptions=(npcChoices.includes(o.characterAsset)?npcChoices:[o.characterAsset,...npcChoices]).filter(Boolean).map(name=>'<option value="'+esc(name)+'" '+(name===o.characterAsset?'selected':'')+'>'+esc(assetLabel(name))+'</option>').join('');
     selectionInspector.innerHTML=
-      input('Name','npcName',o.name,'text','full')+'<label class="full"><span>Character</span><select id="npcCharacter">'+npcOptions+'</select></label>'+input('X','selX',o.x,'number')+input('Y','selY',o.y,'number')+input('Walk speed','npcSpeed',o.speed||24,'number')+
-      '<label class="full"><span>Interaction text (each line becomes a dialogue step)</span><textarea id="npcDialogue">'+esc(o.dialogue||'')+'</textarea></label>'+
-      '<div class="inspectorActions"><button id="editPath" type="button" class="'+(pathEditing?'active':'')+'">'+(pathEditing?'FINISH PATH':'EDIT PATH')+'</button><button id="clearPath" type="button">CLEAR PATH ('+(o.path?.length||0)+')</button></div>'+
+      input('Name','npcName',o.name,'text','full')+'<label class="full"><span>Character</span><select id="npcCharacter">'+npcOptions+'</select></label>'+input('X','selX',o.x,'number')+input('Y','selY',o.y,'number')+
+      '<label class="full"><span>Movement</span><select id="npcMovement"><option value="idle" '+(!walking?'selected':'')+'>Stay here / idle</option><option value="path" '+(walking?'selected':'')+'>Walk a route</option></select></label>'+
+      (walking?input('Walk speed','npcSpeed',o.speed||24,'number'):'')+
+      '<div class="inlineChecks"><label><input id="npcIdleAnimated" type="checkbox" '+(o.idleAnimated?'checked':'')+'> Idle animation</label></div>'+
+      '<div class="npcMovementSummary">'+(walking?'Route mode: draw the points this NPC should walk between. It will travel back and forth along the route.':'Stationary mode: this NPC stays on this square and uses its idle animation.')+'</div>'+
+      (walking?'<div class="inspectorActions"><button id="editPath" type="button" class="'+(pathEditing?'active':'')+'">'+(pathEditing?'FINISH ROUTE':'DRAW WALKING ROUTE')+'</button><button id="clearPath" type="button">CLEAR ROUTE ('+(o.path?.length||0)+')</button></div>':'')+
+      '<label class="full"><span>Response when interacted with (each line becomes a dialogue step)</span><textarea id="npcDialogue">'+esc(o.dialogue||'')+'</textarea></label>'+
       '<div class="inlineChecks"><label><input id="questEnabled" type="checkbox" '+(q.enabled?'checked':'')+'> Gives a fetch quest</label></div>'+
       '<label class="full"><span>Quest title</span><input id="questTitle" value="'+esc(q.title||'')+'"></label>'+
       '<label class="full"><span>Quest description</span><textarea id="questDescription">'+esc(q.description||'')+'</textarea></label>'+
       input('Required item name','questItem',q.itemName||'','text','full')+input('Reward','questReward',q.reward||'Christmas Present','text','full')+
       '<label class="full"><span>Completion dialogue</span><textarea id="questComplete">'+esc(q.completeText||'')+'</textarea></label>';
-    $('#npcName').onchange=e=>{o.name=e.target.value||'Elf';saveLocal(false);renderSelectionInspector();draw()};$('#npcCharacter').onchange=e=>{o.characterAsset=e.target.value;project.editor.lastNpcAsset=e.target.value;saveLocal(false);draw()};bindNumber('selX',o,'x');bindNumber('selY',o,'y');bindNumber('npcSpeed',o,'speed');
-    $('#npcDialogue').onchange=e=>{o.dialogue=e.target.value;saveLocal(false)};$('#editPath').onclick=()=>{const wasEditing=pathEditing;setMode('select');pathEditing=!wasEditing;renderSelectionInspector();updateModeStatus();draw()};$('#clearPath').onclick=()=>{o.path=[];saveLocal(false);renderSelectionInspector();draw()};
+    $('#npcName').onchange=e=>{o.name=e.target.value||'Elf';saveLocal(false);renderSelectionInspector();draw()};$('#npcCharacter').onchange=e=>{o.characterAsset=e.target.value;project.editor.lastNpcAsset=e.target.value;saveLocal(false);draw()};bindNumber('selX',o,'x');bindNumber('selY',o,'y');
+    $('#npcMovement').onchange=e=>{o.movementMode=e.target.value==='path'?'path':'idle';pathEditing=false;saveLocal(false);renderSelectionInspector();draw()};
+    $('#npcIdleAnimated').onchange=e=>{o.idleAnimated=e.target.checked;saveLocal(false);draw()};
+    if($('#npcSpeed'))bindNumber('npcSpeed',o,'speed');
+    $('#npcDialogue').onchange=e=>{o.dialogue=e.target.value;saveLocal(false)};
+    if($('#editPath'))$('#editPath').onclick=()=>{o.movementMode='path';const wasEditing=pathEditing;setMode('select');pathEditing=!wasEditing;renderSelectionInspector();updateModeStatus();draw()};
+    if($('#clearPath'))$('#clearPath').onclick=()=>{o.path=[];saveLocal(false);renderSelectionInspector();draw()};
     $('#questEnabled').onchange=e=>{o.quest.enabled=e.target.checked;saveLocal(false)};$('#questTitle').onchange=e=>{o.quest.title=e.target.value;saveLocal(false)};$('#questDescription').onchange=e=>{o.quest.description=e.target.value;saveLocal(false)};$('#questItem').onchange=e=>{o.quest.itemName=e.target.value;saveLocal(false)};$('#questReward').onchange=e=>{o.quest.reward=e.target.value;saveLocal(false)};$('#questComplete').onchange=e=>{o.quest.completeText=e.target.value;saveLocal(false)};
   } else {
     if(updateTitle)selectionTitle.textContent=o.label||'Quest Item';
@@ -1239,9 +1248,10 @@ function centerPlayView(){
   if(!play)return;const px=play.x*zoom,py=play.y*zoom;scroller.scrollLeft=Math.max(0,px-scroller.clientWidth/2);scroller.scrollTop=Math.max(0,py-scroller.clientHeight/2)
 }
 function updatePlayNpc(n,dt,now){
-  const r=play.npcs[n.id];if(!r||!n.path.length)return;
+  const r=play.npcs[n.id];if(!r)return;
+  if(n.movementMode!=='path'||!n.path.length){r.step=n.idleAnimated?Math.floor(now/420)%2:0;return}
   const target=n.path[r.pathIndex]||n.path[0],dx=target.x-r.x,dy=target.y-r.y,d=Math.hypot(dx,dy);
-  if(d<2){if(n.path.length===1)return;if(r.forward){if(r.pathIndex>=n.path.length-1){r.forward=false;r.pathIndex--}else r.pathIndex++}else{if(r.pathIndex<=0){r.forward=true;r.pathIndex++}else r.pathIndex--}return}
+  if(d<2){if(n.path.length===1){r.step=n.idleAnimated?Math.floor(now/420)%2:0;return}if(r.forward){if(r.pathIndex>=n.path.length-1){r.forward=false;r.pathIndex--}else r.pathIndex++}else{if(r.pathIndex<=0){r.forward=true;r.pathIndex++}else r.pathIndex--}return}
   const sp=(Number(n.speed)||24)*dt;r.x+=dx/d*sp;r.y+=dy/d*sp;r.dir=Math.abs(dx)>Math.abs(dy)?(dx<0?'left':'right'):(dy<0?'up':'down');r.step=Math.floor(now/180)%4;
 }
 function updatePlay(dt,now){
