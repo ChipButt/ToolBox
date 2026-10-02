@@ -86,7 +86,7 @@ jobs:
           python3 -m http.server 8000 >/tmp/world-builder-http.log 2>&1 &
           python3 -m pip install --quiet selenium
           python3 <<'PY'
-          import json, time, urllib.request
+          import json, time, urllib.request, os, pathlib
           from selenium import webdriver
           from selenium.webdriver.chrome.options import Options
           from selenium.webdriver.support.ui import WebDriverWait
@@ -95,6 +95,8 @@ jobs:
 
           URL='http://127.0.0.1:8000/world-builder.html'
           STORE='chipin-world-builder-v1'
+          DOWNLOAD_DIR='/tmp/world-builder-downloads'
+          os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
           for _ in range(50):
               try:
@@ -111,7 +113,14 @@ jobs:
           options.add_argument('--disable-dev-shm-usage')
           options.add_argument('--window-size=1440,1200')
           options.set_capability('goog:loggingPrefs', {'browser':'ALL'})
+          options.add_experimental_option('prefs', {
+              'download.default_directory': DOWNLOAD_DIR,
+              'download.prompt_for_download': False,
+              'download.directory_upgrade': True,
+              'safebrowsing.enabled': True
+          })
           driver=webdriver.Chrome(options=options)
+          driver.execute_cdp_cmd('Page.setDownloadBehavior', {'behavior':'allow','downloadPath':DOWNLOAD_DIR})
 
           def wait_ready():
               WebDriverWait(driver, 20).until(lambda d: d.execute_script(
@@ -381,29 +390,31 @@ jobs:
                   bubbles:true,cancelable:true,pointerId:123,pointerType:'mouse',button:0,buttons:1,clientX,clientY
                 }));
                 const p=JSON.parse(localStorage.getItem('chipin-world-builder-v1'));
-                const m=p.maps.find(x=>x.id===p.activeMapId)||p.maps[0];
                 document.querySelector('#saveProject').click();
                 return {
-                  x:m.spawn.x,y:m.spawn.y,
-                  xMod:m.spawn.x%16,yMod:m.spawn.y%16,
+                  x:p.initialSpawn.x,y:p.initialSpawn.y,
+                  xMod:p.initialSpawn.x%16,yMod:p.initialSpawn.y%16,
+                  startMapId:p.startMapId,activeMapId:p.activeMapId,
+                  perMapSpawnFields:p.maps.filter(m=>Object.prototype.hasOwnProperty.call(m,'spawn')).length,
                   status:document.querySelector('#modeStatus')?.textContent||''
                 };
               """)
               print('SPAWN_STATE',json.dumps(spawn_state,sort_keys=True))
               if spawn_state['x'] != 328 or spawn_state['y'] != 216 or spawn_state['xMod'] != 8 or spawn_state['yMod'] != 8:
-                  raise AssertionError(f"spawn was not centred in the clicked grid square: {spawn_state}")
+                  raise AssertionError(f"initial spawn was not centred in the clicked grid square: {spawn_state}")
+              if spawn_state['startMapId'] != spawn_state['activeMapId'] or spawn_state['perMapSpawnFields'] != 0:
+                  raise AssertionError(f"spawn is not a single global initial spawn: {spawn_state}")
 
               driver.execute_cdp_cmd('Network.clearBrowserCache', {})
               driver.refresh()
               wait_ready()
               spawn_persisted=driver.execute_script("""
                 const p=JSON.parse(localStorage.getItem('chipin-world-builder-v1'));
-                const m=p.maps.find(x=>x.id===p.activeMapId)||p.maps[0];
-                return {x:m.spawn.x,y:m.spawn.y,xMod:m.spawn.x%16,yMod:m.spawn.y%16};
+                return {x:p.initialSpawn.x,y:p.initialSpawn.y,xMod:p.initialSpawn.x%16,yMod:p.initialSpawn.y%16,startMapId:p.startMapId};
               """)
               print('SPAWN_REFRESH_STATE',json.dumps(spawn_persisted,sort_keys=True))
-              if spawn_persisted != {'x':328,'y':216,'xMod':8,'yMod':8}:
-                  raise AssertionError(f"grid-centred spawn did not survive hard refresh: {spawn_persisted}")
+              if spawn_persisted['x'] != 328 or spawn_persisted['y'] != 216 or spawn_persisted['xMod'] != 8 or spawn_persisted['yMod'] != 8:
+                  raise AssertionError(f"global initial spawn did not survive hard refresh: {spawn_persisted}")
 
               # Create a second map and prove a Map Link can mark an exact arrival square there.
               link_setup=driver.execute_script("""
@@ -430,12 +441,15 @@ jobs:
                 return {
                   sourceId:source.id,targetId,targetName:target.name,
                   linkId:link?.id||null,linkTarget:link?.targetMapId||null,
+                  arrivalSet:!!link?.arrivalSet,
                   hasArrivalButton:!!document.querySelector('#setLinkArrival')
                 };
               """)
               print('MAP_LINK_SETUP',json.dumps(link_setup,sort_keys=True))
               if not link_setup['linkId'] or link_setup['linkTarget'] != link_setup['targetId'] or not link_setup['hasArrivalButton']:
                   raise AssertionError(f"Map Link setup failed: {link_setup}")
+              if link_setup['arrivalSet']:
+                  raise AssertionError(f"new Map Link should require an explicit arrival square: {link_setup}")
 
               arrival_target=driver.execute_script("""
                 document.querySelector('#setLinkArrival').click();
@@ -466,13 +480,13 @@ jobs:
                 return {
                   activeMapId:p.activeMapId,
                   targetMapId:link.targetMapId,
-                  targetX:link.targetX,targetY:link.targetY,
+                  targetX:link.targetX,targetY:link.targetY,arrivalSet:!!link.arrivalSet,
                   xMod:link.targetX%16,yMod:link.targetY%16,
                   arrivalButtonStillPresent:!!document.querySelector('#setLinkArrival')
                 };
               """,link_setup['sourceId'],link_setup['linkId'])
               print('MAP_LINK_ARRIVAL_STATE',json.dumps(arrival_saved,sort_keys=True))
-              if arrival_saved['targetMapId'] != link_setup['targetId'] or arrival_saved['targetX'] != 520 or arrival_saved['targetY'] != 360:
+              if arrival_saved['targetMapId'] != link_setup['targetId'] or arrival_saved['targetX'] != 520 or arrival_saved['targetY'] != 360 or not arrival_saved['arrivalSet']:
                   raise AssertionError(f"Map Link arrival square was not saved correctly: {arrival_saved}")
               if arrival_saved['xMod'] != 8 or arrival_saved['yMod'] != 8 or arrival_saved['activeMapId'] != link_setup['sourceId']:
                   raise AssertionError(f"Map Link arrival did not snap/return correctly: {arrival_saved}")
@@ -506,11 +520,81 @@ jobs:
                 const p=JSON.parse(localStorage.getItem('chipin-world-builder-v1'));
                 const source=p.maps.find(m=>m.id===arguments[0]);
                 const link=source.transitions.find(t=>t.id===arguments[1]);
-                return {targetMapId:link.targetMapId,targetX:link.targetX,targetY:link.targetY};
+                return {targetMapId:link.targetMapId,targetX:link.targetX,targetY:link.targetY,arrivalSet:!!link.arrivalSet};
               """,link_setup['sourceId'],link_setup['linkId'])
               print('MAP_LINK_REFRESH_STATE',json.dumps(link_persisted,sort_keys=True))
-              if link_persisted != {'targetMapId':link_setup['targetId'],'targetX':520,'targetY':360}:
+              if link_persisted != {'targetMapId':link_setup['targetId'],'targetX':520,'targetY':360,'arrivalSet':True}:
                   raise AssertionError(f"Map Link arrival square did not survive hard refresh: {link_persisted}")
+
+              # Reproduce the user's data-loss case: create a third map, save, hard refresh, and prove all maps survive.
+              multi_map_before=driver.execute_script("""
+                document.querySelector('#addMap').click();
+                document.querySelector('#mapName').value='Persistence Map 3';
+                document.querySelector('#mapName').dispatchEvent(new Event('change',{bubbles:true}));
+                document.querySelector('#saveProject').click();
+                const p=JSON.parse(localStorage.getItem('chipin-world-builder-v1'));
+                return {
+                  count:p.maps.length,
+                  names:p.maps.map(m=>m.name),
+                  ids:p.maps.map(m=>m.id),
+                  activeMapId:p.activeMapId,
+                  startMapId:p.startMapId,
+                  status:document.querySelector('#modeStatus')?.textContent||''
+                };
+              """)
+              print('MULTI_MAP_SAVE_STATE',json.dumps(multi_map_before,sort_keys=True))
+              if multi_map_before['count'] != 3 or 'Persistence Map 3' not in multi_map_before['names']:
+                  raise AssertionError(f"save did not contain all three maps before refresh: {multi_map_before}")
+              if 'Saved all 3 maps' not in multi_map_before['status']:
+                  raise AssertionError(f"save did not confirm all maps: {multi_map_before}")
+
+              driver.execute_cdp_cmd('Network.clearBrowserCache', {})
+              driver.refresh()
+              wait_ready()
+              multi_map_after=driver.execute_script("""
+                const p=JSON.parse(localStorage.getItem('chipin-world-builder-v1'));
+                return {
+                  count:p.maps.length,
+                  names:p.maps.map(m=>m.name),
+                  ids:p.maps.map(m=>m.id),
+                  activeMapId:p.activeMapId,
+                  startMapId:p.startMapId
+                };
+              """)
+              print('MULTI_MAP_REFRESH_STATE',json.dumps(multi_map_after,sort_keys=True))
+              if multi_map_after['count'] != 3 or sorted(multi_map_after['ids']) != sorted(multi_map_before['ids']):
+                  raise AssertionError(f"not every map survived save + hard refresh: before={multi_map_before}, after={multi_map_after}")
+              if multi_map_after['startMapId'] != multi_map_before['startMapId']:
+                  raise AssertionError(f"initial start map changed after refresh: {multi_map_after}")
+
+              # BACKUP FILE and EXPORT CODE must physically download complete multi-map files.
+              for path in pathlib.Path(DOWNLOAD_DIR).glob('*'):
+                  path.unlink()
+              driver.find_element(By.ID,'backupProject').click()
+              driver.find_element(By.ID,'exportProject').click()
+              WebDriverWait(driver, 10).until(lambda d:
+                  any(pathlib.Path(DOWNLOAD_DIR).glob('*.world-backup.json')) and
+                  any(pathlib.Path(DOWNLOAD_DIR).glob('*.world.js')) and
+                  not any(pathlib.Path(DOWNLOAD_DIR).glob('*.crdownload'))
+              )
+              backup_path=next(pathlib.Path(DOWNLOAD_DIR).glob('*.world-backup.json'))
+              export_path=next(pathlib.Path(DOWNLOAD_DIR).glob('*.world.js'))
+              backup=json.loads(backup_path.read_text())
+              export_text=export_path.read_text()
+              download_state={
+                  'backup':backup_path.name,
+                  'export':export_path.name,
+                  'backupMaps':len(backup.get('maps',[])),
+                  'backupNames':[m.get('name') for m in backup.get('maps',[])],
+                  'exportHasMap3':'Persistence Map 3' in export_text,
+                  'exportHasStartMap':'startMapId' in export_text,
+                  'backupHasStartMap':bool(backup.get('startMapId')),
+              }
+              print('DOWNLOAD_STATE',json.dumps(download_state,sort_keys=True))
+              if download_state['backupMaps'] != 3 or 'Persistence Map 3' not in download_state['backupNames']:
+                  raise AssertionError(f"backup file does not contain every map: {download_state}")
+              if not download_state['exportHasMap3'] or not download_state['exportHasStartMap'] or not download_state['backupHasStartMap']:
+                  raise AssertionError(f"export/backup is incomplete: {download_state}")
 
               severe=[]
               for entry in driver.get_log('browser'):
