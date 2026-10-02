@@ -281,7 +281,7 @@ function normaliseProject(p){
     }
     for(const t of m.transitions){
       t.id=t.id||uid('link');t.label=t.label||'Map Link';
-      const hasArrival=Number.isFinite(Number(t.targetX))&&Number.isFinite(Number(t.targetY));
+      const hasArrival=t.targetX!==null&&t.targetX!==''&&t.targetY!==null&&t.targetY!==''&&Number.isFinite(Number(t.targetX))&&Number.isFinite(Number(t.targetY));
       t.arrivalSet=typeof t.arrivalSet==='boolean'?t.arrivalSet:hasArrival;
       if(t.arrivalSet){t.targetX=Number(t.targetX);t.targetY=Number(t.targetY)}else{t.targetX=null;t.targetY=null}
     }
