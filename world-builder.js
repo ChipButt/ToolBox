@@ -79,7 +79,7 @@ const STATIC_META={
 const virtualCanvasCache=new Map();
 
 let assets=null, extraAssets=null, sheetAssets=null, project=null, mode='select', selected=null, selectedAssetName=null, snap=true, zoom=1;
-let drag=null, draftRect=null, pathEditing=false, pointerDown=false, lastStampKey='';
+let drag=null, draftRect=null, pathEditing=false, pointerDown=false, lastStampKey='', arrivalEdit=null;
 let organiseMode=false,categoryFilter='all';
 const organisedSelection=new Set();
 const mapSelection=new Set();
@@ -368,14 +368,32 @@ function activeMap(){
   return project.maps.find(m=>m.id===id)||project.maps[0];
 }
 function mapById(id){return project.maps.find(m=>m.id===id)}
+function transitionByRef(sourceMapId,linkId){
+  return mapById(sourceMapId)?.transitions?.find(t=>t.id===linkId)||null
+}
+function beginArrivalPlacement(sourceMapId,linkId){
+  const t=transitionByRef(sourceMapId,linkId),target=t&&mapById(t.targetMapId);if(!t||!target)return;
+  arrivalEdit={sourceMapId,linkId,targetMapId:target.id};
+  project.activeMapId=target.id;selected=null;clearMapSelection();marquee=null;pathEditing=false;
+  resizeCanvas();renderAllPanels();setMode('arrival');flashStatus('Click the arrival square on '+target.name+'.');draw()
+}
+function finishArrivalPlacement(x,y){
+  if(!arrivalEdit)return;
+  const edit=arrivalEdit,t=transitionByRef(edit.sourceMapId,edit.linkId),target=mapById(edit.targetMapId);
+  if(!t||!target){arrivalEdit=null;setMode('select');return}
+  t.targetX=snapCellCenter(x,target.width);t.targetY=snapCellCenter(y,target.height);
+  arrivalEdit=null;project.activeMapId=edit.sourceMapId;selected={type:'transition',id:edit.linkId};
+  saveLocal(false);resizeCanvas();renderAllPanels();setMode('select');
+  flashStatus('Arrival square set on '+target.name+'.');draw()
+}
 function setActiveMap(id){
   if(play)return;
   if(!mapById(id))return;
-  project.activeMapId=id;selected=null;mapSelection.clear();marquee=null;pathEditing=false;resizeCanvas();renderAllPanels();draw();
+  arrivalEdit=null;project.activeMapId=id;selected=null;mapSelection.clear();marquee=null;pathEditing=false;if(mode==='arrival')mode='select';resizeCanvas();renderAllPanels();updateModeStatus();draw();
 }
 function flashStatus(text){modeStatus.textContent=text;clearTimeout(flashStatus.t);flashStatus.t=setTimeout(updateModeStatus,1800)}
 function updateModeStatus(){
-  const labels={select:'Select and drag objects. Shift-click assets to add/remove them from a group.',multi:'Click assets or drag a box to select multiple placed tiles.',place:selectedAssetName?'Stamp '+assetLabel(selectedAssetName)+' · brush '+brushCols()+'×'+brushRows()+'.':'Choose an asset from the palette.',fill:selectedAssetName?'Drag an area to fill with '+assetLabel(selectedAssetName)+'.':'Choose an asset, then drag an area to fill.',transition:'Drag a rectangle where walking should load another map.',npc:'Click to place an NPC, then choose its animated character, path, dialogue and quest.',quest:'Click to place a quest item / puzzle point.',spawn:'Click the grid square where the player should spawn. The spawn will be centred in that tile.',play:'Playtest is live. Walk through links and interact with NPCs.'};
+  const labels={select:'Select and drag objects. Shift-click assets to add/remove them from a group.',multi:'Click assets or drag a box to select multiple placed tiles.',place:selectedAssetName?'Stamp '+assetLabel(selectedAssetName)+' · brush '+brushCols()+'×'+brushRows()+'.':'Choose an asset from the palette.',fill:selectedAssetName?'Drag an area to fill with '+assetLabel(selectedAssetName)+'.':'Choose an asset, then drag an area to fill.',transition:'Drag a rectangle where walking should load another map.',npc:'Click to place an NPC, then choose its animated character, path, dialogue and quest.',quest:'Click to place a quest item / puzzle point.',spawn:'Click the grid square where the player should spawn. The spawn will be centred in that tile.',arrival:arrivalEdit?'Click the exact square where this Map Link should place the player on '+(mapById(arrivalEdit.targetMapId)?.name||'the target map')+'.':'Choose a Map Link to set its arrival square.',play:'Playtest is live. Walk through links and interact with NPCs.'};
   modeStatus.textContent=pathEditing?'NPC PATH: click map points in walking order.':labels[mode];
 }
 function setMode(next){
@@ -471,7 +489,7 @@ function finishTransition(){
   let {x,y,w,h}=draftRect;if(w<0){x+=w;w=-w}if(h<0){y+=h;h=-h}
   if(w<4||h<4){draftRect=null;draw();return}
   const other=project.maps.find(m=>m.id!==activeMap().id)||activeMap();
-  const t={id:uid('link'),label:'Map Link',x:snapV(x),y:snapV(y),w:Math.max(grid(),snapV(w)),h:Math.max(grid(),snapV(h)),targetMapId:other.id,targetX:other.spawn.x,targetY:other.spawn.y};
+  const t={id:uid('link'),label:'Map Link',x:snapV(x),y:snapV(y),w:Math.max(grid(),snapV(w)),h:Math.max(grid(),snapV(h)),targetMapId:other.id,targetX:snapCellCenter(other.spawn.x,other.width),targetY:snapCellCenter(other.spawn.y,other.height)};
   activeMap().transitions.push(t);draftRect=null;selectObject('transition',t.id);setMode('select');saveLocal(false)
 }
 
@@ -481,6 +499,7 @@ canvas.addEventListener('pointerdown',e=>{
   if(pathEditing&&selected?.type==='npc'){
     const n=getSelected();n.path.push({x:snapV(p.x),y:snapV(p.y)});saveLocal(false);renderSelectionInspector();draw();return;
   }
+  if(mode==='arrival'){finishArrivalPlacement(p.x,p.y);return}
   if(mode==='spawn'){
     const m=activeMap();m.spawn.x=snapCellCenter(p.x,m.width);m.spawn.y=snapCellCenter(p.y,m.height);saveLocal(false);renderMapInspector();setMode('select');flashStatus('Spawn point centred in selected grid square.');draw();return
   }
@@ -594,6 +613,20 @@ function drawSpawn(m){
   ctx.fillStyle='#185948';ctx.font='bold 8px monospace';ctx.fillText('SPAWN',x+g+4,m.spawn.y+3);
   ctx.restore()
 }
+function drawArrivalMarkers(m){
+  if(play)return;
+  const g=grid();
+  for(const source of project.maps)for(const t of source.transitions||[]){
+    if(t.targetMapId!==m.id||!Number.isFinite(Number(t.targetX))||!Number.isFinite(Number(t.targetY)))continue;
+    const cx=Number(t.targetX),cy=Number(t.targetY),x=cx-g/2,y=cy-g/2;
+    const active=arrivalEdit?.sourceMapId===source.id&&arrivalEdit?.linkId===t.id;
+    ctx.save();ctx.fillStyle=active?'rgba(247,189,24,.28)':'rgba(51,120,205,.20)';ctx.strokeStyle=active?'#b47c00':'#3378cd';ctx.lineWidth=2;ctx.setLineDash([4,2]);
+    ctx.fillRect(x,y,g,g);ctx.strokeRect(x+1,y+1,g-2,g-2);ctx.setLineDash([]);
+    ctx.fillStyle=active?'#805500':'#0b477e';ctx.font='bold 7px monospace';
+    const label='ARRIVE · '+(t.label||source.name||'Map Link');ctx.fillText(label,x+g+4,cy+3);
+    ctx.restore()
+  }
+}
 function drawDraft(){
   if(draftRect){ctx.save();const filling=mode==='fill';ctx.fillStyle=filling?'rgba(247,189,24,.20)':'rgba(51,120,205,.18)';ctx.strokeStyle=filling?'#b47c00':'#3378cd';ctx.lineWidth=2;ctx.fillRect(draftRect.x,draftRect.y,draftRect.w,draftRect.h);ctx.strokeRect(draftRect.x,draftRect.y,draftRect.w,draftRect.h);ctx.restore()}
   if(marquee){ctx.save();ctx.fillStyle='rgba(44,128,106,.16)';ctx.strokeStyle='#2c806a';ctx.setLineDash([5,3]);ctx.lineWidth=2;ctx.fillRect(marquee.x,marquee.y,marquee.w,marquee.h);ctx.strokeRect(marquee.x,marquee.y,marquee.w,marquee.h);ctx.restore()}
@@ -612,7 +645,7 @@ function draw(now=performance.now()){
   for(const n of m.npcs)drawNpc(n);
   drawPlayer(now);
   for(const a of placed)if(a.aboveCharacters)drawPlacedAsset(a);
-  drawSpawn(m);drawDraft();
+  drawArrivalMarkers(m);drawSpawn(m);drawDraft();
 }
 function loop(now){
   const dt=Math.min(.05,(now-lastTime)/1000);lastTime=now;if(play)updatePlay(dt,now);draw(now);requestAnimationFrame(loop)
@@ -837,11 +870,18 @@ function renderSelectionInspector(updateTitle=true){
     $('#dupSelected').onclick=duplicateSelected;$('#layerUp').onclick=()=>{o.layer=(o.layer||0)+1;saveLocal(false);renderSelectionInspector();draw()};$('#layerDown').onclick=()=>{o.layer=(o.layer||0)-1;saveLocal(false);renderSelectionInspector();draw()};
   } else if(selected.type==='transition'){
     if(updateTitle)selectionTitle.textContent=o.label||'Map Link';
+    const sourceMapId=activeMap().id,targetMap=mapById(o.targetMapId);
     selectionInspector.innerHTML=
       input('Label','linkLabel',o.label||'Map Link','text','full')+input('X','selX',o.x,'number')+input('Y','selY',o.y,'number')+input('Width','selW',o.w,'number')+input('Height','selH',o.h,'number')+
-      '<label class="full"><span>Loads map</span><select id="linkTarget">'+mapOptions(o.targetMapId)+'</select></label>'+input('Arrival X','linkTargetX',o.targetX,'number')+input('Arrival Y','linkTargetY',o.targetY,'number');
+      '<label class="full"><span>Loads map</span><select id="linkTarget">'+mapOptions(o.targetMapId)+'</select></label>'+
+      '<div class="arrivalSummary full"><strong>Arrival square</strong><span>'+(targetMap?esc(targetMap.name):'Unknown map')+' · X '+Math.round(Number(o.targetX)||0)+' · Y '+Math.round(Number(o.targetY)||0)+'</span></div>'+
+      '<div class="inspectorActions"><button id="setLinkArrival" type="button">SET ARRIVAL ON TARGET MAP</button></div>'+
+      input('Arrival X','linkTargetX',o.targetX,'number')+input('Arrival Y','linkTargetY',o.targetY,'number');
     $('#linkLabel').onchange=e=>{o.label=e.target.value;saveLocal(false);renderSelectionInspector();draw()};bindNumber('selX',o,'x');bindNumber('selY',o,'y');bindNumber('selW',o,'w');bindNumber('selH',o,'h');
-    $('#linkTarget').onchange=e=>{o.targetMapId=e.target.value;const m=mapById(o.targetMapId);o.targetX=m.spawn.x;o.targetY=m.spawn.y;saveLocal(false);renderSelectionInspector();draw()};bindNumber('linkTargetX',o,'targetX');bindNumber('linkTargetY',o,'targetY');
+    $('#linkTarget').onchange=e=>{o.targetMapId=e.target.value;const m=mapById(o.targetMapId);o.targetX=snapCellCenter(m.spawn.x,m.width);o.targetY=snapCellCenter(m.spawn.y,m.height);saveLocal(false);renderSelectionInspector();draw()};
+    $('#setLinkArrival').onclick=()=>beginArrivalPlacement(sourceMapId,o.id);
+    $('#linkTargetX').onchange=e=>{const m=mapById(o.targetMapId);o.targetX=snapCellCenter(Number(e.target.value)||0,m.width);e.target.value=o.targetX;saveLocal(false);renderSelectionInspector();draw()};
+    $('#linkTargetY').onchange=e=>{const m=mapById(o.targetMapId);o.targetY=snapCellCenter(Number(e.target.value)||0,m.height);e.target.value=o.targetY;saveLocal(false);renderSelectionInspector();draw()};
   } else if(selected.type==='npc'){
     if(updateTitle)selectionTitle.textContent=o.name;
     const q=o.quest||{};
@@ -959,7 +999,7 @@ function setupPlayNpcs(){
   for(const m of project.maps)for(const n of m.npcs)play.npcs[n.id]={x:n.x,y:n.y,dir:'down',step:0,pathIndex:0,forward:true};
 }
 function startPlaytest(){
-  editorMapBeforePlay=project.activeMapId;selected=null;clearMapSelection();pathEditing=false;const m=activeMap();
+  editorMapBeforePlay=project.activeMapId;selected=null;clearMapSelection();pathEditing=false;arrivalEdit=null;const m=activeMap();
   play={mapId:m.id,x:m.spawn.x,y:m.spawn.y,dir:'down',moving:false,animStart:performance.now(),inventory:[],quests:{},collected:new Set(),npcs:{},transitionCooldown:0,rewards:[]};setupPlayNpcs();
   mode='play';
   document.body.classList.add('mobilePlaytest');
