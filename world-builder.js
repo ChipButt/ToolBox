@@ -119,7 +119,7 @@ function deleteAssetIds(names){
   const hidden=new Set(project.editor.hiddenAssets||[]);
   for(const name of names)hidden.add(name);
   project.editor.hiddenAssets=[...hidden];
-  if(names.includes(selectedAssetName)){selectedAssetName=null;if(mode==='place')setMode('select')}
+  if(names.includes(selectedAssetName)){selectedAssetName=null;if(mode==='place'||mode==='fill')setMode('select')}
   organisedSelection.clear();saveLocal(false);renderCategories();renderAssets(assetSearch.value);updateBulkCategoryBar()
 }
 function restoreAssetIds(names){
@@ -374,14 +374,14 @@ function setActiveMap(id){
 }
 function flashStatus(text){modeStatus.textContent=text;clearTimeout(flashStatus.t);flashStatus.t=setTimeout(updateModeStatus,1800)}
 function updateModeStatus(){
-  const labels={select:'Select and drag objects. Shift-click assets to add/remove them from a group.',multi:'Click assets or drag a box to select multiple placed tiles.',place:selectedAssetName?'Stamp '+assetLabel(selectedAssetName)+' · brush '+brushCols()+'×'+brushRows()+'.':'Choose an asset from the palette.',transition:'Drag a rectangle where walking should load another map.',npc:'Click to place an NPC, then choose its animated character, path, dialogue and quest.',quest:'Click to place a quest item / puzzle point.',spawn:'Click exactly where the player should spawn on this map.',play:'Playtest is live. Walk through links and interact with NPCs.'};
+  const labels={select:'Select and drag objects. Shift-click assets to add/remove them from a group.',multi:'Click assets or drag a box to select multiple placed tiles.',place:selectedAssetName?'Stamp '+assetLabel(selectedAssetName)+' · brush '+brushCols()+'×'+brushRows()+'.':'Choose an asset from the palette.',fill:selectedAssetName?'Drag an area to fill with '+assetLabel(selectedAssetName)+'.':'Choose an asset, then drag an area to fill.',transition:'Drag a rectangle where walking should load another map.',npc:'Click to place an NPC, then choose its animated character, path, dialogue and quest.',quest:'Click to place a quest item / puzzle point.',spawn:'Click exactly where the player should spawn on this map.',play:'Playtest is live. Walk through links and interact with NPCs.'};
   modeStatus.textContent=pathEditing?'NPC PATH: click map points in walking order.':labels[mode];
 }
 function setMode(next){
   if(play&&next!=='play')stopPlaytest();
   mode=next;pathEditing=false;drag=null;draftRect=null;lastStampKey='';
   $$('.modeBtn[data-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode));
-  canvas.style.cursor=mode==='select'?'default':mode==='transition'?'crosshair':'cell';
+  canvas.style.cursor=mode==='select'?'default':(mode==='transition'||mode==='fill')?'crosshair':'cell';
   updateModeStatus();draw();
 }
 
@@ -419,19 +419,42 @@ function hitTest(p){
   for(const a of arr)if(hitRect(p,a))return {type:'asset',id:a.id};
   return null;
 }
+function createPlacedAsset(name,x,y){
+  const d=defaultAssetSize(name);
+  const a={id:uid('asset'),asset:name,x,y,w:d.w,h:d.h,frame:d.frame,layer:0,rotation:0,flipX:false,flipY:false,solid:false,aboveCharacters:false,animated:name==='fireplace.png',animationFps:6};
+  const v=VIRTUAL_ASSETS[name];
+  if(v){a.sourceAsset=v.source;a.crop={x:v.sx,y:v.sy,w:v.sw,h:v.sh}}
+  return a
+}
 function addAssetAt(x,y){
   if(!selectedAssetName)return;
   const m=activeMap(),d=defaultAssetSize(selectedAssetName),gx=snapV(x),gy=snapV(y),cols=brushCols(),rows=brushRows();
   const key=selectedAssetName+'|'+gx+'|'+gy+'|'+cols+'x'+rows;if(key===lastStampKey)return;lastStampKey=key;
   let last=null;
   for(let row=0;row<rows;row++)for(let col=0;col<cols;col++){
-    const a={id:uid('asset'),asset:selectedAssetName,x:gx+col*d.w,y:gy+row*d.h,w:d.w,h:d.h,frame:d.frame,layer:0,rotation:0,flipX:false,flipY:false,solid:false,aboveCharacters:false,animated:selectedAssetName==='fireplace.png',animationFps:6};
-    const v=VIRTUAL_ASSETS[selectedAssetName];
-    if(v){a.sourceAsset=v.source;a.crop={x:v.sx,y:v.sy,w:v.sw,h:v.sh}}
+    const a=createPlacedAsset(selectedAssetName,gx+col*d.w,gy+row*d.h);
     m.assets.push(a);last=a;
   }
   if(last){selected={type:'asset',id:last.id};renderSelectionInspector()}
   saveLocal(false);renderMaps();draw();
+}
+function fillAssetRect(){
+  if(!draftRect||!selectedAssetName){draftRect=null;draw();return}
+  let {x,y,w,h}=draftRect;if(w<0){x+=w;w=-w}if(h<0){y+=h;h=-h}
+  draftRect=null;
+  const d=defaultAssetSize(selectedAssetName);
+  const left=snapV(x),top=snapV(y);
+  const cols=Math.max(1,Math.ceil(Math.max(1,w)/d.w)),rows=Math.max(1,Math.ceil(Math.max(1,h)/d.h));
+  const m=activeMap(),newIds=[];
+  for(let row=0;row<rows;row++)for(let col=0;col<cols;col++){
+    const px=left+col*d.w,py=top+row*d.h;
+    if(px>=m.width||py>=m.height)continue;
+    const a=createPlacedAsset(selectedAssetName,px,py);
+    m.assets.push(a);newIds.push(a.id)
+  }
+  selected=null;mapSelection.clear();for(const id of newIds)mapSelection.add(id);
+  saveLocal(false);renderMaps();renderSelectionInspector();draw();
+  flashStatus('Filled '+cols+'×'+rows+' area with '+assetLabel(selectedAssetName)+'.')
 }
 function addNpcAt(x,y){
   const choices=npcAssetNames(),characterAsset=(choices.includes(project.editor.lastNpcAsset)?project.editor.lastNpcAsset:choices[0])||'character.png';
@@ -461,6 +484,7 @@ canvas.addEventListener('pointerdown',e=>{
     const m=activeMap();m.spawn.x=snapV(p.x);m.spawn.y=snapV(p.y);saveLocal(false);renderMapInspector();setMode('select');flashStatus('Spawn point set.');draw();return
   }
   if(mode==='place'){addAssetAt(p.x,p.y);return}
+  if(mode==='fill'){if(!selectedAssetName){flashStatus('Choose an asset first.');return}draftRect={x:p.x,y:p.y,w:0,h:0};canvas.setPointerCapture(e.pointerId);draw();return}
   if(mode==='npc'){addNpcAt(p.x,p.y);return}
   if(mode==='quest'){addQuestAt(p.x,p.y);return}
   if(mode==='transition'){draftRect={x:p.x,y:p.y,w:0,h:0};canvas.setPointerCapture(e.pointerId);return}
@@ -491,7 +515,7 @@ canvas.addEventListener('pointermove',e=>{
   if(play)return;
   if(mode==='place'&&pointerDown&&(e.buttons&1)){addAssetAt(p.x,p.y);return}
   if(mode==='multi'&&marquee&&(e.buttons&1)){marquee.w=p.x-marquee.x;marquee.h=p.y-marquee.y;draw();return}
-  if(mode==='transition'&&draftRect&&(e.buttons&1)){draftRect.w=p.x-draftRect.x;draftRect.h=p.y-draftRect.y;draw();return}
+  if((mode==='transition'||mode==='fill')&&draftRect&&(e.buttons&1)){draftRect.w=p.x-draftRect.x;draftRect.h=p.y-draftRect.y;draw();return}
   if(drag&&(e.buttons&1)){
     const o=getSelected();if(!o)return;
     o.x=snapV(p.x-drag.ox);o.y=snapV(p.y-drag.oy);
@@ -500,6 +524,7 @@ canvas.addEventListener('pointermove',e=>{
 });
 canvas.addEventListener('pointerup',()=>{pointerDown=false;lastStampKey='';
   if(mode==='transition')finishTransition();
+  if(mode==='fill')fillAssetRect();
   if(mode==='multi'&&marquee){
     let {x,y,w,h}=marquee;if(w<0){x+=w;w=-w}if(h<0){y+=h;h=-h}
     if(w>3&&h>3){const box={x,y,w,h};for(const a of activeMap().assets)if(rectIntersects(a,box))mapSelection.add(a.id)}
@@ -562,7 +587,7 @@ function drawSpawn(m){
   if(play)return;ctx.save();ctx.fillStyle='rgba(44,128,106,.25)';ctx.strokeStyle='#2c806a';ctx.lineWidth=2;ctx.beginPath();ctx.arc(m.spawn.x,m.spawn.y,9,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.fillStyle='#185948';ctx.font='bold 8px monospace';ctx.fillText('SPAWN',m.spawn.x+12,m.spawn.y+3);ctx.restore()
 }
 function drawDraft(){
-  if(draftRect){ctx.save();ctx.fillStyle='rgba(51,120,205,.18)';ctx.strokeStyle='#3378cd';ctx.lineWidth=2;ctx.fillRect(draftRect.x,draftRect.y,draftRect.w,draftRect.h);ctx.strokeRect(draftRect.x,draftRect.y,draftRect.w,draftRect.h);ctx.restore()}
+  if(draftRect){ctx.save();const filling=mode==='fill';ctx.fillStyle=filling?'rgba(247,189,24,.20)':'rgba(51,120,205,.18)';ctx.strokeStyle=filling?'#b47c00':'#3378cd';ctx.lineWidth=2;ctx.fillRect(draftRect.x,draftRect.y,draftRect.w,draftRect.h);ctx.strokeRect(draftRect.x,draftRect.y,draftRect.w,draftRect.h);ctx.restore()}
   if(marquee){ctx.save();ctx.fillStyle='rgba(44,128,106,.16)';ctx.strokeStyle='#2c806a';ctx.setLineDash([5,3]);ctx.lineWidth=2;ctx.fillRect(marquee.x,marquee.y,marquee.w,marquee.h);ctx.strokeRect(marquee.x,marquee.y,marquee.w,marquee.h);ctx.restore()}
 }
 function drawPlayer(now){
@@ -714,7 +739,7 @@ function renderAssets(filter=''){
           organisedSelection.has(name)?organisedSelection.delete(name):organisedSelection.add(name);
           renderAssets(assetSearch.value);updateBulkCategoryBar();return
         }
-        selectedAssetName=name;renderAssets(assetSearch.value);setMode('place')
+        selectedAssetName=name;renderAssets(assetSearch.value);if(mode==='fill'){updateModeStatus();draw()}else setMode('place')
       };
       assetList.appendChild(b);rendered++;
     }catch(error){
@@ -756,8 +781,30 @@ function renderSelectionInspector(updateTitle=true){
   const multi=selectedMapAssets(),o=getSelected();deleteSelected.disabled=!(o||multi.length);
   if(multi.length&&!o){
     if(updateTitle)selectionTitle.textContent=multi.length+' assets selected';
+    const common=key=>multi.every(a=>a[key]===multi[0][key])?multi[0][key]:null;
+    const boolOptions=(value)=>'<option value="" '+(value===null?'selected':'')+'>Mixed / keep</option><option value="true" '+(value===true?'selected':'')+'>On</option><option value="false" '+(value===false?'selected':'')+'>Off</option>';
+    const commonLayer=common('layer'),commonFps=common('animationFps');
     selectionInspector.className='inspectorForm';
-    selectionInspector.innerHTML='<div class="multiSelectionBox" style="grid-column:1/-1"><strong>'+multi.length+' placed assets selected</strong>Use arrow keys to move them together, Delete to remove them, or duplicate the whole group.</div><div class="inspectorActions"><button id="dupMulti" type="button">DUPLICATE GROUP</button><button id="clearMulti" type="button">CLEAR SELECTION</button></div>';
+    selectionInspector.innerHTML=
+      '<div class="multiSelectionBox" style="grid-column:1/-1"><strong>'+multi.length+' placed assets selected</strong>Changes below apply to every selected asset as one edit.</div>'+
+      '<label><span>Layer</span><input id="multiLayer" type="number" placeholder="Mixed" value="'+(commonLayer===null?'':commonLayer)+'"></label>'+
+      '<label><span>Animation FPS</span><input id="multiAnimFps" type="number" min="1" max="30" placeholder="Mixed" value="'+(commonFps===null?'':commonFps)+'"></label>'+
+      '<label><span>Solid collision</span><select id="multiSolid">'+boolOptions(common('solid'))+'</select></label>'+
+      '<label><span>Above characters</span><select id="multiAbove">'+boolOptions(common('aboveCharacters'))+'</select></label>'+
+      '<label><span>Flip X</span><select id="multiFlipX">'+boolOptions(common('flipX'))+'</select></label>'+
+      '<label><span>Flip Y</span><select id="multiFlipY">'+boolOptions(common('flipY'))+'</select></label>'+
+      '<label><span>Animated</span><select id="multiAnimated">'+boolOptions(common('animated'))+'</select></label>'+
+      '<div class="inspectorActions"><button id="multiRotateLeft" type="button">↶ ALL 90°</button><button id="multiRotateRight" type="button">↷ ALL 90°</button></div>'+
+      '<div class="inspectorActions"><button id="multiLayerDown" type="button">LAYER −</button><button id="multiLayerUp" type="button">LAYER +</button></div>'+
+      '<div class="inspectorActions"><button id="dupMulti" type="button">DUPLICATE GROUP</button><button id="clearMulti" type="button">CLEAR SELECTION</button></div>';
+    const applyBool=(id,key)=>{$('#'+id).onchange=e=>{if(!e.target.value)return;const value=e.target.value==='true';for(const a of multi)a[key]=value;saveLocal(false);renderSelectionInspector();draw()}};
+    $('#multiLayer').onchange=e=>{if(e.target.value==='')return;const value=Number(e.target.value)||0;for(const a of multi)a.layer=value;saveLocal(false);renderSelectionInspector();draw()};
+    $('#multiAnimFps').onchange=e=>{if(e.target.value==='')return;const value=clamp(Number(e.target.value)||6,1,30);for(const a of multi)a.animationFps=value;saveLocal(false);renderSelectionInspector();draw()};
+    applyBool('multiSolid','solid');applyBool('multiAbove','aboveCharacters');applyBool('multiFlipX','flipX');applyBool('multiFlipY','flipY');applyBool('multiAnimated','animated');
+    const rotateMulti=delta=>{for(const a of multi){a.rotation=((a.rotation||0)+delta+360)%360;[a.w,a.h]=[a.h,a.w]}saveLocal(false);renderSelectionInspector();draw()};
+    $('#multiRotateLeft').onclick=()=>rotateMulti(-90);$('#multiRotateRight').onclick=()=>rotateMulti(90);
+    $('#multiLayerDown').onclick=()=>{for(const a of multi)a.layer=(a.layer||0)-1;saveLocal(false);renderSelectionInspector();draw()};
+    $('#multiLayerUp').onclick=()=>{for(const a of multi)a.layer=(a.layer||0)+1;saveLocal(false);renderSelectionInspector();draw()};
     $('#dupMulti').onclick=duplicateSelected;$('#clearMulti').onclick=()=>{clearMapSelection();renderSelectionInspector();draw()};return
   }
   if(!o){if(updateTitle)selectionTitle.textContent='Nothing selected';selectionInspector.className='inspectorEmpty';selectionInspector.innerHTML='Select an asset, map link, NPC or quest item.';return}
