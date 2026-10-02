@@ -46,6 +46,8 @@ const EXTRA_ASSET_NAMES=[
   'TF Santa.png','TF Elf A.png','TF Elf B.png','TF Polar Bear.png','TF Polar Bear Cub.png',
   'TF Snowmen Tiles.png','TF Toy Tiles.png'
 ];
+const PLAYER_CHARACTER_ASSET='TF Elf A.png';
+window.WorldBuilderPlayerCharacter=PLAYER_CHARACTER_ASSET;
 const DEFAULT_NPC_ASSETS=[
   'character.png','TF Gnome A.png','TF Gnome B.png','TF Reindeer.png','TF Reindeer Child.png','TF Reindeer B.png',
   'TF Rudolph Adult.png','TF Rudolph Adult B.png','TF Rudolph Child.png','TF Jesus.png','TF Mrs Claus.png',
@@ -728,8 +730,8 @@ function drawDraft(){
 }
 function drawPlayer(now){
   if(!play)return;
-  const playerAsset='TF Elf A.png',step=play.moving?Math.floor((now-play.animStart)/160)%3:0;
-  const f=npcFrameForAsset(playerAsset,step,play.dir);
+  const step=play.moving?Math.floor((now-play.animStart)/160)%3:0;
+  const f=npcFrameForAsset(PLAYER_CHARACTER_ASSET,step,play.dir);
   ctx.imageSmoothingEnabled=false;ctx.fillStyle='rgba(16,36,29,.25)';ctx.beginPath();ctx.ellipse(play.x,play.y+2,7,3,0,0,Math.PI*2);ctx.fill();
   if(f)ctx.drawImage(f,Math.round(play.x-13),Math.round(play.y-32),26,36)
 }
