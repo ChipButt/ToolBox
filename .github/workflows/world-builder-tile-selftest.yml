@@ -608,7 +608,7 @@ jobs:
                 }));
                 document.querySelector('.modeBtn[data-mode="spawn"]').click();
                 clickWorld(300,120,120);
-                const card=[...document.querySelectorAll('#assetList .assetCard')].find(x=>x.textContent.includes('sign-post'));
+                const card=document.querySelector('#assetList .assetCard[data-asset-name="sign-post.png"]');
                 if(!card)throw new Error('sign-post palette card not found');
                 card.click();
                 clickWorld(301,112,112);
@@ -652,7 +652,7 @@ jobs:
 
               # Large assets expose a 16px per-tile ABOVE/BELOW mask.
               depth_state=driver.execute_script("""
-                const card=[...document.querySelectorAll('#assetList .assetCard')].find(x=>x.textContent.includes('house2.png'));
+                const card=document.querySelector('#assetList .assetCard[data-asset-name="house2.png"]');
                 if(!card)throw new Error('house2 palette card not found');
                 card.click();
                 const canvas=document.querySelector('#worldCanvas'),r=canvas.getBoundingClientRect(),wx=400,wy=96;
