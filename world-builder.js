@@ -17,7 +17,7 @@ const puzzleOverlay=$('#puzzleOverlay'),puzzleHeading=$('#puzzleHeading'),puzzle
 const STORE='chipin-world-builder-v1';
 const RECOVERY_STORE='chipin-world-builder-recovery-v1';
 const HISTORY_STORE='chipin-world-builder-history-v1';
-const SCHEMA_VERSION=8;
+const SCHEMA_VERSION=9;
 
 const VIRTUAL_ASSETS={
   'couch-horizontal':{label:'Couch — Horizontal',source:'couch.png',sx:0,sy:0,sw:32,sh:16},
@@ -204,7 +204,7 @@ function drawAsset(target,name,x,y,options={}){
   target.restore();
 }
 function defaultSignPopupStyle(){
-  return {width:260,height:126,background:'#f1e4c5',border:'#405e50',text:'#18231d',title:'#173c2a',fontSize:12,borderWidth:3,radius:10,padding:14,backgroundAsset:'sign-popup-background.png'};
+  return {width:260,height:126,background:'#f1e4c5',border:'#405e50',text:'#18231d',title:'#173c2a',fontSize:12,textAlign:'left',borderWidth:3,radius:10,padding:14,backgroundAsset:'sign-popup-background.png'};
 }
 function freshEditor(){
   return {categories:[],assetCategoryByAsset:{},assetNameOverrides:{},hiddenAssets:[],npcAssets:[...DEFAULT_NPC_ASSETS],lastNpcAsset:'character.png',brush:{w:1,h:1},activeCategory:'all',signPopupStyle:defaultSignPopupStyle()};
@@ -544,9 +544,9 @@ function fillAssetRect(){
   flashStatus('Filled '+cols+'×'+rows+' area with '+assetLabel(selectedAssetName)+'.')
 }
 function addNpcAt(x,y){
-  const choices=npcAssetNames(),characterAsset=(choices.includes(project.editor.lastNpcAsset)?project.editor.lastNpcAsset:choices[0])||'character.png';
-  const n={id:uid('npc'),name:'Elf',characterAsset,x:snapV(x),y:snapV(y),speed:24,movementMode:'idle',idleAnimated:true,dialogue:'Hello!\nIt is lovely to see you.',path:[],quest:{enabled:false,title:'A Little Favour',description:'Could you fetch something for me?',itemName:'Quest Item',reward:'Christmas Present',completeText:'You found it! Thank you so much.'}};
-  activeMap().npcs.push(n);selectObject('npc',n.id);setMode('select');saveLocal(false)
+  const m=activeMap(),choices=npcAssetNames(),characterAsset=(choices.includes(project.editor.lastNpcAsset)?project.editor.lastNpcAsset:choices[0])||'character.png';
+  const n={id:uid('npc'),name:'Elf',characterAsset,x:snapCellCenter(x,m.width),y:snapCellCenter(y,m.height),speed:24,movementMode:'idle',idleAnimated:true,dialogue:'Hello!\nIt is lovely to see you.',path:[],quest:{enabled:false,title:'A Little Favour',description:'Could you fetch something for me?',itemName:'Quest Item',reward:'Christmas Present',completeText:'You found it! Thank you so much.'}};
+  m.npcs.push(n);selectObject('npc',n.id);setMode('select');saveLocal(false)
 }
 function addQuestAt(x,y){
   const q={id:uid('quest'),label:'Quest Item',x:snapV(x),y:snapV(y),itemName:'Quest Item',asset:'present1.png',collectedText:'You found the quest item!',puzzle:{enabled:false,prompt:'Repeat the sequence to collect the item.',sequence:[1,2,3,4]}};
@@ -565,7 +565,7 @@ canvas.addEventListener('pointerdown',e=>{
   if(play)return;
   const p=pointerWorld(e);pointerDown=true;
   if(pathEditing&&selected?.type==='npc'){
-    const n=getSelected();n.path.push({x:snapV(p.x),y:snapV(p.y)});saveLocal(false);renderSelectionInspector();draw();return;
+    const n=getSelected(),m=activeMap();n.path.push({x:snapCellCenter(p.x,m.width),y:snapCellCenter(p.y,m.height)});saveLocal(false);renderSelectionInspector();draw();return;
   }
   if(mode==='arrival'){finishArrivalPlacement(p.x,p.y);return}
   if(mode==='spawn'){
@@ -606,7 +606,8 @@ canvas.addEventListener('pointermove',e=>{
   if((mode==='transition'||mode==='fill')&&draftRect&&(e.buttons&1)){draftRect.w=p.x-draftRect.x;draftRect.h=p.y-draftRect.y;draw();return}
   if(drag&&(e.buttons&1)){
     const o=getSelected();if(!o)return;
-    o.x=snapV(p.x-drag.ox);o.y=snapV(p.y-drag.oy);
+    if(drag.type==='npc'){const m=activeMap();o.x=snapCellCenter(p.x-drag.ox,m.width);o.y=snapCellCenter(p.y-drag.oy,m.height)}
+    else{o.x=snapV(p.x-drag.ox);o.y=snapV(p.y-drag.oy)};
     if(o.x==null)return;renderSelectionInspector(false);draw();
   }
 });
@@ -1087,7 +1088,9 @@ function renderSelectionInspector(updateTitle=true){
       '<label class="full"><span>Quest description</span><textarea id="questDescription">'+esc(q.description||'')+'</textarea></label>'+
       input('Required item name','questItem',q.itemName||'','text','full')+input('Reward','questReward',q.reward||'Christmas Present','text','full')+
       '<label class="full"><span>Completion dialogue</span><textarea id="questComplete">'+esc(q.completeText||'')+'</textarea></label>';
-    $('#npcName').onchange=e=>{o.name=e.target.value||'Elf';saveLocal(false);renderSelectionInspector();draw()};$('#npcCharacter').onchange=e=>{o.characterAsset=e.target.value;project.editor.lastNpcAsset=e.target.value;saveLocal(false);draw()};bindNumber('selX',o,'x');bindNumber('selY',o,'y');
+    $('#npcName').onchange=e=>{o.name=e.target.value||'Elf';saveLocal(false);renderSelectionInspector();draw()};$('#npcCharacter').onchange=e=>{o.characterAsset=e.target.value;project.editor.lastNpcAsset=e.target.value;saveLocal(false);draw()};
+    $('#selX').onchange=e=>{const m=activeMap();o.x=snapCellCenter(Number(e.target.value)||0,m.width);e.target.value=o.x;saveLocal(false);draw()};
+    $('#selY').onchange=e=>{const m=activeMap();o.y=snapCellCenter(Number(e.target.value)||0,m.height);e.target.value=o.y;saveLocal(false);draw()};
     $('#npcMovement').onchange=e=>{o.movementMode=e.target.value==='path'?'path':'idle';pathEditing=false;saveLocal(false);renderSelectionInspector();draw()};
     $('#npcIdleAnimated').onchange=e=>{o.idleAnimated=e.target.checked;saveLocal(false);draw()};
     if($('#npcSpeed'))bindNumber('npcSpeed',o,'speed');
