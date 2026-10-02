@@ -11,7 +11,7 @@ const brushWidthInput=$('#brushWidth'),brushHeightInput=$('#brushHeight');
 const undoProjectBtn=$('#undoProject'),redoProjectBtn=$('#redoProject');
 const playHud=$('#playHud'),playMapName=$('#playMapName'),mobilePlayControls=$('#mobilePlayControls'),mobileInteract=$('#mobileInteract');
 const dialogOverlay=$('#dialogOverlay'),dialogSpeaker=$('#dialogSpeaker'),dialogHeading=$('#dialogHeading'),dialogBody=$('#dialogBody'),dialogContinue=$('#dialogContinue');
-const signOverlay=$('#signOverlay'),signPopupCard=$('#signPopupCard'),signPopupTitle=$('#signPopupTitle'),signPopupMessage=$('#signPopupMessage'),signPopupClose=$('#signPopupClose');
+const signOverlay=$('#signOverlay'),signPopupCard=$('#signPopupCard'),signPopupTitle=$('#signPopupTitle'),signPopupMessage=$('#signPopupMessage'),signPopupCanvas=$('#signPopupCanvas'),signPopupClose=$('#signPopupClose');
 const puzzleOverlay=$('#puzzleOverlay'),puzzleHeading=$('#puzzleHeading'),puzzlePrompt=$('#puzzlePrompt'),puzzleSequence=$('#puzzleSequence'),puzzlePad=$('#puzzlePad');
 
 const STORE='chipin-world-builder-v1';
@@ -728,13 +728,10 @@ function drawDraft(){
 }
 function drawPlayer(now){
   if(!play)return;
-  const sprite=window.WorldBuilderPlayerSprite,ready=sprite?.ready&&sprite.canvas;
+  const playerAsset='TF Elf A.png',step=play.moving?Math.floor((now-play.animStart)/160)%3:0;
+  const f=npcFrameForAsset(playerAsset,step,play.dir);
   ctx.imageSmoothingEnabled=false;ctx.fillStyle='rgba(16,36,29,.25)';ctx.beginPath();ctx.ellipse(play.x,play.y+2,7,3,0,0,Math.PI*2);ctx.fill();
-  if(ready){
-    const bob=play.moving?Math.round(Math.sin((now-play.animStart)/85)):0,w=sprite.width,h=sprite.height,x=Math.round(play.x-w/2),y=Math.round(play.y-h+5+bob);
-    ctx.save();if(play.dir==='left'){ctx.translate(Math.round(play.x*2),0);ctx.scale(-1,1)}ctx.drawImage(sprite.canvas,x,y,w,h);ctx.restore();return
-  }
-  const f=npcFrameForAsset('character.png',0,play.dir);if(f)ctx.drawImage(f,Math.round(play.x-12),Math.round(play.y-20),24,24)
+  if(f)ctx.drawImage(f,Math.round(play.x-13),Math.round(play.y-32),26,36)
 }
 function draw(now=performance.now()){
   if(!assets||!project)return;const m=activeMap();if(canvas.width!==m.width||canvas.height!==m.height)resizeCanvas();
@@ -870,12 +867,13 @@ function renderAssets(filter=''){
 
       const check=document.createElement('i');check.className='assetCheck';check.textContent=organisedSelection.has(name)?'✓':'';
       const label=document.createElement('span');label.textContent=assetLabel(name);
+      const filename=document.createElement('small');filename.className='assetFileName';filename.textContent=name;
       const category=categoryName(assignedCategory(name));
       if(category){const badge=document.createElement('span');badge.className='assetCategoryLabel';badge.textContent=category;b.appendChild(badge)}
       if(isNpcAsset(name)){const npcBadge=document.createElement('span');npcBadge.className='assetNpcBadge';npcBadge.textContent='NPC';b.appendChild(npcBadge)}
       if(isAssetDeleted(name)){const delBadge=document.createElement('span');delBadge.className='assetDeletedBadge';delBadge.textContent='DELETED';b.appendChild(delBadge)}
 
-      b.append(thumb,label,check);
+      b.append(thumb,label);if(isNpcAsset(name))b.append(filename);b.append(check);
       b.ondragstart=e=>{e.dataTransfer.setData('text/asset-name',name);e.dataTransfer.effectAllowed='move';b.classList.add('dragging')};
       b.ondragend=()=>b.classList.remove('dragging');
       b.onclick=()=>{
