@@ -8,7 +8,6 @@ on:
       - 'world-builder.js'
       - 'world-builder.html'
       - 'world-builder.css'
-      - 'world-builder-player-sprite.js'
       - '.github/workflows/world-builder-tile-selftest.yml'
   workflow_dispatch:
 
@@ -612,25 +611,28 @@ jobs:
                 if(!card)throw new Error('sign-post palette card not found');
                 card.click();
                 clickWorld(301,112,112);
-                const message=document.querySelector('#signMessage'),title=document.querySelector('#signTitle'),width=document.querySelector('#signStyleWidth');
-                if(!message||!title||!width)throw new Error('sign interaction inspector controls missing');
+                const message=document.querySelector('#signMessage'),title=document.querySelector('#signTitle'),width=document.querySelector('#signStyleWidth'),align=document.querySelector('#signStyleAlign');
+                if(!message||!title||!width||!align)throw new Error('sign interaction inspector controls missing');
                 title.value='Village Notice';title.dispatchEvent(new Event('input',{bubbles:true}));title.dispatchEvent(new Event('change',{bubbles:true}));
                 message.value='Welcome to the winter village!';message.dispatchEvent(new Event('input',{bubbles:true}));message.dispatchEvent(new Event('change',{bubbles:true}));
                 width.value='220';width.dispatchEvent(new Event('input',{bubbles:true}));width.dispatchEvent(new Event('change',{bubbles:true}));
+                align.value='center';align.dispatchEvent(new Event('change',{bubbles:true}));
+                const previewCanvas=document.querySelector('#signPopupPreview .signPixelCanvas'),px=previewCanvas?.getContext('2d')?.getImageData(0,0,previewCanvas.width,previewCanvas.height).data;
+                const pixelAlpha=px?[...px].filter((v,i)=>i%4===3&&v>0).length:0;
                 const p=JSON.parse(localStorage.getItem('chipin-world-builder-v1'));
                 const m=p.maps.find(x=>x.id===p.startMapId);
                 const sign=m.assets.filter(a=>a.asset==='sign-post.png').at(-1);
                 return {
                   id:sign.id,message:sign.sign.message,title:sign.sign.title,
-                  enabled:sign.sign.enabled,styleWidth:p.editor.signPopupStyle.width,
-                  preview:document.querySelector('#signPopupPreview p')?.textContent||''
+                  enabled:sign.sign.enabled,styleWidth:p.editor.signPopupStyle.width,align:p.editor.signPopupStyle.textAlign,
+                  preview:document.querySelector('#signPopupPreview p')?.textContent||'',pixelAlpha
                 };
               """)
               print('SIGN_EDITOR_STATE',json.dumps(sign_state,sort_keys=True))
               if sign_state['message'] != 'Welcome to the winter village!' or sign_state['title'] != 'Village Notice' or not sign_state['enabled']:
                   raise AssertionError(f"sign interaction data failed: {sign_state}")
-              if sign_state['styleWidth'] != 220 or sign_state['preview'] != 'Welcome to the winter village!':
-                  raise AssertionError(f"sign popup designer failed: {sign_state}")
+              if sign_state['styleWidth'] != 220 or sign_state['align'] != 'center' or sign_state['preview'] != 'Welcome to the winter village!' or sign_state['pixelAlpha'] <= 0:
+                  raise AssertionError(f"pixel sign popup designer failed: {sign_state}")
 
               driver.execute_script("document.querySelector('#playtestBtn').click()")
               WebDriverWait(driver,5).until(lambda d:d.execute_script("return document.body.classList.contains('mobilePlaytest')"))
@@ -638,16 +640,19 @@ jobs:
               WebDriverWait(driver,5).until(lambda d:d.execute_script("return document.querySelector('#signOverlay')?.hidden===false"))
               sign_play=driver.execute_script("""
                 const card=document.querySelector('#signPopupCard');
+                const canvas=document.querySelector('#signPopupCanvas'),px=canvas?.getContext('2d')?.getImageData(0,0,canvas.width,canvas.height).data;
                 return {
                   message:document.querySelector('#signPopupMessage')?.textContent||'',
                   title:document.querySelector('#signPopupTitle')?.textContent||'',
                   width:card?.style.width||'',
+                  pixelAlpha:px?[...px].filter((v,i)=>i%4===3&&v>0).length:0,
+                  align:JSON.parse(localStorage.getItem('chipin-world-builder-v1')).editor.signPopupStyle.textAlign,
                   hidden:document.querySelector('#signOverlay')?.hidden
                 };
               """)
               print('SIGN_PLAY_STATE',json.dumps(sign_play,sort_keys=True))
-              if sign_play != {'message':'Welcome to the winter village!','title':'Village Notice','width':'220px','hidden':False}:
-                  raise AssertionError(f"sign popup did not display correctly over playtest: {sign_play}")
+              if sign_play['message'] != 'Welcome to the winter village!' or sign_play['title'] != 'Village Notice' or sign_play['width'] != '220px' or sign_play['hidden'] or sign_play['align'] != 'center' or sign_play['pixelAlpha'] <= 0:
+                  raise AssertionError(f"pixel sign popup did not display correctly over playtest: {sign_play}")
               driver.execute_script("document.querySelector('#signPopupClose').click();document.querySelector('#stopPlaytest').click()")
 
               # Large assets expose a 16px per-tile ABOVE/BELOW mask.
@@ -693,22 +698,29 @@ jobs:
                 quest.checked=true;quest.dispatchEvent(new Event('change',{bubbles:true}));
                 const p=JSON.parse(localStorage.getItem('chipin-world-builder-v1'));
                 const m=p.maps.find(x=>x.id===p.startMapId),n=m.npcs.at(-1);
-                return {initialMovement,hasIdle,movement:n.movementMode,path:n.path.length,dialogue:n.dialogue,quest:n.quest.enabled,idleAnimated:n.idleAnimated};
+                return {initialMovement,hasIdle,movement:n.movementMode,path:n.path.length,dialogue:n.dialogue,quest:n.quest.enabled,idleAnimated:n.idleAnimated,x:n.x,y:n.y,xMod:n.x%16,yMod:n.y%16,pathMods:n.path.map(p=>[p.x%16,p.y%16])};
               """)
               print('NPC_STATE',json.dumps(npc_state,sort_keys=True))
               if npc_state['initialMovement'] != 'idle' or not npc_state['hasIdle'] or npc_state['movement'] != 'path' or npc_state['path'] != 2:
                   raise AssertionError(f"NPC movement controls failed: {npc_state}")
               if npc_state['dialogue'] != 'Hello traveller!' or not npc_state['quest'] or not npc_state['idleAnimated']:
                   raise AssertionError(f"NPC interaction/quest controls failed: {npc_state}")
+              if npc_state['xMod'] != 8 or npc_state['yMod'] != 8 or any(pair != [8,8] for pair in npc_state['pathMods']):
+                  raise AssertionError(f"NPC placement/route points were not centred on tiles: {npc_state}")
 
-              # The exact attached 26x36 player sprite is loaded for playtests.
-              player_sprite=driver.execute_script("""
-                const s=window.WorldBuilderPlayerSprite;
-                return {ready:!!s?.ready,width:s?.width,height:s?.height,sha256:s?.sha256||''};
+              # The reference image resolves to the existing animated TF Elf A character sheet.
+              player_character=driver.execute_script("""
+                const name=window.WorldBuilderPlayerCharacter;
+                const card=document.querySelector('#assetList .assetCard[data-asset-name="TF Elf A.png"]');
+                return {
+                  name,
+                  cardFilename:card?.querySelector('.assetFileName')?.textContent||'',
+                  legacyStill:!!window.WorldBuilderPlayerSprite
+                };
               """)
-              print('PLAYER_SPRITE_STATE',json.dumps(player_sprite,sort_keys=True))
-              if player_sprite != {'ready':True,'width':26,'height':36,'sha256':'41281c57df7063e1bd33a359accc01f3f76f53f5f3cdce69fd834c079d392fdc'}:
-                  raise AssertionError(f"attached playtest player sprite did not load exactly: {player_sprite}")
+              print('PLAYER_CHARACTER_STATE',json.dumps(player_character,sort_keys=True))
+              if player_character != {'name':'TF Elf A.png','cardFilename':'TF Elf A.png','legacyStill':False}:
+                  raise AssertionError(f"playtest player is not using animated TF Elf A sheet: {player_character}")
 
               driver.execute_script("document.querySelector('#saveProject').click()")
               driver.execute_cdp_cmd('Network.clearBrowserCache', {})
@@ -718,13 +730,13 @@ jobs:
                 const p=JSON.parse(localStorage.getItem('chipin-world-builder-v1')),m=p.maps.find(x=>x.id===p.startMapId);
                 const sign=m.assets.find(a=>a.id===arguments[0]),house=m.assets.filter(a=>a.asset==='house2.png').at(-1),n=m.npcs.at(-1);
                 return {
-                  sign:sign?.sign?.message||'',styleWidth:p.editor.signPopupStyle.width,
+                  sign:sign?.sign?.message||'',styleWidth:p.editor.signPopupStyle.width,signAlign:p.editor.signPopupStyle.textAlign,
                   depthEnabled:!!house?.tileDepthEnabled,depthAbove:[...(house?.depthAboveTiles||[])].sort(),
-                  npcMovement:n?.movementMode||'',npcPath:n?.path?.length||0,npcQuest:!!n?.quest?.enabled
+                  npcMovement:n?.movementMode||'',npcPath:n?.path?.length||0,npcQuest:!!n?.quest?.enabled,npcMod:[n?.x%16,n?.y%16]
                 };
               """,sign_state['id'])
               print('FEATURE_REFRESH_STATE',json.dumps(feature_persisted,sort_keys=True))
-              if feature_persisted != {'sign':'Welcome to the winter village!','styleWidth':220,'depthEnabled':True,'depthAbove':['2,0','2,1'],'npcMovement':'path','npcPath':2,'npcQuest':True}:
+              if feature_persisted != {'sign':'Welcome to the winter village!','styleWidth':220,'signAlign':'center','depthEnabled':True,'depthAbove':['2,0','2,1'],'npcMovement':'path','npcPath':2,'npcQuest':True,'npcMod':[8,8]}:
                   raise AssertionError(f"new sign/depth/NPC features did not survive refresh: {feature_persisted}")
 
               severe=[]
