@@ -1015,7 +1015,7 @@ function renderSelectionInspector(updateTitle=true){
     $('#multiLayer').onchange=e=>{if(e.target.value==='')return;const value=Number(e.target.value)||0;for(const a of multi)a.layer=value;saveLocal(false);renderSelectionInspector();draw()};
     $('#multiAnimFps').onchange=e=>{if(e.target.value==='')return;const value=clamp(Number(e.target.value)||6,1,30);for(const a of multi)a.animationFps=value;saveLocal(false);renderSelectionInspector();draw()};
     applyBool('multiSolid','solid');applyBool('multiAbove','aboveCharacters');applyBool('multiFlipX','flipX');applyBool('multiFlipY','flipY');applyBool('multiAnimated','animated');
-    const rotateMulti=delta=>{for(const a of multi){a.rotation=((a.rotation||0)+delta+360)%360;[a.w,a.h]=[a.h,a.w]}saveLocal(false);renderSelectionInspector();draw()};
+    const rotateMulti=delta=>{for(const a of multi){rotateDepthMask(a,delta);a.rotation=((a.rotation||0)+delta+360)%360;[a.w,a.h]=[a.h,a.w]}saveLocal(false);renderSelectionInspector();draw()};
     $('#multiRotateLeft').onclick=()=>rotateMulti(-90);$('#multiRotateRight').onclick=()=>rotateMulti(90);
     $('#multiLayerDown').onclick=()=>{for(const a of multi)a.layer=(a.layer||0)-1;saveLocal(false);renderSelectionInspector();draw()};
     $('#multiLayerUp').onclick=()=>{for(const a of multi)a.layer=(a.layer||0)+1;saveLocal(false);renderSelectionInspector();draw()};
@@ -1029,7 +1029,8 @@ function renderSelectionInspector(updateTitle=true){
     selectionInspector.innerHTML=
       input('X','selX',o.x,'number')+input('Y','selY',o.y,'number')+input('Width','selW',o.w,'number')+input('Height','selH',o.h,'number')+
       (count>1?input(o.animated?'Start frame':'Frame','selFrame',o.frame??0,'number')+input('Animation FPS','selAnimFps',o.animationFps||6,'number'):'')+input('Layer','selLayer',o.layer||0,'number')+
-      '<div class="inlineChecks">'+(count>1?'<label><input id="selAnimated" type="checkbox" '+(o.animated?'checked':'')+'> Animated</label>':'')+'<label><input id="selFlipX" type="checkbox" '+(o.flipX?'checked':'')+'> Flip X</label><label><input id="selFlipY" type="checkbox" '+(o.flipY?'checked':'')+'> Flip Y</label><label><input id="selSolid" type="checkbox" '+(o.solid?'checked':'')+'> Solid collision</label><label><input id="selAboveCharacters" type="checkbox" '+(o.aboveCharacters?'checked':'')+'> Draw above characters</label></div>'+
+      '<div class="inlineChecks">'+(count>1?'<label><input id="selAnimated" type="checkbox" '+(o.animated?'checked':'')+'> Animated</label>':'')+'<label><input id="selFlipX" type="checkbox" '+(o.flipX?'checked':'')+'> Flip X</label><label><input id="selFlipY" type="checkbox" '+(o.flipY?'checked':'')+'> Flip Y</label><label><input id="selSolid" type="checkbox" '+(o.solid?'checked':'')+'> Solid collision</label><label><input id="selAboveCharacters" type="checkbox" '+(o.aboveCharacters?'checked':'')+'> Whole asset above characters</label></div>'+
+      depthEditorHtml(o)+signInspectorHtml(o)+
       '<div class="inspectorActions"><button id="rotateLeft" type="button">↶ 90°</button><button id="rotateRight" type="button">↷ 90°</button><span class="rotationReadout">'+(o.rotation||0)+'°</span></div>'+
       '<div class="inspectorActions"><button id="dupSelected" type="button">DUPLICATE</button><button id="layerUp" type="button">LAYER +</button><button id="layerDown" type="button">LAYER −</button></div>';
     bindNumber('selX',o,'x');bindNumber('selY',o,'y');bindNumber('selW',o,'w');bindNumber('selH',o,'h');
@@ -1038,7 +1039,10 @@ function renderSelectionInspector(updateTitle=true){
     if($('#selAnimated'))$('#selAnimated').onchange=e=>{o.animated=e.target.checked;saveLocal(false);renderSelectionInspector();draw()};
     bindNumber('selLayer',o,'layer');
     $('#selFlipX').onchange=e=>{o.flipX=e.target.checked;saveLocal(false);draw()};$('#selFlipY').onchange=e=>{o.flipY=e.target.checked;saveLocal(false);draw()};$('#selSolid').onchange=e=>{o.solid=e.target.checked;saveLocal(false);draw()};$('#selAboveCharacters').onchange=e=>{o.aboveCharacters=e.target.checked;saveLocal(false);draw()};
-    const rotateAsset=delta=>{o.rotation=((o.rotation||0)+delta+360)%360;[o.w,o.h]=[o.h,o.w];saveLocal(false);renderSelectionInspector();draw()};
+    if($('#tileDepthEnabled'))$('#tileDepthEnabled').onchange=e=>{o.tileDepthEnabled=e.target.checked;saveLocal(false);renderSelectionInspector();draw()};
+    $('#depthTileGrid .depthTileCell').forEach(b=>b.onclick=()=>{const key=b.dataset.depthCell,list=new Set(o.depthAboveTiles||[]);list.has(key)?list.delete(key):list.add(key);o.depthAboveTiles=[...list];saveLocal(false);renderSelectionInspector();draw()});
+    bindSignInspector(o);
+    const rotateAsset=delta=>{rotateDepthMask(o,delta);o.rotation=((o.rotation||0)+delta+360)%360;[o.w,o.h]=[o.h,o.w];saveLocal(false);renderSelectionInspector();draw()};
     $('#rotateLeft').onclick=()=>rotateAsset(-90);$('#rotateRight').onclick=()=>rotateAsset(90);
     $('#dupSelected').onclick=duplicateSelected;$('#layerUp').onclick=()=>{o.layer=(o.layer||0)+1;saveLocal(false);renderSelectionInspector();draw()};$('#layerDown').onclick=()=>{o.layer=(o.layer||0)-1;saveLocal(false);renderSelectionInspector();draw()};
   } else if(selected.type==='transition'){
