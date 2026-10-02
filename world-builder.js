@@ -189,14 +189,16 @@ function assetPreview(name){
   }
 }
 function drawAsset(target,name,x,y,options={}){
-  const v=VIRTUAL_ASSETS[name];
-  if(!v){assetProvider(name).draw(target,name,x,y,options);return}
-  const src=virtualCanvas(name),w=options.width??src.width,h=options.height??src.height;
+  const v=VIRTUAL_ASSETS[name],provider=v?null:assetProvider(name);
+  const src=v?virtualCanvas(name):(options.frame==null?provider.canvas(name):provider.frame(name,options.frame,options.cellWidth,options.cellHeight));
+  const w=options.width??src.width,h=options.height??src.height;
+  const rotation=((Math.round((Number(options.rotation)||0)/90)*90)%360+360)%360;
+  const drawW=rotation%180===0?w:h,drawH=rotation%180===0?h:w;
   target.save();target.imageSmoothingEnabled=false;target.globalAlpha=options.alpha??1;
-  if(options.flipX||options.flipY){
-    target.translate(x+(options.flipX?w:0),y+(options.flipY?h:0));
-    target.scale(options.flipX?-1:1,options.flipY?-1:1);target.drawImage(src,0,0,w,h);
-  }else target.drawImage(src,x,y,w,h);
+  target.translate(x+w/2,y+h/2);
+  if(rotation)target.rotate(rotation*Math.PI/180);
+  target.scale(options.flipX?-1:1,options.flipY?-1:1);
+  target.drawImage(src,-drawW/2,-drawH/2,drawW,drawH);
   target.restore();
 }
 function freshEditor(){
@@ -267,6 +269,7 @@ function normaliseProject(p){
     m.spawn=m.spawn||{x:80,y:80};m.assets=Array.isArray(m.assets)?m.assets:[];m.transitions=Array.isArray(m.transitions)?m.transitions:[];m.npcs=Array.isArray(m.npcs)?m.npcs:[];m.questTargets=Array.isArray(m.questTargets)?m.questTargets:[];
     for(const a of m.assets){
       a.id=a.id||uid('asset');a.layer=Number(a.layer)||0;a.solid=!!a.solid;a.flipX=!!a.flipX;a.flipY=!!a.flipY;
+      a.rotation=((Math.round((Number(a.rotation)||0)/90)*90)%360+360)%360;
       if(typeof a.aboveCharacters!=='boolean')a.aboveCharacters=false;
       if(typeof a.animated!=='boolean')a.animated=a.asset==='fireplace.png';
       a.animationFps=clamp(Number(a.animationFps)||6,1,30)
@@ -422,7 +425,7 @@ function addAssetAt(x,y){
   const key=selectedAssetName+'|'+gx+'|'+gy+'|'+cols+'x'+rows;if(key===lastStampKey)return;lastStampKey=key;
   let last=null;
   for(let row=0;row<rows;row++)for(let col=0;col<cols;col++){
-    const a={id:uid('asset'),asset:selectedAssetName,x:gx+col*d.w,y:gy+row*d.h,w:d.w,h:d.h,frame:d.frame,layer:0,flipX:false,flipY:false,solid:false,aboveCharacters:false,animated:selectedAssetName==='fireplace.png',animationFps:6};
+    const a={id:uid('asset'),asset:selectedAssetName,x:gx+col*d.w,y:gy+row*d.h,w:d.w,h:d.h,frame:d.frame,layer:0,rotation:0,flipX:false,flipY:false,solid:false,aboveCharacters:false,animated:selectedAssetName==='fireplace.png',animationFps:6};
     const v=VIRTUAL_ASSETS[selectedAssetName];
     if(v){a.sourceAsset=v.source;a.crop={x:v.sx,y:v.sy,w:v.sw,h:v.sh}}
     m.assets.push(a);last=a;
@@ -512,7 +515,7 @@ function drawGrid(m){
   ctx.beginPath();for(let x=0;x<=m.width;x+=g){ctx.moveTo(x+.5,0);ctx.lineTo(x+.5,m.height)}for(let y=0;y<=m.height;y+=g){ctx.moveTo(0,y+.5);ctx.lineTo(m.width,y+.5)}ctx.stroke();ctx.restore();
 }
 function drawPlacedAsset(a){
-  const opt={width:a.w,height:a.h,flipX:a.flipX,flipY:a.flipY};
+  const opt={width:a.w,height:a.h,rotation:a.rotation||0,flipX:a.flipX,flipY:a.flipY};
   const count=frameCount(a.asset);
   if(a.animated&&count>1){
     const fps=clamp(Number(a.animationFps)||6,1,30),start=Number(a.frame)||0;
@@ -766,6 +769,7 @@ function renderSelectionInspector(updateTitle=true){
       input('X','selX',o.x,'number')+input('Y','selY',o.y,'number')+input('Width','selW',o.w,'number')+input('Height','selH',o.h,'number')+
       (count>1?input(o.animated?'Start frame':'Frame','selFrame',o.frame??0,'number')+input('Animation FPS','selAnimFps',o.animationFps||6,'number'):'')+input('Layer','selLayer',o.layer||0,'number')+
       '<div class="inlineChecks">'+(count>1?'<label><input id="selAnimated" type="checkbox" '+(o.animated?'checked':'')+'> Animated</label>':'')+'<label><input id="selFlipX" type="checkbox" '+(o.flipX?'checked':'')+'> Flip X</label><label><input id="selFlipY" type="checkbox" '+(o.flipY?'checked':'')+'> Flip Y</label><label><input id="selSolid" type="checkbox" '+(o.solid?'checked':'')+'> Solid collision</label><label><input id="selAboveCharacters" type="checkbox" '+(o.aboveCharacters?'checked':'')+'> Draw above characters</label></div>'+
+      '<div class="inspectorActions"><button id="rotateLeft" type="button">↶ 90°</button><button id="rotateRight" type="button">↷ 90°</button><span class="rotationReadout">'+(o.rotation||0)+'°</span></div>'+
       '<div class="inspectorActions"><button id="dupSelected" type="button">DUPLICATE</button><button id="layerUp" type="button">LAYER +</button><button id="layerDown" type="button">LAYER −</button></div>';
     bindNumber('selX',o,'x');bindNumber('selY',o,'y');bindNumber('selW',o,'w');bindNumber('selH',o,'h');
     if($('#selFrame'))$('#selFrame').onchange=e=>{o.frame=clamp(Number(e.target.value)||0,0,count-1);saveLocal(false);draw()};
@@ -773,6 +777,8 @@ function renderSelectionInspector(updateTitle=true){
     if($('#selAnimated'))$('#selAnimated').onchange=e=>{o.animated=e.target.checked;saveLocal(false);renderSelectionInspector();draw()};
     bindNumber('selLayer',o,'layer');
     $('#selFlipX').onchange=e=>{o.flipX=e.target.checked;saveLocal(false);draw()};$('#selFlipY').onchange=e=>{o.flipY=e.target.checked;saveLocal(false);draw()};$('#selSolid').onchange=e=>{o.solid=e.target.checked;saveLocal(false);draw()};$('#selAboveCharacters').onchange=e=>{o.aboveCharacters=e.target.checked;saveLocal(false);draw()};
+    const rotateAsset=delta=>{o.rotation=((o.rotation||0)+delta+360)%360;[o.w,o.h]=[o.h,o.w];saveLocal(false);renderSelectionInspector();draw()};
+    $('#rotateLeft').onclick=()=>rotateAsset(-90);$('#rotateRight').onclick=()=>rotateAsset(90);
     $('#dupSelected').onclick=duplicateSelected;$('#layerUp').onclick=()=>{o.layer=(o.layer||0)+1;saveLocal(false);renderSelectionInspector();draw()};$('#layerDown').onclick=()=>{o.layer=(o.layer||0)-1;saveLocal(false);renderSelectionInspector();draw()};
   } else if(selected.type==='transition'){
     if(updateTitle)selectionTitle.textContent=o.label||'Map Link';
