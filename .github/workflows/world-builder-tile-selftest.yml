@@ -74,7 +74,7 @@ jobs:
           const fs=require('fs');
           const src=fs.readFileSync('world-builder.js','utf8');
           const bad=src.split(/\r?\n/).map((line,i)=>({line:i+1,text:line}))
-            .filter(x=>/(?<!\$)\$\([^\n]*?\)\.forEach\s*\(/.test(x.text));
+            .filter(x=>/(^|[^$])\$\([^;]*?\)\.forEach\s*\(/.test(x.text));
           if(bad.length){
             console.error('Invalid $().forEach() usage:',bad);
             process.exit(1);
@@ -207,7 +207,8 @@ jobs:
               if stamp['last']['w'] != 16 or stamp['last']['h'] != 16:
                   raise AssertionError(f"stamped uploaded tile has wrong size: {stamp['last']}")
 
-              # Hard refresh and prove the saved uploaded-tile placement and artwork survive reload.
+              # Hard refresh: clear HTTP cache but preserve localStorage, then prove the saved placement survives.
+              driver.execute_cdp_cmd('Network.clearBrowserCache', {})
               driver.refresh()
               wait_ready()
               persisted=driver.execute_script("""
