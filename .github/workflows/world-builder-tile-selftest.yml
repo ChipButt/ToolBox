@@ -371,6 +371,40 @@ jobs:
               if batch_persisted != {'count':6,'layers':[7],'solid':[True],'above':[True]}:
                   raise AssertionError(f"batch asset state update did not survive hard refresh: {batch_persisted}")
 
+              # Spawn tool must target a grid square centre, not a grid intersection.
+              spawn_state=driver.execute_script("""
+                document.querySelector('.modeBtn[data-mode="spawn"]').click();
+                const canvas=document.querySelector('#worldCanvas'),r=canvas.getBoundingClientRect();
+                const wx=331,wy=219;
+                const clientX=r.left+wx*(r.width/canvas.width),clientY=r.top+wy*(r.height/canvas.height);
+                canvas.dispatchEvent(new PointerEvent('pointerdown',{
+                  bubbles:true,cancelable:true,pointerId:123,pointerType:'mouse',button:0,buttons:1,clientX,clientY
+                }));
+                const p=JSON.parse(localStorage.getItem('chipin-world-builder-v1'));
+                const m=p.maps.find(x=>x.id===p.activeMapId)||p.maps[0];
+                document.querySelector('#saveProject').click();
+                return {
+                  x:m.spawn.x,y:m.spawn.y,
+                  xMod:m.spawn.x%16,yMod:m.spawn.y%16,
+                  status:document.querySelector('#modeStatus')?.textContent||''
+                };
+              """)
+              print('SPAWN_STATE',json.dumps(spawn_state,sort_keys=True))
+              if spawn_state['x'] != 328 or spawn_state['y'] != 216 or spawn_state['xMod'] != 8 or spawn_state['yMod'] != 8:
+                  raise AssertionError(f"spawn was not centred in the clicked grid square: {spawn_state}")
+
+              driver.execute_cdp_cmd('Network.clearBrowserCache', {})
+              driver.refresh()
+              wait_ready()
+              spawn_persisted=driver.execute_script("""
+                const p=JSON.parse(localStorage.getItem('chipin-world-builder-v1'));
+                const m=p.maps.find(x=>x.id===p.activeMapId)||p.maps[0];
+                return {x:m.spawn.x,y:m.spawn.y,xMod:m.spawn.x%16,yMod:m.spawn.y%16};
+              """)
+              print('SPAWN_REFRESH_STATE',json.dumps(spawn_persisted,sort_keys=True))
+              if spawn_persisted != {'x':328,'y':216,'xMod':8,'yMod':8}:
+                  raise AssertionError(f"grid-centred spawn did not survive hard refresh: {spawn_persisted}")
+
               severe=[]
               for entry in driver.get_log('browser'):
                   print('BROWSER_LOG',entry['level'],entry['message'])
