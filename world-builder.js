@@ -11,6 +11,7 @@ const brushWidthInput=$('#brushWidth'),brushHeightInput=$('#brushHeight');
 const undoProjectBtn=$('#undoProject'),redoProjectBtn=$('#redoProject');
 const playHud=$('#playHud'),playMapName=$('#playMapName'),mobilePlayControls=$('#mobilePlayControls'),mobileInteract=$('#mobileInteract');
 const dialogOverlay=$('#dialogOverlay'),dialogSpeaker=$('#dialogSpeaker'),dialogHeading=$('#dialogHeading'),dialogBody=$('#dialogBody'),dialogContinue=$('#dialogContinue');
+const signOverlay=$('#signOverlay'),signPopupCard=$('#signPopupCard'),signPopupTitle=$('#signPopupTitle'),signPopupMessage=$('#signPopupMessage'),signPopupClose=$('#signPopupClose');
 const puzzleOverlay=$('#puzzleOverlay'),puzzleHeading=$('#puzzleHeading'),puzzlePrompt=$('#puzzlePrompt'),puzzleSequence=$('#puzzleSequence'),puzzlePad=$('#puzzlePad');
 
 const STORE='chipin-world-builder-v1';
@@ -85,7 +86,7 @@ const organisedSelection=new Set();
 const mapSelection=new Set();
 let marquee=null;
 let play=null, editorMapBeforePlay=null, lastTime=performance.now();
-let dialogState=null, puzzleState=null;
+let dialogState=null, signState=null, puzzleState=null;
 const keys=new Set();
 const undoStack=[],redoStack=[];
 const MAX_UNDO_STEPS=100;
@@ -924,6 +925,72 @@ function renderMapInspector(){
 function mapOptions(selectedId){return project.maps.map(m=>'<option value="'+m.id+'" '+(m.id===selectedId?'selected':'')+'>'+esc(m.name)+'</option>').join('')}
 function assetOptions(selectedName){return '<option value="">Marker only</option>'+catalogNames().map(n=>'<option value="'+n+'" '+(n===selectedName?'selected':'')+'>'+esc(assetLabel(n))+'</option>').join('')}
 function bindNumber(id,obj,key,after=draw){const el=$('#'+id);if(el)el.onchange=e=>{obj[key]=Number(e.target.value)||0;saveLocal(false);after()}}
+function popupBackgroundUrl(name){
+  if(!name)return '';
+  try{return assetPreview(name).toDataURL('image/png')}catch(_){return ''}
+}
+function applySignPopupStyle(el,preview=false){
+  if(!el)return;const s=project.editor.signPopupStyle||defaultSignPopupStyle();
+  el.style.width=preview?'100%':clamp(Number(s.width)||260,120,360)+'px';
+  el.style.maxWidth=preview?'260px':'calc(100% - 36px)';
+  el.style.minHeight=(preview?Math.min(120,Number(s.height)||126):clamp(Number(s.height)||126,70,300))+'px';
+  el.style.backgroundColor=s.background||'#f1e4c5';el.style.border=(clamp(Number(s.borderWidth)||3,0,12))+'px solid '+(s.border||'#405e50');
+  el.style.borderRadius=clamp(Number(s.radius)||10,0,40)+'px';el.style.padding=clamp(Number(s.padding)||14,4,40)+'px';
+  el.style.color=s.text||'#18231d';el.style.fontSize=clamp(Number(s.fontSize)||12,7,26)+'px';
+  const bg=popupBackgroundUrl(s.backgroundAsset);el.style.backgroundImage=bg?'url("'+bg+'")':'none';
+  const strong=el.querySelector('strong');if(strong)strong.style.color=s.title||'#173c2a'
+}
+function refreshSignDesignerPreview(message,title){
+  const el=$('#signPopupPreview');if(!el)return;el.querySelector('strong').textContent=title||'Sign';el.querySelector('p').textContent=message||'Your sign message';applySignPopupStyle(el,true)
+}
+function rotateDepthMask(a,delta){
+  if(!a.tileDepthEnabled||!Array.isArray(a.depthAboveTiles)||!a.depthAboveTiles.length)return;
+  const d=depthGridSpec(a),next=[];
+  for(const key of a.depthAboveTiles){
+    const [c,r]=key.split(',').map(Number);if(!Number.isFinite(c)||!Number.isFinite(r))continue;
+    if(delta>0)next.push(depthTileKey(d.rows-1-r,c));
+    else next.push(depthTileKey(r,d.cols-1-c))
+  }
+  a.depthAboveTiles=[...new Set(next)]
+}
+function depthEditorHtml(a){
+  const d=depthGridSpec(a);if(d.cols<=1&&d.rows<=1)return '';
+  let cells='';for(let row=0;row<d.rows;row++)for(let col=0;col<d.cols;col++){const above=depthTileAbove(a,col,row);cells+='<button type="button" class="depthTileCell '+(above?'above':'')+'" data-depth-cell="'+col+','+row+'" title="Tile '+(col+1)+','+(row+1)+'">'+(above?'ABOVE':'BELOW')+'</button>'}
+  return '<div class="tileDepthEditor"><strong>CHARACTER DEPTH BY TILE</strong><label><input id="tileDepthEnabled" type="checkbox" '+(a.tileDepthEnabled?'checked':'')+'> Set individual 16×16 tiles above/below the character</label><div class="tileDepthHelp">Use this for buildings and large objects. Example: roof tiles ABOVE, doorway tiles BELOW.</div><div id="depthTileGrid" class="depthTileGrid" style="grid-template-columns:repeat('+d.cols+',34px)">'+cells+'</div><div class="depthTileLegend"><span>BELOW = character walks over it</span><span>ABOVE = character walks behind it</span></div></div>'
+}
+function signInspectorHtml(a){
+  if(a.asset!=='sign-post.png')return '';
+  const sign=a.sign||(a.sign={enabled:true,title:'Sign',message:'Read the sign.'}),s=project.editor.signPopupStyle||defaultSignPopupStyle();
+  return '<div class="signDesigner"><div class="signDesignerTitle">SIGN INTERACTION</div>'+
+    '<label><input id="signEnabled" type="checkbox" '+(sign.enabled?'checked':'')+'> Can be interacted with</label>'+
+    '<label class="full"><span>Sign title</span><input id="signTitle" value="'+esc(sign.title||'Sign')+'"></label>'+
+    '<label class="full"><span>Message displayed when read</span><textarea id="signMessage">'+esc(sign.message||'')+'</textarea></label>'+
+    '<div class="signDesignerTitle">POPUP DESIGN — shared by all sign posts</div>'+
+    '<label><span>Width</span><input id="signStyleWidth" type="number" min="120" max="360" value="'+esc(s.width)+'"></label>'+
+    '<label><span>Height</span><input id="signStyleHeight" type="number" min="70" max="300" value="'+esc(s.height)+'"></label>'+
+    '<label><span>Background</span><input id="signStyleBg" type="color" value="'+esc(s.background)+'"></label>'+
+    '<label><span>Border</span><input id="signStyleBorder" type="color" value="'+esc(s.border)+'"></label>'+
+    '<label><span>Text</span><input id="signStyleText" type="color" value="'+esc(s.text)+'"></label>'+
+    '<label><span>Title</span><input id="signStyleTitle" type="color" value="'+esc(s.title)+'"></label>'+
+    '<label><span>Text size</span><input id="signStyleFont" type="number" min="7" max="26" value="'+esc(s.fontSize)+'"></label>'+
+    '<label><span>Border width</span><input id="signStyleBorderWidth" type="number" min="0" max="12" value="'+esc(s.borderWidth)+'"></label>'+
+    '<label><span>Corner radius</span><input id="signStyleRadius" type="number" min="0" max="40" value="'+esc(s.radius)+'"></label>'+
+    '<label><span>Padding</span><input id="signStylePadding" type="number" min="4" max="40" value="'+esc(s.padding)+'"></label>'+
+    '<label class="full"><span>Background artwork</span><select id="signStyleAsset"><option value="" '+(!s.backgroundAsset?'selected':'')+'>None / colour only</option><option value="sign-popup-background.png" '+(s.backgroundAsset==='sign-popup-background.png'?'selected':'')+'>Sign popup background</option><option value="parchment-menu.png" '+(s.backgroundAsset==='parchment-menu.png'?'selected':'')+'>Parchment menu</option></select></label>'+
+    '<div class="signPopupPreviewWrap"><div id="signPopupPreview" class="signPopupPreview"><strong></strong><p></p></div></div></div>'
+}
+function bindSignInspector(a){
+  if(a.asset!=='sign-post.png'||!$('#signMessage'))return;const sign=a.sign,s=project.editor.signPopupStyle;
+  $('#signEnabled').onchange=e=>{sign.enabled=e.target.checked;saveLocal(false)};
+  $('#signTitle').oninput=e=>{sign.title=e.target.value;refreshSignDesignerPreview(sign.message,sign.title)};$('#signTitle').onchange=()=>saveLocal(false);
+  $('#signMessage').oninput=e=>{sign.message=e.target.value;refreshSignDesignerPreview(sign.message,sign.title)};$('#signMessage').onchange=()=>saveLocal(false);
+  const num=(id,key,min,max)=>{$('#'+id).oninput=e=>{s[key]=clamp(Number(e.target.value)||s[key],min,max);refreshSignDesignerPreview(sign.message,sign.title)};$('#'+id).onchange=()=>saveLocal(false)};
+  const col=(id,key)=>{$('#'+id).oninput=e=>{s[key]=e.target.value;refreshSignDesignerPreview(sign.message,sign.title)};$('#'+id).onchange=()=>saveLocal(false)};
+  num('signStyleWidth','width',120,360);num('signStyleHeight','height',70,300);num('signStyleFont','fontSize',7,26);num('signStyleBorderWidth','borderWidth',0,12);num('signStyleRadius','radius',0,40);num('signStylePadding','padding',4,40);
+  col('signStyleBg','background');col('signStyleBorder','border');col('signStyleText','text');col('signStyleTitle','title');
+  $('#signStyleAsset').onchange=e=>{s.backgroundAsset=e.target.value;saveLocal(false);refreshSignDesignerPreview(sign.message,sign.title)};
+  refreshSignDesignerPreview(sign.message,sign.title)
+}
 function renderSelectionInspector(updateTitle=true){
   const multi=selectedMapAssets(),o=getSelected();deleteSelected.disabled=!(o||multi.length);
   if(multi.length&&!o){
