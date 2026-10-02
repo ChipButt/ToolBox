@@ -414,6 +414,7 @@ function pointerWorld(e){
   const r=canvas.getBoundingClientRect();
   return {x:clamp((e.clientX-r.left)*canvas.width/r.width,0,canvas.width),y:clamp((e.clientY-r.top)*canvas.height/r.height,0,canvas.height)};
 }
+function capturePointerSafely(e){try{capturePointerSafely(e)}catch(_){}}
 function hitRect(p,o){return p.x>=o.x&&p.x<=o.x+o.w&&p.y>=o.y&&p.y<=o.y+o.h}
 function frameCount(name){
   const meta=assetMeta(name);if(!meta.cell)return 1;
@@ -504,17 +505,17 @@ canvas.addEventListener('pointerdown',e=>{
     const m=activeMap();m.spawn.x=snapCellCenter(p.x,m.width);m.spawn.y=snapCellCenter(p.y,m.height);saveLocal(false);renderMapInspector();setMode('select');flashStatus('Spawn point centred in selected grid square.');draw();return
   }
   if(mode==='place'){addAssetAt(p.x,p.y);return}
-  if(mode==='fill'){if(!selectedAssetName){flashStatus('Choose an asset first.');return}draftRect={x:p.x,y:p.y,w:0,h:0};canvas.setPointerCapture(e.pointerId);draw();return}
+  if(mode==='fill'){if(!selectedAssetName){flashStatus('Choose an asset first.');return}draftRect={x:p.x,y:p.y,w:0,h:0};capturePointerSafely(e);draw();return}
   if(mode==='npc'){addNpcAt(p.x,p.y);return}
   if(mode==='quest'){addQuestAt(p.x,p.y);return}
-  if(mode==='transition'){draftRect={x:p.x,y:p.y,w:0,h:0};canvas.setPointerCapture(e.pointerId);return}
+  if(mode==='transition'){draftRect={x:p.x,y:p.y,w:0,h:0};capturePointerSafely(e);return}
   if(mode==='multi'){
     const hit=hitTest(p);
     if(hit?.type==='asset'){
       mapSelection.has(hit.id)?mapSelection.delete(hit.id):mapSelection.add(hit.id);
       selected=null;renderSelectionInspector();draw();return
     }
-    marquee={x:p.x,y:p.y,w:0,h:0};canvas.setPointerCapture(e.pointerId);draw();return
+    marquee={x:p.x,y:p.y,w:0,h:0};capturePointerSafely(e);draw();return
   }
   if(mode==='select'){
     const hit=hitTest(p);
@@ -527,7 +528,7 @@ canvas.addEventListener('pointerdown',e=>{
     selected=hit;const o=getSelected();renderSelectionInspector();
     if(hit.type==='asset'||hit.type==='transition'){drag={type:hit.type,id:hit.id,ox:p.x-o.x,oy:p.y-o.y}}
     else if(hit.type==='npc'||hit.type==='quest'){drag={type:hit.type,id:hit.id,ox:p.x-o.x,oy:p.y-o.y}}
-    canvas.setPointerCapture(e.pointerId);draw();
+    capturePointerSafely(e);draw();
   }
 });
 canvas.addEventListener('pointermove',e=>{
