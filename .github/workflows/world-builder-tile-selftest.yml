@@ -689,7 +689,10 @@ jobs:
                 };
                 point(304,160,160);
                 const movement=document.querySelector('#npcMovement'),dialogue=document.querySelector('#npcDialogue'),quest=document.querySelector('#questEnabled');
-                const initialMovement=movement?.value,hasIdle=!!document.querySelector('#npcIdleAnimated');
+                const width=document.querySelector('#npcWidth'),height=document.querySelector('#npcHeight'),resetSize=document.querySelector('#resetNpcSize');
+                const initialMovement=movement?.value,hasIdle=!!document.querySelector('#npcIdleAnimated'),hasResize=!!width&&!!height&&!!resetSize;
+                width.value='40';width.dispatchEvent(new Event('change',{bubbles:true}));
+                height.value='56';height.dispatchEvent(new Event('change',{bubbles:true}));
                 movement.value='path';movement.dispatchEvent(new Event('change',{bubbles:true}));
                 document.querySelector('#editPath').click();
                 point(305,176,160);point(306,176,176);
@@ -698,11 +701,13 @@ jobs:
                 quest.checked=true;quest.dispatchEvent(new Event('change',{bubbles:true}));
                 const p=JSON.parse(localStorage.getItem('chipin-world-builder-v1'));
                 const m=p.maps.find(x=>x.id===p.startMapId),n=m.npcs.at(-1);
-                return {initialMovement,hasIdle,movement:n.movementMode,path:n.path.length,dialogue:n.dialogue,quest:n.quest.enabled,idleAnimated:n.idleAnimated,x:n.x,y:n.y,xMod:n.x%16,yMod:n.y%16,pathMods:n.path.map(p=>[p.x%16,p.y%16])};
+                return {initialMovement,hasIdle,hasResize,movement:n.movementMode,path:n.path.length,dialogue:n.dialogue,quest:n.quest.enabled,idleAnimated:n.idleAnimated,x:n.x,y:n.y,w:n.w,h:n.h,xMod:n.x%16,yMod:n.y%16,pathMods:n.path.map(p=>[p.x%16,p.y%16])};
               """)
               print('NPC_STATE',json.dumps(npc_state,sort_keys=True))
-              if npc_state['initialMovement'] != 'idle' or not npc_state['hasIdle'] or npc_state['movement'] != 'path' or npc_state['path'] != 2:
-                  raise AssertionError(f"NPC movement controls failed: {npc_state}")
+              if npc_state['initialMovement'] != 'idle' or not npc_state['hasIdle'] or not npc_state['hasResize'] or npc_state['movement'] != 'path' or npc_state['path'] != 2:
+                  raise AssertionError(f"NPC movement/resize controls failed: {npc_state}")
+              if npc_state['w'] != 40 or npc_state['h'] != 56:
+                  raise AssertionError(f"NPC resize was not stored: {npc_state}")
               if npc_state['dialogue'] != 'Hello traveller!' or not npc_state['quest'] or not npc_state['idleAnimated']:
                   raise AssertionError(f"NPC interaction/quest controls failed: {npc_state}")
               if npc_state['xMod'] != 8 or npc_state['yMod'] != 8 or any(pair != [8,8] for pair in npc_state['pathMods']):
@@ -732,11 +737,11 @@ jobs:
                 return {
                   sign:sign?.sign?.message||'',styleWidth:p.editor.signPopupStyle.width,signAlign:p.editor.signPopupStyle.textAlign,
                   depthEnabled:!!house?.tileDepthEnabled,depthAbove:[...(house?.depthAboveTiles||[])].sort(),
-                  npcMovement:n?.movementMode||'',npcPath:n?.path?.length||0,npcQuest:!!n?.quest?.enabled,npcMod:[n?.x%16,n?.y%16]
+                  npcMovement:n?.movementMode||'',npcPath:n?.path?.length||0,npcQuest:!!n?.quest?.enabled,npcMod:[n?.x%16,n?.y%16],npcSize:[n?.w,n?.h]
                 };
               """,sign_state['id'])
               print('FEATURE_REFRESH_STATE',json.dumps(feature_persisted,sort_keys=True))
-              if feature_persisted != {'sign':'Welcome to the winter village!','styleWidth':220,'signAlign':'center','depthEnabled':True,'depthAbove':['2,0','2,1'],'npcMovement':'path','npcPath':2,'npcQuest':True,'npcMod':[8,8]}:
+              if feature_persisted != {'sign':'Welcome to the winter village!','styleWidth':220,'signAlign':'center','depthEnabled':True,'depthAbove':['2,0','2,1'],'npcMovement':'path','npcPath':2,'npcQuest':True,'npcMod':[8,8],'npcSize':[40,56]}:
                   raise AssertionError(f"new sign/depth/NPC features did not survive refresh: {feature_persisted}")
 
               severe=[]
