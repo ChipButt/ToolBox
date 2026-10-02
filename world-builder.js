@@ -16,7 +16,7 @@ const puzzleOverlay=$('#puzzleOverlay'),puzzleHeading=$('#puzzleHeading'),puzzle
 const STORE='chipin-world-builder-v1';
 const RECOVERY_STORE='chipin-world-builder-recovery-v1';
 const HISTORY_STORE='chipin-world-builder-history-v1';
-const SCHEMA_VERSION=7;
+const SCHEMA_VERSION=8;
 
 const VIRTUAL_ASSETS={
   'couch-horizontal':{label:'Couch — Horizontal',source:'couch.png',sx:0,sy:0,sw:32,sh:16},
@@ -202,8 +202,11 @@ function drawAsset(target,name,x,y,options={}){
   target.drawImage(src,-drawW/2,-drawH/2,drawW,drawH);
   target.restore();
 }
+function defaultSignPopupStyle(){
+  return {width:260,height:126,background:'#f1e4c5',border:'#405e50',text:'#18231d',title:'#173c2a',fontSize:12,borderWidth:3,radius:10,padding:14,backgroundAsset:'sign-popup-background.png'};
+}
 function freshEditor(){
-  return {categories:[],assetCategoryByAsset:{},assetNameOverrides:{},hiddenAssets:[],npcAssets:[...DEFAULT_NPC_ASSETS],lastNpcAsset:'character.png',brush:{w:1,h:1},activeCategory:'all'};
+  return {categories:[],assetCategoryByAsset:{},assetNameOverrides:{},hiddenAssets:[],npcAssets:[...DEFAULT_NPC_ASSETS],lastNpcAsset:'character.png',brush:{w:1,h:1},activeCategory:'all',signPopupStyle:defaultSignPopupStyle()};
 }
 function categoryGuess(name){
   if(sheetAssets?.names?.includes(name)){
@@ -266,6 +269,7 @@ function normaliseProject(p){
   p.editor.lastNpcAsset=p.editor.lastNpcAsset||p.editor.npcAssets[0]||'character.png';
   p.editor.brush=p.editor.brush&&typeof p.editor.brush==='object'?p.editor.brush:{w:1,h:1};
   p.editor.brush.w=clamp(Number(p.editor.brush.w)||1,1,32);p.editor.brush.h=clamp(Number(p.editor.brush.h)||1,1,32);
+  p.editor.signPopupStyle={...defaultSignPopupStyle(),...(p.editor.signPopupStyle&&typeof p.editor.signPopupStyle==='object'?p.editor.signPopupStyle:{})};
   p.editor.activeCategory='all';
   for(const c of p.editor.categories){c.id=c.id||uid('cat');c.name=c.name||'Category'}
   ensureDefaultCategories(p);
@@ -277,7 +281,15 @@ function normaliseProject(p){
       a.rotation=((Math.round((Number(a.rotation)||0)/90)*90)%360+360)%360;
       if(typeof a.aboveCharacters!=='boolean')a.aboveCharacters=false;
       if(typeof a.animated!=='boolean')a.animated=a.asset==='fireplace.png';
-      a.animationFps=clamp(Number(a.animationFps)||6,1,30)
+      a.animationFps=clamp(Number(a.animationFps)||6,1,30);
+      a.tileDepthEnabled=!!a.tileDepthEnabled;
+      a.depthTileSize=16;
+      a.depthAboveTiles=Array.isArray(a.depthAboveTiles)?[...new Set(a.depthAboveTiles.map(String))]:[];
+      if(a.asset==='sign-post.png'){
+        a.sign=a.sign&&typeof a.sign==='object'?a.sign:{enabled:true,title:'Sign',message:'Read the sign.'};
+        if(typeof a.sign.enabled!=='boolean')a.sign.enabled=true;
+        a.sign.title=a.sign.title||'Sign';a.sign.message=String(a.sign.message??'');
+      }
     }
     for(const t of m.transitions){
       t.id=t.id||uid('link');t.label=t.label||'Map Link';
@@ -285,7 +297,13 @@ function normaliseProject(p){
       t.arrivalSet=typeof t.arrivalSet==='boolean'?t.arrivalSet:hasArrival;
       if(t.arrivalSet){t.targetX=Number(t.targetX);t.targetY=Number(t.targetY)}else{t.targetX=null;t.targetY=null}
     }
-    for(const n of m.npcs){n.id=n.id||uid('npc');n.name=n.name||'Elf';n.characterAsset=n.characterAsset||'character.png';n.dialogue=n.dialogue||'Hello!';n.path=Array.isArray(n.path)?n.path:[];n.speed=Number(n.speed)||24;n.quest=n.quest||{enabled:false,title:'',description:'',itemName:'',reward:'Christmas Present',completeText:'Thank you!'}}
+    for(const n of m.npcs){
+      n.id=n.id||uid('npc');n.name=n.name||'Elf';n.characterAsset=n.characterAsset||'character.png';n.dialogue=n.dialogue||'Hello!';
+      n.path=Array.isArray(n.path)?n.path:[];n.speed=Number(n.speed)||24;
+      n.movementMode=n.movementMode==='path'?'path':'idle';
+      if(typeof n.idleAnimated!=='boolean')n.idleAnimated=true;
+      n.quest=n.quest||{enabled:false,title:'',description:'',itemName:'',reward:'Christmas Present',completeText:'Thank you!'}
+    }
     for(const q of m.questTargets){q.id=q.id||uid('quest');q.label=q.label||'Quest Item';q.itemName=q.itemName||'Quest Item';q.puzzle=q.puzzle||{enabled:false,prompt:'Repeat the sequence.',sequence:[1,2,3,4]}}
   }
   if(!p.maps.some(m=>m.id===p.activeMapId))p.activeMapId=p.maps[0].id;
@@ -488,7 +506,8 @@ function hitTest(p){
 }
 function createPlacedAsset(name,x,y){
   const d=defaultAssetSize(name);
-  const a={id:uid('asset'),asset:name,x,y,w:d.w,h:d.h,frame:d.frame,layer:0,rotation:0,flipX:false,flipY:false,solid:false,aboveCharacters:false,animated:name==='fireplace.png',animationFps:6};
+  const a={id:uid('asset'),asset:name,x,y,w:d.w,h:d.h,frame:d.frame,layer:0,rotation:0,flipX:false,flipY:false,solid:false,aboveCharacters:false,animated:name==='fireplace.png',animationFps:6,tileDepthEnabled:false,depthTileSize:16,depthAboveTiles:[]};
+  if(name==='sign-post.png')a.sign={enabled:true,title:'Sign',message:'Read the sign.'};
   const v=VIRTUAL_ASSETS[name];
   if(v){a.sourceAsset=v.source;a.crop={x:v.sx,y:v.sy,w:v.sw,h:v.sh}}
   return a
@@ -525,7 +544,7 @@ function fillAssetRect(){
 }
 function addNpcAt(x,y){
   const choices=npcAssetNames(),characterAsset=(choices.includes(project.editor.lastNpcAsset)?project.editor.lastNpcAsset:choices[0])||'character.png';
-  const n={id:uid('npc'),name:'Elf',characterAsset,x:snapV(x),y:snapV(y),speed:24,dialogue:'Hello!\nIt is lovely to see you.',path:[],quest:{enabled:false,title:'A Little Favour',description:'Could you fetch something for me?',itemName:'Quest Item',reward:'Christmas Present',completeText:'You found it! Thank you so much.'}};
+  const n={id:uid('npc'),name:'Elf',characterAsset,x:snapV(x),y:snapV(y),speed:24,movementMode:'idle',idleAnimated:true,dialogue:'Hello!\nIt is lovely to see you.',path:[],quest:{enabled:false,title:'A Little Favour',description:'Could you fetch something for me?',itemName:'Quest Item',reward:'Christmas Present',completeText:'You found it! Thank you so much.'}};
   activeMap().npcs.push(n);selectObject('npc',n.id);setMode('select');saveLocal(false)
 }
 function addQuestAt(x,y){
