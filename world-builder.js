@@ -414,7 +414,7 @@ function pointerWorld(e){
   const r=canvas.getBoundingClientRect();
   return {x:clamp((e.clientX-r.left)*canvas.width/r.width,0,canvas.width),y:clamp((e.clientY-r.top)*canvas.height/r.height,0,canvas.height)};
 }
-function capturePointerSafely(e){try{capturePointerSafely(e)}catch(_){}}
+function capturePointerSafely(e){try{canvas.setPointerCapture(e.pointerId)}catch(_){}}
 function hitRect(p,o){return p.x>=o.x&&p.x<=o.x+o.w&&p.y>=o.y&&p.y<=o.y+o.h}
 function frameCount(name){
   const meta=assetMeta(name);if(!meta.cell)return 1;
