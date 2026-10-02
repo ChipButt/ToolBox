@@ -17,7 +17,7 @@ const puzzleOverlay=$('#puzzleOverlay'),puzzleHeading=$('#puzzleHeading'),puzzle
 const STORE='chipin-world-builder-v1';
 const RECOVERY_STORE='chipin-world-builder-recovery-v1';
 const HISTORY_STORE='chipin-world-builder-history-v1';
-const SCHEMA_VERSION=10;
+const SCHEMA_VERSION=11;
 
 const VIRTUAL_ASSETS={
   'couch-horizontal':{label:'Couch — Horizontal',source:'couch.png',sx:0,sy:0,sw:32,sh:16},
@@ -304,7 +304,9 @@ function normaliseProject(p){
       n.id=n.id||uid('npc');n.name=n.name||'Elf';n.characterAsset=n.characterAsset||'character.png';n.dialogue=n.dialogue||'Hello!';
       n.path=Array.isArray(n.path)?n.path:[];n.speed=Number(n.speed)||24;
       const npcSize=npcNaturalSize(n.characterAsset);
-      n.w=clamp(Number(n.w)||npcSize.w,8,256);n.h=clamp(Number(n.h)||npcSize.h,8,256);
+      if(typeof n.sizeCustomized!=='boolean'){n.w=npcSize.w;n.h=npcSize.h;n.sizeCustomized=false}
+      else if(n.sizeCustomized){n.w=clamp(Number(n.w)||npcSize.w,8,256);n.h=clamp(Number(n.h)||npcSize.h,8,256)}
+      else{n.w=npcSize.w;n.h=npcSize.h}
       n.movementMode=n.movementMode==='path'?'path':'idle';
       if(typeof n.idleAnimated!=='boolean')n.idleAnimated=true;
       n.quest=n.quest||{enabled:false,title:'',description:'',itemName:'',reward:'Christmas Present',completeText:'Thank you!'}
@@ -554,7 +556,7 @@ function fillAssetRect(){
 function addNpcAt(x,y){
   const m=activeMap(),choices=npcAssetNames(),characterAsset=(choices.includes(project.editor.lastNpcAsset)?project.editor.lastNpcAsset:choices[0])||'character.png';
   const size=npcNaturalSize(characterAsset);
-  const n={id:uid('npc'),name:'Elf',characterAsset,x:snapCellCenter(x,m.width),y:snapCellCenter(y,m.height),w:size.w,h:size.h,speed:24,movementMode:'idle',idleAnimated:true,dialogue:'Hello!\nIt is lovely to see you.',path:[],quest:{enabled:false,title:'A Little Favour',description:'Could you fetch something for me?',itemName:'Quest Item',reward:'Christmas Present',completeText:'You found it! Thank you so much.'}};
+  const n={id:uid('npc'),name:'Elf',characterAsset,x:snapCellCenter(x,m.width),y:snapCellCenter(y,m.height),w:size.w,h:size.h,sizeCustomized:false,speed:24,movementMode:'idle',idleAnimated:true,dialogue:'Hello!\nIt is lovely to see you.',path:[],quest:{enabled:false,title:'A Little Favour',description:'Could you fetch something for me?',itemName:'Quest Item',reward:'Christmas Present',completeText:'You found it! Thank you so much.'}};
   m.npcs.push(n);selectObject('npc',n.id);setMode('select');saveLocal(false)
 }
 function addQuestAt(x,y){
@@ -1158,14 +1160,14 @@ function renderSelectionInspector(updateTitle=true){
     $('#npcName').onchange=e=>{o.name=e.target.value||'Elf';saveLocal(false);renderSelectionInspector();draw()};
     $('#npcCharacter').onchange=e=>{
       o.characterAsset=e.target.value;project.editor.lastNpcAsset=e.target.value;
-      const natural=npcNaturalSize(o.characterAsset);o.w=natural.w;o.h=natural.h;
+      const natural=npcNaturalSize(o.characterAsset);o.w=natural.w;o.h=natural.h;o.sizeCustomized=false;
       saveLocal(false);renderSelectionInspector();draw()
     };
     $('#selX').onchange=e=>{const m=activeMap();o.x=snapCellCenter(Number(e.target.value)||0,m.width);e.target.value=o.x;saveLocal(false);draw()};
     $('#selY').onchange=e=>{const m=activeMap();o.y=snapCellCenter(Number(e.target.value)||0,m.height);e.target.value=o.y;saveLocal(false);draw()};
-    $('#npcWidth').onchange=e=>{o.w=clamp(Number(e.target.value)||8,8,256);e.target.value=o.w;saveLocal(false);draw()};
-    $('#npcHeight').onchange=e=>{o.h=clamp(Number(e.target.value)||8,8,256);e.target.value=o.h;saveLocal(false);draw()};
-    $('#resetNpcSize').onclick=()=>{const s=npcNaturalSize(o.characterAsset);o.w=s.w;o.h=s.h;saveLocal(false);renderSelectionInspector();draw()};
+    $('#npcWidth').onchange=e=>{o.w=clamp(Number(e.target.value)||8,8,256);o.sizeCustomized=true;e.target.value=o.w;saveLocal(false);draw()};
+    $('#npcHeight').onchange=e=>{o.h=clamp(Number(e.target.value)||8,8,256);o.sizeCustomized=true;e.target.value=o.h;saveLocal(false);draw()};
+    $('#resetNpcSize').onclick=()=>{const s=npcNaturalSize(o.characterAsset);o.w=s.w;o.h=s.h;o.sizeCustomized=false;saveLocal(false);renderSelectionInspector();draw()};
     $('#npcMovement').onchange=e=>{o.movementMode=e.target.value==='path'?'path':'idle';pathEditing=false;saveLocal(false);renderSelectionInspector();draw()};
     $('#npcIdleAnimated').onchange=e=>{o.idleAnimated=e.target.checked;saveLocal(false);draw()};
     if($('#npcSpeed'))bindNumber('npcSpeed',o,'speed');
