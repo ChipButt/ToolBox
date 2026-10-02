@@ -90,6 +90,8 @@ jobs:
           from selenium import webdriver
           from selenium.webdriver.chrome.options import Options
           from selenium.webdriver.support.ui import WebDriverWait
+          from selenium.webdriver.common.by import By
+          from selenium.webdriver.common.action_chains import ActionChains
 
           URL='http://127.0.0.1:8000/world-builder.html'
           STORE='chipin-world-builder-v1'
@@ -291,6 +293,83 @@ jobs:
               print('ROTATION_REFRESH_STATE',json.dumps(rotation_persisted,sort_keys=True))
               if rotation_persisted != {'rotation':90,'w':16,'h':32}:
                   raise AssertionError(f"rotated asset did not survive hard refresh: {rotation_persisted}")
+
+              # Fill a dragged 48x32 area with a 16x16 uploaded tile: 3 columns x 2 rows.
+              driver.execute_script("""
+                const name='Dungeon r00 c01';
+                const card=[...document.querySelectorAll('#assetList .assetCard')].find(x=>x.textContent.includes(name));
+                if(!card)throw new Error('Dungeon palette card not found for fill test');
+                card.click();
+                document.querySelector('.modeBtn[data-mode="fill"]').click();
+              """)
+              canvas=driver.find_element(By.ID,'worldCanvas')
+              rect=canvas.rect
+              start_x,start_y=240,160
+              ActionChains(driver).move_to_element_with_offset(
+                  canvas,start_x-rect['width']/2,start_y-rect['height']/2
+              ).click_and_hold().move_by_offset(48,32).release().perform()
+              WebDriverWait(driver, 5).until(lambda d: d.execute_script(
+                  "return document.querySelector('#selectionTitle')?.textContent==='6 assets selected'"
+              ))
+
+              fill_state=driver.execute_script("""
+                const p=JSON.parse(localStorage.getItem('chipin-world-builder-v1'));
+                const m=p.maps.find(x=>x.id===p.activeMapId)||p.maps[0];
+                const tiles=m.assets.filter(a=>a.asset==='Dungeon r00 c01'&&a.x>=240&&a.x<288&&a.y>=160&&a.y<192);
+                return {
+                  count:tiles.length,
+                  positions:tiles.map(a=>[a.x,a.y]).sort((a,b)=>a[1]-b[1]||a[0]-b[0]),
+                  title:document.querySelector('#selectionTitle')?.textContent||'',
+                  hasBatchControls:!!document.querySelector('#multiLayer')&&!!document.querySelector('#multiSolid')&&!!document.querySelector('#multiAbove')
+                };
+              """)
+              print('FILL_STATE',json.dumps(fill_state,sort_keys=True))
+              if fill_state['count'] != 6 or not fill_state['hasBatchControls']:
+                  raise AssertionError(f"area fill did not create/select six tiles: {fill_state}")
+
+              # Batch-edit the six newly selected placed assets.
+              batch_state=driver.execute_script("""
+                const change=(selector,value)=>{
+                  const el=document.querySelector(selector);
+                  if(!el)throw new Error('Missing batch control '+selector);
+                  el.value=value;
+                  el.dispatchEvent(new Event('change',{bubbles:true}));
+                };
+                change('#multiLayer','7');
+                change('#multiSolid','true');
+                change('#multiAbove','true');
+                const p=JSON.parse(localStorage.getItem('chipin-world-builder-v1'));
+                const m=p.maps.find(x=>x.id===p.activeMapId)||p.maps[0];
+                const tiles=m.assets.filter(a=>a.asset==='Dungeon r00 c01'&&a.x>=240&&a.x<288&&a.y>=160&&a.y<192);
+                document.querySelector('#saveProject').click();
+                return {
+                  count:tiles.length,
+                  layers:[...new Set(tiles.map(a=>a.layer))],
+                  solid:[...new Set(tiles.map(a=>a.solid))],
+                  above:[...new Set(tiles.map(a=>a.aboveCharacters))]
+                };
+              """)
+              print('BATCH_STATE',json.dumps(batch_state,sort_keys=True))
+              if batch_state != {'count':6,'layers':[7],'solid':[True],'above':[True]}:
+                  raise AssertionError(f"batch asset state update failed: {batch_state}")
+
+              driver.execute_cdp_cmd('Network.clearBrowserCache', {})
+              driver.refresh()
+              wait_ready()
+              batch_persisted=driver.execute_script("""
+                const p=JSON.parse(localStorage.getItem('chipin-world-builder-v1'));
+                const m=p.maps.find(x=>x.id===p.activeMapId)||p.maps[0];
+                const tiles=m.assets.filter(a=>a.asset==='Dungeon r00 c01'&&a.x>=240&&a.x<288&&a.y>=160&&a.y<192);
+                return {
+                  count:tiles.length,
+                  layers:[...new Set(tiles.map(a=>a.layer))],
+                  solid:[...new Set(tiles.map(a=>a.solid))],
+                  above:[...new Set(tiles.map(a=>a.aboveCharacters))]
+                };
+              """)
+              print('BATCH_REFRESH_STATE',json.dumps(batch_persisted,sort_keys=True))
+              if batch_persisted != {'count':6,'layers':[7],'solid':[True],'above':[True]}:
+                  raise AssertionError(f"batch asset state update did not survive hard refresh: {batch_persisted}")
 
               severe=[]
               for entry in driver.get_log('browser'):
