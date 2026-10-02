@@ -1017,24 +1017,41 @@ $('#clearAssetSelection').onclick=()=>{organisedSelection.clear();renderAssets(a
 $$('.modeBtn[data-mode]').forEach(b=>b.onclick=()=>setMode(b.dataset.mode));
 
 function download(name,text,type='text/javascript'){
-  const blob=new Blob([text],{type}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),500)
+  try{
+    const blob=new Blob([text],{type}),url=URL.createObjectURL(blob),a=document.createElement('a');
+    a.href=url;a.download=name;a.style.display='none';document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),2000);
+    return true
+  }catch(error){
+    console.error('World Builder download failed:',error);
+    flashStatus('DOWNLOAD FAILED — check browser download permissions.');
+    return false
+  }
+}
+function projectFilename(suffix){
+  return (project.name||'world-project').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')+suffix
 }
 undoProjectBtn.onclick=undoProject;
 redoProjectBtn.onclick=redoProject;
 $('#saveProject').onclick=()=>saveLocal(true);
 $('#backupProject').onclick=()=>{
-  saveLocal(true);
-  const filename=(project.name||'world-project').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')+'.world-backup.json';
-  download(filename,JSON.stringify(project,null,2),'application/json');flashStatus('Downloaded editable backup: '+filename)
+  const browserSaved=saveLocal(false);
+  try{
+    const filename=projectFilename('.world-backup.json');
+    const complete=JSON.stringify(project,null,2);
+    if(download(filename,complete,'application/json'))flashStatus((browserSaved?'Saved all '+project.maps.length+' maps · ':'Browser save failed · ')+'Backup downloaded: '+filename)
+  }catch(error){console.error('Backup creation failed:',error);flashStatus('BACKUP FAILED — '+error.message)}
 };
 $('#exportProject').onclick=()=>{
-  saveLocal(false);
-  const payload=JSON.parse(JSON.stringify(project));
-  payload.assetAliases=Object.fromEntries(Object.entries(VIRTUAL_ASSETS).map(([id,v])=>[id,{source:v.source,crop:{x:v.sx,y:v.sy,w:v.sw,h:v.sh},label:v.label}]));
-  const clean=JSON.stringify(payload,null,2);
-  const code='/* Chip In World Builder export\n   Give this file to ChatGPT to turn the layout into the finished interactive game. */\nwindow.CHIPIN_WORLD_PROJECT = '+clean+';\n';
-  const filename=(project.name||'world-project').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')+'.world.js';
-  download(filename,code);flashStatus('Exported '+filename);
+  const browserSaved=saveLocal(false);
+  try{
+    const payload=JSON.parse(JSON.stringify(project));
+    payload.assetAliases=Object.fromEntries(Object.entries(VIRTUAL_ASSETS).map(([id,v])=>[id,{source:v.source,crop:{x:v.sx,y:v.sy,w:v.sw,h:v.sh},label:v.label}]));
+    const clean=JSON.stringify(payload,null,2);
+    const code='/* Chip In World Builder export\n   Give this file to ChatGPT to turn the layout into the finished interactive game. */\nwindow.CHIPIN_WORLD_PROJECT = '+clean+';\n';
+    const filename=projectFilename('.world.js');
+    if(download(filename,code))flashStatus((browserSaved?'Saved all '+project.maps.length+' maps · ':'Browser save failed · ')+'Exported '+filename)
+  }catch(error){console.error('Export creation failed:',error);flashStatus('EXPORT FAILED — '+error.message)}
 };
 $('#importProject').onclick=()=>$('#importFile').click();
 $('#importFile').onchange=async e=>{
