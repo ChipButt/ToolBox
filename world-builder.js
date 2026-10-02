@@ -296,13 +296,6 @@ function normaliseProject(p){
   for(const m of p.maps)delete m.spawn;
   return p;
 }
-function recordHistory(raw){
-  try{
-    const list=JSON.parse(localStorage.getItem(HISTORY_STORE)||'[]');
-    list.unshift({savedAt:new Date().toISOString(),raw});
-    localStorage.setItem(HISTORY_STORE,JSON.stringify(list.slice(0,4)));
-  }catch(_){}
-}
 function snapshotProject(){
   const copy=JSON.parse(JSON.stringify(project));
   delete copy.updatedAt;
@@ -318,8 +311,15 @@ function initialiseUndoHistory(){
   historyState=project?snapshotProject():null;
   updateHistoryButtons()
 }
+function verifyStoredProject(raw){
+  const stored=localStorage.getItem(STORE);
+  if(stored!==raw)throw new Error('Browser storage did not retain the complete project.');
+  const parsed=JSON.parse(stored);
+  const expectedIds=project.maps.map(m=>m.id).sort().join('|'),storedIds=(parsed.maps||[]).map(m=>m.id).sort().join('|');
+  if((parsed.maps||[]).length!==project.maps.length||storedIds!==expectedIds)throw new Error('Saved project does not contain every map.')
+}
 function saveLocal(show=true){
-  if(!project)return;
+  if(!project)return false;
   project.version=SCHEMA_VERSION;
   const snapshot=snapshotProject();
   if(!applyingHistory){
@@ -333,14 +333,48 @@ function saveLocal(show=true){
   }
   project.updatedAt=new Date().toISOString();
   const next=JSON.stringify(project),previous=localStorage.getItem(STORE);
-  if(previous&&previous!==next)localStorage.setItem(RECOVERY_STORE,previous);
-  localStorage.setItem(STORE,next);
-  if(show){recordHistory(next);flashStatus('Saved. This project will reopen after a hard refresh.')}
+  let saved=false,lastError=null;
+  const attempt=()=>{
+    localStorage.setItem(STORE,next);
+    verifyStoredProject(next);
+    saved=true
+  };
+  try{attempt()}catch(error){
+    lastError=error;
+    try{localStorage.removeItem(HISTORY_STORE);attempt()}catch(error2){
+      lastError=error2;
+      try{localStorage.removeItem(RECOVERY_STORE);attempt()}catch(error3){lastError=error3}
+    }
+  }
+  if(!saved){
+    console.error('World Builder browser save failed. Project remains open in memory.',lastError);
+    flashStatus('SAVE FAILED — your project is still open. Use BACKUP FILE now.');
+    return false
+  }
+  if(previous&&previous!==next){
+    try{localStorage.setItem(RECOVERY_STORE,previous)}catch(_){}
+  }
+  try{localStorage.removeItem(HISTORY_STORE)}catch(_){}
+  if(show)flashStatus('Saved all '+project.maps.length+' map'+(project.maps.length===1?'':'s')+'. Safe to refresh.');
+  return true
 }
 function loadLocal(){
-  const candidates=[localStorage.getItem(STORE),localStorage.getItem(RECOVERY_STORE)];
-  try{for(const h of JSON.parse(localStorage.getItem(HISTORY_STORE)||'[]'))candidates.push(h.raw)}catch(_){}
-  for(const raw of candidates){if(!raw)continue;try{return normaliseProject(JSON.parse(raw))}catch(e){console.warn('World Builder save could not be loaded:',e)}}
+  const candidates=[];
+  const add=(raw,source)=>{if(raw)candidates.push({raw,source})};
+  add(localStorage.getItem(STORE),'main');
+  add(localStorage.getItem(RECOVERY_STORE),'recovery');
+  try{for(const h of JSON.parse(localStorage.getItem(HISTORY_STORE)||'[]'))add(h.raw,'history')}catch(_){}
+  const valid=[];
+  for(const c of candidates){
+    try{
+      const p=normaliseProject(JSON.parse(c.raw));
+      valid.push({project:p,source:c.source,updated:Date.parse(p.updatedAt||'')||0,mapCount:p.maps.length})
+    }catch(e){console.warn('World Builder '+c.source+' save could not be loaded:',e)}
+  }
+  if(valid.length){
+    valid.sort((a,b)=>b.updated-a.updated||b.mapCount-a.mapCount||(a.source==='main'?-1:1));
+    return valid[0].project
+  }
   return freshProject()
 }
 function refreshAfterHistory(label){
