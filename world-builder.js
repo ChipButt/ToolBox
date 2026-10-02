@@ -495,10 +495,8 @@ function defaultAssetSize(name){
   return meta.cell?{w:meta.cell.width,h:meta.cell.height,frame:0}:{w:meta.width,h:meta.height,frame:null};
 }
 function npcNaturalSize(name){
-  const meta=assetMeta(name),cell=meta.cell||{width:16,height:16};
-  const h=Math.min(53,Math.max(16,Number(cell.height)||16));
-  const w=Math.max(8,(Number(cell.width)||16)*(h/(Number(cell.height)||16)));
-  return {w:Math.round(w),h:Math.round(h)}
+  const meta=assetMeta(name),cell=meta.cell||{width:meta.width||16,height:meta.height||16};
+  return {w:Math.max(1,Math.round(Number(cell.width)||16)),h:Math.max(1,Math.round(Number(cell.height)||16))}
 }
 function getSelected(){
   if(!selected)return null;
@@ -1158,7 +1156,11 @@ function renderSelectionInspector(updateTitle=true){
       input('Required item name','questItem',q.itemName||'','text','full')+input('Reward','questReward',q.reward||'Christmas Present','text','full')+
       '<label class="full"><span>Completion dialogue</span><textarea id="questComplete">'+esc(q.completeText||'')+'</textarea></label>';
     $('#npcName').onchange=e=>{o.name=e.target.value||'Elf';saveLocal(false);renderSelectionInspector();draw()};
-    $('#npcCharacter').onchange=e=>{o.characterAsset=e.target.value;project.editor.lastNpcAsset=e.target.value;saveLocal(false);renderSelectionInspector();draw()};
+    $('#npcCharacter').onchange=e=>{
+      o.characterAsset=e.target.value;project.editor.lastNpcAsset=e.target.value;
+      const natural=npcNaturalSize(o.characterAsset);o.w=natural.w;o.h=natural.h;
+      saveLocal(false);renderSelectionInspector();draw()
+    };
     $('#selX').onchange=e=>{const m=activeMap();o.x=snapCellCenter(Number(e.target.value)||0,m.width);e.target.value=o.x;saveLocal(false);draw()};
     $('#selY').onchange=e=>{const m=activeMap();o.y=snapCellCenter(Number(e.target.value)||0,m.height);e.target.value=o.y;saveLocal(false);draw()};
     $('#npcWidth').onchange=e=>{o.w=clamp(Number(e.target.value)||8,8,256);e.target.value=o.w;saveLocal(false);draw()};
