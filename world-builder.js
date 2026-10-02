@@ -395,7 +395,7 @@ function finishArrivalPlacement(x,y){
   if(!arrivalEdit)return;
   const edit=arrivalEdit,t=transitionByRef(edit.sourceMapId,edit.linkId),target=mapById(edit.targetMapId);
   if(!t||!target){arrivalEdit=null;setMode('select');return}
-  t.targetX=snapCellCenter(x,target.width);t.targetY=snapCellCenter(y,target.height);
+  t.targetX=snapCellCenter(x,target.width);t.targetY=snapCellCenter(y,target.height);t.arrivalSet=true;
   arrivalEdit=null;project.activeMapId=edit.sourceMapId;selected={type:'transition',id:edit.linkId};
   saveLocal(false);resizeCanvas();renderAllPanels();setMode('select');
   flashStatus('Arrival square set on '+target.name+'.');draw()
@@ -407,7 +407,7 @@ function setActiveMap(id){
 }
 function flashStatus(text){modeStatus.textContent=text;clearTimeout(flashStatus.t);flashStatus.t=setTimeout(updateModeStatus,1800)}
 function updateModeStatus(){
-  const labels={select:'Select and drag objects. Shift-click assets to add/remove them from a group.',multi:'Click assets or drag a box to select multiple placed tiles.',place:selectedAssetName?'Stamp '+assetLabel(selectedAssetName)+' · brush '+brushCols()+'×'+brushRows()+'.':'Choose an asset from the palette.',fill:selectedAssetName?'Drag an area to fill with '+assetLabel(selectedAssetName)+'.':'Choose an asset, then drag an area to fill.',transition:'Drag a rectangle where walking should load another map.',npc:'Click to place an NPC, then choose its animated character, path, dialogue and quest.',quest:'Click to place a quest item / puzzle point.',spawn:'Click the grid square where the player should spawn. The spawn will be centred in that tile.',arrival:arrivalEdit?'Click the exact square where this Map Link should place the player on '+(mapById(arrivalEdit.targetMapId)?.name||'the target map')+'.':'Choose a Map Link to set its arrival square.',play:'Playtest is live. Walk through links and interact with NPCs.'};
+  const labels={select:'Select and drag objects. Shift-click assets to add/remove them from a group.',multi:'Click assets or drag a box to select multiple placed tiles.',place:selectedAssetName?'Stamp '+assetLabel(selectedAssetName)+' · brush '+brushCols()+'×'+brushRows()+'.':'Choose an asset from the palette.',fill:selectedAssetName?'Drag an area to fill with '+assetLabel(selectedAssetName)+'.':'Choose an asset, then drag an area to fill.',transition:'Drag a rectangle where walking should load another map.',npc:'Click to place an NPC, then choose its animated character, path, dialogue and quest.',quest:'Click to place a quest item / puzzle point.',spawn:'Click the one grid square where the game should begin. This map becomes the initial start map.',arrival:arrivalEdit?'Click the exact square where this Map Link should place the player on '+(mapById(arrivalEdit.targetMapId)?.name||'the target map')+'.':'Choose a Map Link to set its arrival square.',play:'Playtest is live. Walk through links and interact with NPCs.'};
   modeStatus.textContent=pathEditing?'NPC PATH: click map points in walking order.':labels[mode];
 }
 function setMode(next){
@@ -504,7 +504,7 @@ function finishTransition(){
   let {x,y,w,h}=draftRect;if(w<0){x+=w;w=-w}if(h<0){y+=h;h=-h}
   if(w<4||h<4){draftRect=null;draw();return}
   const other=project.maps.find(m=>m.id!==activeMap().id)||activeMap();
-  const t={id:uid('link'),label:'Map Link',x:snapV(x),y:snapV(y),w:Math.max(grid(),snapV(w)),h:Math.max(grid(),snapV(h)),targetMapId:other.id,targetX:snapCellCenter(other.spawn.x,other.width),targetY:snapCellCenter(other.spawn.y,other.height)};
+  const t={id:uid('link'),label:'Map Link',x:snapV(x),y:snapV(y),w:Math.max(grid(),snapV(w)),h:Math.max(grid(),snapV(h)),targetMapId:other.id,targetX:null,targetY:null,arrivalSet:false};
   activeMap().transitions.push(t);draftRect=null;selectObject('transition',t.id);setMode('select');saveLocal(false)
 }
 
@@ -516,7 +516,7 @@ canvas.addEventListener('pointerdown',e=>{
   }
   if(mode==='arrival'){finishArrivalPlacement(p.x,p.y);return}
   if(mode==='spawn'){
-    const m=activeMap();m.spawn.x=snapCellCenter(p.x,m.width);m.spawn.y=snapCellCenter(p.y,m.height);saveLocal(false);renderMapInspector();setMode('select');flashStatus('Spawn point centred in selected grid square.');draw();return
+    const m=activeMap();project.startMapId=m.id;project.initialSpawn={x:snapCellCenter(p.x,m.width),y:snapCellCenter(p.y,m.height)};saveLocal(false);renderMaps();renderMapInspector();setMode('select');flashStatus('Initial game spawn set on '+m.name+'.');draw();return
   }
   if(mode==='place'){addAssetAt(p.x,p.y);return}
   if(mode==='fill'){if(!selectedAssetName){flashStatus('Choose an asset first.');return}draftRect={x:p.x,y:p.y,w:0,h:0};capturePointerSafely(e);draw();return}
@@ -619,20 +619,20 @@ function drawNpc(n){
   const run=play?.npcs[n.id];drawNpcAt(n,run?.x??n.x,run?.y??n.y,run?.step??0,run?.dir??'down',selected?.type==='npc'&&selected.id===n.id);
 }
 function drawSpawn(m){
-  if(play)return;
-  const g=grid(),x=m.spawn.x-g/2,y=m.spawn.y-g/2;
+  if(play||m.id!==project.startMapId)return;
+  const g=grid(),cx=project.initialSpawn.x,cy=project.initialSpawn.y,x=cx-g/2,y=cy-g/2;
   ctx.save();
   ctx.fillStyle='rgba(44,128,106,.22)';ctx.strokeStyle='#2c806a';ctx.lineWidth=2;
   ctx.fillRect(x,y,g,g);ctx.strokeRect(x+1,y+1,g-2,g-2);
-  ctx.beginPath();ctx.arc(m.spawn.x,m.spawn.y,Math.max(3,Math.min(6,g*.28)),0,Math.PI*2);ctx.fillStyle='#2c806a';ctx.fill();
-  ctx.fillStyle='#185948';ctx.font='bold 8px monospace';ctx.fillText('SPAWN',x+g+4,m.spawn.y+3);
+  ctx.beginPath();ctx.arc(cx,cy,Math.max(3,Math.min(6,g*.28)),0,Math.PI*2);ctx.fillStyle='#2c806a';ctx.fill();
+  ctx.fillStyle='#185948';ctx.font='bold 8px monospace';ctx.fillText('START',x+g+4,cy+3);
   ctx.restore()
 }
 function drawArrivalMarkers(m){
   if(play)return;
   const g=grid();
   for(const source of project.maps)for(const t of source.transitions||[]){
-    if(t.targetMapId!==m.id||!Number.isFinite(Number(t.targetX))||!Number.isFinite(Number(t.targetY)))continue;
+    if(t.targetMapId!==m.id||!t.arrivalSet||!Number.isFinite(Number(t.targetX))||!Number.isFinite(Number(t.targetY)))continue;
     const cx=Number(t.targetX),cy=Number(t.targetY),x=cx-g/2,y=cy-g/2;
     const active=arrivalEdit?.sourceMapId===source.id&&arrivalEdit?.linkId===t.id;
     ctx.save();ctx.fillStyle=active?'rgba(247,189,24,.28)':'rgba(51,120,205,.20)';ctx.strokeStyle=active?'#b47c00':'#3378cd';ctx.lineWidth=2;ctx.setLineDash([4,2]);
@@ -669,7 +669,7 @@ function loop(now){
 function renderMaps(){
   mapList.innerHTML='';
   for(const m of project.maps){
-    const b=document.createElement('button');b.className='mapItem'+(m.id===activeMap().id?' active':'');b.type='button';b.innerHTML='<span><strong>'+esc(m.name)+'</strong><small>'+m.width+'×'+m.height+' · '+m.assets.length+' assets</small></span><span>›</span>';
+    const b=document.createElement('button');b.className='mapItem'+(m.id===activeMap().id?' active':'');b.type='button';const startTag=m.id===project.startMapId?' · START':'';b.innerHTML='<span><strong>'+esc(m.name)+'</strong><small>'+m.width+'×'+m.height+' · '+m.assets.length+' assets'+startTag+'</small></span><span>›</span>';
     b.onclick=()=>{if(play)return;setActiveMap(m.id)};mapList.appendChild(b)
   }
 }
@@ -812,22 +812,27 @@ function renderAssets(filter=''){
 }
 function input(label,id,value,type='text',extra=''){return '<label'+(extra.includes('full')?' class="full"':'')+'><span>'+label+'</span><input id="'+id+'" type="'+type+'" value="'+esc(value)+'"></label>'}
 function renderMapInspector(){
-  const m=activeMap();$('#mapInspectorTitle').textContent=m.name;
+  const m=activeMap(),isStart=m.id===project.startMapId;$('#mapInspectorTitle').textContent=m.name;
+  const startControls=isStart
+    ?'<div class="arrivalSummary full"><strong>INITIAL START MAP</strong><span>The game begins here. Other maps are entered through Map Links.</span></div>'+
+      input('Initial Spawn X','spawnX',project.initialSpawn.x,'number')+input('Initial Spawn Y','spawnY',project.initialSpawn.y,'number')+
+      '<div class="inspectorActions"><button id="setSpawnTool" type="button">SET INITIAL SPAWN SQUARE</button></div>'
+    :'<div class="arrivalSummary full"><strong>MAP LINK DESTINATION</strong><span>No initial spawn on this map. Players arrive through Map Link arrival squares.</span></div>'+
+      '<div class="inspectorActions"><button id="setSpawnTool" type="button">MAKE THIS THE INITIAL START MAP</button></div>';
   mapInspector.innerHTML=
    input('Name','mapName',m.name,'text','full')+
    input('Width','mapWidth',m.width,'number')+input('Height','mapHeight',m.height,'number')+
-   input('Background','mapBg',m.bg,'color')+input('Spawn X','spawnX',m.spawn.x,'number')+
-   input('Spawn Y','spawnY',m.spawn.y,'number')+
-   '<div class="inspectorActions"><button id="setSpawnTool" type="button">SET SPAWN ON MAP</button><button id="clearMap" type="button">CLEAR MAP</button></div>'+
+   input('Background','mapBg',m.bg,'color')+startControls+
+   '<div class="inspectorActions"><button id="clearMap" type="button">CLEAR MAP</button></div>'+
    '<div class="inspectorActions"><button id="duplicateMap" type="button">DUPLICATE MAP</button><button id="deleteMap" type="button">DELETE MAP</button></div>';
   $('#mapName').onchange=e=>{m.name=e.target.value||'Map';saveLocal(false);renderMaps();renderMapInspector();draw()};
-  $('#mapWidth').onchange=e=>{m.width=Math.max(160,Number(e.target.value)||640);m.spawn.x=clamp(m.spawn.x,0,m.width);saveLocal(false);resizeCanvas();renderMaps();draw()};
-  $('#mapHeight').onchange=e=>{m.height=Math.max(120,Number(e.target.value)||480);m.spawn.y=clamp(m.spawn.y,0,m.height);saveLocal(false);resizeCanvas();renderMaps();draw()};
+  $('#mapWidth').onchange=e=>{m.width=Math.max(160,Number(e.target.value)||640);if(isStart)project.initialSpawn.x=snapCellCenter(project.initialSpawn.x,m.width);saveLocal(false);resizeCanvas();renderMaps();renderMapInspector();draw()};
+  $('#mapHeight').onchange=e=>{m.height=Math.max(120,Number(e.target.value)||480);if(isStart)project.initialSpawn.y=snapCellCenter(project.initialSpawn.y,m.height);saveLocal(false);resizeCanvas();renderMaps();renderMapInspector();draw()};
   $('#mapBg').oninput=e=>{m.bg=e.target.value;saveLocal(false);draw()};
-  $('#spawnX').onchange=e=>{m.spawn.x=snapCellCenter(Number(e.target.value)||0,m.width);e.target.value=m.spawn.x;saveLocal(false);draw()};
-  $('#spawnY').onchange=e=>{m.spawn.y=snapCellCenter(Number(e.target.value)||0,m.height);e.target.value=m.spawn.y;saveLocal(false);draw()};
+  if($('#spawnX'))$('#spawnX').onchange=e=>{project.initialSpawn.x=snapCellCenter(Number(e.target.value)||0,m.width);e.target.value=project.initialSpawn.x;saveLocal(false);draw()};
+  if($('#spawnY'))$('#spawnY').onchange=e=>{project.initialSpawn.y=snapCellCenter(Number(e.target.value)||0,m.height);e.target.value=project.initialSpawn.y;saveLocal(false);draw()};
   $('#setSpawnTool').onclick=()=>setMode('spawn');
-  $('#clearMap').onclick=()=>{if(!confirm('Clear every placed asset, map link, NPC and quest item from "'+m.name+'"? The map itself and spawn point will stay.'))return;m.assets=[];m.transitions=[];m.npcs=[];m.questTargets=[];selected=null;clearMapSelection();saveLocal(false);renderMaps();renderSelectionInspector();draw();flashStatus('Map cleared.')};
+  $('#clearMap').onclick=()=>{if(!confirm('Clear every placed asset, map link, NPC and quest item from "'+m.name+'"? The map itself will stay.'))return;m.assets=[];m.transitions=[];m.npcs=[];m.questTargets=[];selected=null;clearMapSelection();saveLocal(false);renderMaps();renderSelectionInspector();draw();flashStatus('Map cleared.')};
   $('#duplicateMap').onclick=duplicateMap;$('#deleteMap').onclick=deleteMap;
 }
 function mapOptions(selectedId){return project.maps.map(m=>'<option value="'+m.id+'" '+(m.id===selectedId?'selected':'')+'>'+esc(m.name)+'</option>').join('')}
@@ -889,14 +894,14 @@ function renderSelectionInspector(updateTitle=true){
     selectionInspector.innerHTML=
       input('Label','linkLabel',o.label||'Map Link','text','full')+input('X','selX',o.x,'number')+input('Y','selY',o.y,'number')+input('Width','selW',o.w,'number')+input('Height','selH',o.h,'number')+
       '<label class="full"><span>Loads map</span><select id="linkTarget">'+mapOptions(o.targetMapId)+'</select></label>'+
-      '<div class="arrivalSummary full"><strong>Arrival square</strong><span>'+(targetMap?esc(targetMap.name):'Unknown map')+' · X '+Math.round(Number(o.targetX)||0)+' · Y '+Math.round(Number(o.targetY)||0)+'</span></div>'+
+      '<div class="arrivalSummary full"><strong>Arrival square</strong><span>'+(o.arrivalSet&&targetMap?esc(targetMap.name)+' · X '+Math.round(Number(o.targetX))+' · Y '+Math.round(Number(o.targetY)):'NOT SET — choose where this link should place the player')+'</span></div>'+
       '<div class="inspectorActions"><button id="setLinkArrival" type="button">SET ARRIVAL ON TARGET MAP</button></div>'+
       input('Arrival X','linkTargetX',o.targetX,'number')+input('Arrival Y','linkTargetY',o.targetY,'number');
     $('#linkLabel').onchange=e=>{o.label=e.target.value;saveLocal(false);renderSelectionInspector();draw()};bindNumber('selX',o,'x');bindNumber('selY',o,'y');bindNumber('selW',o,'w');bindNumber('selH',o,'h');
-    $('#linkTarget').onchange=e=>{o.targetMapId=e.target.value;const m=mapById(o.targetMapId);o.targetX=snapCellCenter(m.spawn.x,m.width);o.targetY=snapCellCenter(m.spawn.y,m.height);saveLocal(false);renderSelectionInspector();draw()};
+    $('#linkTarget').onchange=e=>{o.targetMapId=e.target.value;o.targetX=null;o.targetY=null;o.arrivalSet=false;saveLocal(false);renderSelectionInspector();draw()};
     $('#setLinkArrival').onclick=()=>beginArrivalPlacement(sourceMapId,o.id);
-    $('#linkTargetX').onchange=e=>{const m=mapById(o.targetMapId);o.targetX=snapCellCenter(Number(e.target.value)||0,m.width);e.target.value=o.targetX;saveLocal(false);renderSelectionInspector();draw()};
-    $('#linkTargetY').onchange=e=>{const m=mapById(o.targetMapId);o.targetY=snapCellCenter(Number(e.target.value)||0,m.height);e.target.value=o.targetY;saveLocal(false);renderSelectionInspector();draw()};
+    $('#linkTargetX').onchange=e=>{const m=mapById(o.targetMapId),raw=e.target.value.trim();o.targetX=raw===''?null:snapCellCenter(Number(raw)||0,m.width);o.arrivalSet=Number.isFinite(Number(o.targetX))&&Number.isFinite(Number(o.targetY));e.target.value=o.targetX??'';saveLocal(false);renderSelectionInspector();draw()};
+    $('#linkTargetY').onchange=e=>{const m=mapById(o.targetMapId),raw=e.target.value.trim();o.targetY=raw===''?null:snapCellCenter(Number(raw)||0,m.height);o.arrivalSet=Number.isFinite(Number(o.targetX))&&Number.isFinite(Number(o.targetY));e.target.value=o.targetY??'';saveLocal(false);renderSelectionInspector();draw()};
   } else if(selected.type==='npc'){
     if(updateTitle)selectionTitle.textContent=o.name;
     const q=o.quest||{};
@@ -954,7 +959,8 @@ function deleteMap(){
   if(project.maps.length<=1){flashStatus('A project needs at least one map.');return}
   const id=activeMap().id;if(!confirm('Delete "'+activeMap().name+'" and everything placed on it?'))return;
   project.maps=project.maps.filter(m=>m.id!==id);project.activeMapId=project.maps[0].id;
-  for(const m of project.maps)for(const t of m.transitions)if(t.targetMapId===id){t.targetMapId=project.maps[0].id;t.targetX=project.maps[0].spawn.x;t.targetY=project.maps[0].spawn.y}
+  if(project.startMapId===id){project.startMapId=project.maps[0].id;project.initialSpawn={x:snapCellCenter(88,project.maps[0].width),y:snapCellCenter(88,project.maps[0].height)}}
+  for(const m of project.maps)for(const t of m.transitions)if(t.targetMapId===id){t.targetMapId=project.maps[0].id;t.targetX=null;t.targetY=null;t.arrivalSet=false}
   selected=null;saveLocal(false);resizeCanvas();renderAllPanels();draw()
 }
 $('#addMap').onclick=()=>{const m=freshMap('Map '+(project.maps.length+1));project.maps.push(m);project.activeMapId=m.id;selected=null;saveLocal(false);resizeCanvas();renderAllPanels();draw()};
@@ -1014,8 +1020,8 @@ function setupPlayNpcs(){
   for(const m of project.maps)for(const n of m.npcs)play.npcs[n.id]={x:n.x,y:n.y,dir:'down',step:0,pathIndex:0,forward:true};
 }
 function startPlaytest(){
-  editorMapBeforePlay=project.activeMapId;selected=null;clearMapSelection();pathEditing=false;arrivalEdit=null;const m=activeMap();
-  play={mapId:m.id,x:m.spawn.x,y:m.spawn.y,dir:'down',moving:false,animStart:performance.now(),inventory:[],quests:{},collected:new Set(),npcs:{},transitionCooldown:0,rewards:[]};setupPlayNpcs();
+  editorMapBeforePlay=project.activeMapId;selected=null;clearMapSelection();pathEditing=false;arrivalEdit=null;const m=mapById(project.startMapId)||project.maps[0];
+  play={mapId:m.id,x:project.initialSpawn.x,y:project.initialSpawn.y,dir:'down',moving:false,animStart:performance.now(),inventory:[],quests:{},collected:new Set(),npcs:{},transitionCooldown:0,rewards:[]};setupPlayNpcs();
   mode='play';
   document.body.classList.add('mobilePlaytest');
   playHud.hidden=false;
@@ -1051,8 +1057,9 @@ mobileInteract.addEventListener('pointerdown',e=>{
 });
 
 function switchPlayMap(t){
-  const target=mapById(t.targetMapId);if(!target)return;
-  play.mapId=target.id;play.x=Number(t.targetX)||target.spawn.x;play.y=Number(t.targetY)||target.spawn.y;play.transitionCooldown=.55;playMapName.textContent=target.name;resizeCanvas();renderMaps();centerPlayView();flashStatus('Loaded '+target.name)
+  const target=mapById(t.targetMapId);if(!target)return false;
+  if(!t.arrivalSet||!Number.isFinite(Number(t.targetX))||!Number.isFinite(Number(t.targetY))){play.transitionCooldown=.55;flashStatus('Map Link "'+(t.label||'Map Link')+'" needs an arrival square.');return false}
+  play.mapId=target.id;play.x=Number(t.targetX);play.y=Number(t.targetY);play.transitionCooldown=.55;playMapName.textContent=target.name;resizeCanvas();renderMaps();centerPlayView();flashStatus('Loaded '+target.name);return true
 }
 function centerPlayView(){
   if(!play)return;const px=play.x*zoom,py=play.y*zoom;scroller.scrollLeft=Math.max(0,px-scroller.clientWidth/2);scroller.scrollTop=Math.max(0,py-scroller.clientHeight/2)
