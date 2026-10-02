@@ -1218,6 +1218,7 @@ function stopPlaytest(){
   if(!play)return;
   keys.clear();
   play=null;project.activeMapId=editorMapBeforePlay||project.maps[0].id;editorMapBeforePlay=null;mode='select';
+  dialogState=null;signState=null;puzzleState=null;dialogOverlay.hidden=true;signOverlay.hidden=true;puzzleOverlay.hidden=true;
   document.body.classList.remove('mobilePlaytest');
   playHud.hidden=true;mobilePlayControls.hidden=true;
   $('#playtestBtn').classList.remove('active');$$('.modeBtn[data-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mode==='select'));
@@ -1236,7 +1237,7 @@ $$('.touchMove').forEach(button=>{
 });
 mobileInteract.addEventListener('pointerdown',e=>{
   e.preventDefault();
-  if(play&&!dialogState&&!puzzleState)interactPlay()
+  if(play&&!dialogState&&!signState&&!puzzleState)interactPlay()
 });
 
 function switchPlayMap(t){
@@ -1255,7 +1256,7 @@ function updatePlayNpc(n,dt,now){
   const sp=(Number(n.speed)||24)*dt;r.x+=dx/d*sp;r.y+=dy/d*sp;r.dir=Math.abs(dx)>Math.abs(dy)?(dx<0?'left':'right'):(dy<0?'up':'down');r.step=Math.floor(now/180)%4;
 }
 function updatePlay(dt,now){
-  if(dialogState||puzzleState)return;
+  if(dialogState||signState||puzzleState)return;
   const m=activeMap();let dx=0,dy=0;
   if(keys.has('arrowleft')||keys.has('a'))dx--;if(keys.has('arrowright')||keys.has('d'))dx++;if(keys.has('arrowup')||keys.has('w'))dy--;if(keys.has('arrowdown')||keys.has('s'))dy++;
   const mag=Math.hypot(dx,dy);if(mag>.1){dx/=mag;dy/=mag;const sp=72;const nx=play.x+dx*sp*dt,ny=play.y+dy*sp*dt;if(!collisionAt(m,nx,play.y))play.x=nx;if(!collisionAt(m,play.x,ny))play.y=ny;const dir=Math.abs(dx)>Math.abs(dy)?(dx<0?'left':'right'):(dy<0?'up':'down');if(!play.moving||dir!==play.dir){play.dir=dir;play.animStart=now}play.moving=true}else{if(play.moving)play.animStart=now;play.moving=false}
@@ -1265,7 +1266,7 @@ function updatePlay(dt,now){
   centerPlayView();
   const interaction=nearestInteraction();
   if(interaction){
-    modeStatus.textContent=interaction.type==='npc'?'SPACE / ENTER: talk to '+interaction.obj.name:'SPACE / ENTER: '+(interaction.obj.label||'collect item');
+    modeStatus.textContent=interaction.type==='npc'?'SPACE / ENTER: talk to '+interaction.obj.name:interaction.type==='sign'?'SPACE / ENTER: read sign':'SPACE / ENTER: '+(interaction.obj.label||'collect item');
   }else{
     updateModeStatus();
   }
@@ -1273,10 +1274,21 @@ function updatePlay(dt,now){
 function nearestInteraction(){
   if(!play)return null;const m=activeMap();let best=null,bd=Infinity;
   for(const n of m.npcs){const r=play.npcs[n.id],d=Math.hypot(play.x-(r?.x??n.x),play.y-(r?.y??n.y));if(d<30&&d<bd){best={type:'npc',obj:n};bd=d}}
+  for(const a of m.assets){if(a.asset!=='sign-post.png'||!a.sign?.enabled)continue;const cx=a.x+a.w/2,cy=a.y+a.h/2,d=Math.hypot(play.x-cx,play.y-cy);if(d<30&&d<bd){best={type:'sign',obj:a};bd=d}}
   for(const q of m.questTargets){if(play.collected.has(q.id))continue;const d=Math.hypot(play.x-q.x,play.y-q.y);if(d<25&&d<bd){best={type:'quest',obj:q};bd=d}}
   return best
 }
-function interactPlay(){const hit=nearestInteraction();if(!hit){flashStatus('Nothing nearby to interact with.');return}hit.type==='npc'?playTalk(hit.obj):playCollect(hit.obj)}
+function interactPlay(){
+  const hit=nearestInteraction();if(!hit){flashStatus('Nothing nearby to interact with.');return}
+  if(hit.type==='npc')playTalk(hit.obj);else if(hit.type==='sign')openSign(hit.obj);else playCollect(hit.obj)
+}
+function openSign(a){
+  const sign=a.sign||{title:'Sign',message:''};signState={assetId:a.id};keys.clear();
+  signPopupTitle.textContent=sign.title||'Sign';signPopupMessage.textContent=sign.message||'';
+  applySignPopupStyle(signPopupCard,false);signOverlay.hidden=false
+}
+function closeSign(){signState=null;signOverlay.hidden=true;keys.clear()}
+signPopupClose.onclick=closeSign;
 function lines(text){return String(text||'').split(/\n+/).map(s=>s.trim()).filter(Boolean)}
 function openDialog(speaker,heading,steps,onDone=null){
   dialogState={speaker,heading,steps:[...steps],onDone};dialogOverlay.hidden=false;dialogSpeaker.textContent=speaker;dialogHeading.textContent=heading;advanceDialog()
@@ -1325,7 +1337,8 @@ addEventListener('keydown',e=>{
   if(e.ctrlKey&&!e.metaKey&&k==='y'){e.preventDefault();redoProject();return}
   if(play){
     if(['arrowup','arrowdown','arrowleft','arrowright',' ','enter'].includes(k))e.preventDefault();keys.add(k);
-    if((k===' '||k==='enter')&&!dialogState&&!puzzleState)interactPlay();if(k==='escape')stopPlaytest();return
+    if((k===' '||k==='enter')&&!dialogState&&!signState&&!puzzleState)interactPlay();
+    if(k==='escape'){if(signState)closeSign();else stopPlaytest()}return
   }
   if(k==='delete'||k==='backspace'){if(selected||mapSelection.size){e.preventDefault();deleteSelection()}}
   if((e.metaKey||e.ctrlKey)&&k==='d'){if(selected||mapSelection.size){e.preventDefault();duplicateSelected()}}
