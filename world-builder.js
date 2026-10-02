@@ -96,6 +96,7 @@ const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const grid=()=>Math.max(1,Number(gridSizeInput.value)||16);
 const snapV=v=>snap?Math.round(v/grid())*grid():Math.round(v);
+const snapCellCenter=(v,max)=>{const g=grid();return clamp(Math.floor(clamp(v,0,Math.max(0,max-1))/g)*g+g/2,g/2,Math.max(g/2,max-g/2))};
 const brushCols=()=>clamp(Number(brushWidthInput?.value)||1,1,32);
 const brushRows=()=>clamp(Number(brushHeightInput?.value)||1,1,32);
 
@@ -374,7 +375,7 @@ function setActiveMap(id){
 }
 function flashStatus(text){modeStatus.textContent=text;clearTimeout(flashStatus.t);flashStatus.t=setTimeout(updateModeStatus,1800)}
 function updateModeStatus(){
-  const labels={select:'Select and drag objects. Shift-click assets to add/remove them from a group.',multi:'Click assets or drag a box to select multiple placed tiles.',place:selectedAssetName?'Stamp '+assetLabel(selectedAssetName)+' · brush '+brushCols()+'×'+brushRows()+'.':'Choose an asset from the palette.',fill:selectedAssetName?'Drag an area to fill with '+assetLabel(selectedAssetName)+'.':'Choose an asset, then drag an area to fill.',transition:'Drag a rectangle where walking should load another map.',npc:'Click to place an NPC, then choose its animated character, path, dialogue and quest.',quest:'Click to place a quest item / puzzle point.',spawn:'Click exactly where the player should spawn on this map.',play:'Playtest is live. Walk through links and interact with NPCs.'};
+  const labels={select:'Select and drag objects. Shift-click assets to add/remove them from a group.',multi:'Click assets or drag a box to select multiple placed tiles.',place:selectedAssetName?'Stamp '+assetLabel(selectedAssetName)+' · brush '+brushCols()+'×'+brushRows()+'.':'Choose an asset from the palette.',fill:selectedAssetName?'Drag an area to fill with '+assetLabel(selectedAssetName)+'.':'Choose an asset, then drag an area to fill.',transition:'Drag a rectangle where walking should load another map.',npc:'Click to place an NPC, then choose its animated character, path, dialogue and quest.',quest:'Click to place a quest item / puzzle point.',spawn:'Click the grid square where the player should spawn. The spawn will be centred in that tile.',play:'Playtest is live. Walk through links and interact with NPCs.'};
   modeStatus.textContent=pathEditing?'NPC PATH: click map points in walking order.':labels[mode];
 }
 function setMode(next){
@@ -481,7 +482,7 @@ canvas.addEventListener('pointerdown',e=>{
     const n=getSelected();n.path.push({x:snapV(p.x),y:snapV(p.y)});saveLocal(false);renderSelectionInspector();draw();return;
   }
   if(mode==='spawn'){
-    const m=activeMap();m.spawn.x=snapV(p.x);m.spawn.y=snapV(p.y);saveLocal(false);renderMapInspector();setMode('select');flashStatus('Spawn point set.');draw();return
+    const m=activeMap();m.spawn.x=snapCellCenter(p.x,m.width);m.spawn.y=snapCellCenter(p.y,m.height);saveLocal(false);renderMapInspector();setMode('select');flashStatus('Spawn point centred in selected grid square.');draw();return
   }
   if(mode==='place'){addAssetAt(p.x,p.y);return}
   if(mode==='fill'){if(!selectedAssetName){flashStatus('Choose an asset first.');return}draftRect={x:p.x,y:p.y,w:0,h:0};canvas.setPointerCapture(e.pointerId);draw();return}
@@ -584,7 +585,14 @@ function drawNpc(n){
   const run=play?.npcs[n.id];drawNpcAt(n,run?.x??n.x,run?.y??n.y,run?.step??0,run?.dir??'down',selected?.type==='npc'&&selected.id===n.id);
 }
 function drawSpawn(m){
-  if(play)return;ctx.save();ctx.fillStyle='rgba(44,128,106,.25)';ctx.strokeStyle='#2c806a';ctx.lineWidth=2;ctx.beginPath();ctx.arc(m.spawn.x,m.spawn.y,9,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.fillStyle='#185948';ctx.font='bold 8px monospace';ctx.fillText('SPAWN',m.spawn.x+12,m.spawn.y+3);ctx.restore()
+  if(play)return;
+  const g=grid(),x=m.spawn.x-g/2,y=m.spawn.y-g/2;
+  ctx.save();
+  ctx.fillStyle='rgba(44,128,106,.22)';ctx.strokeStyle='#2c806a';ctx.lineWidth=2;
+  ctx.fillRect(x,y,g,g);ctx.strokeRect(x+1,y+1,g-2,g-2);
+  ctx.beginPath();ctx.arc(m.spawn.x,m.spawn.y,Math.max(3,Math.min(6,g*.28)),0,Math.PI*2);ctx.fillStyle='#2c806a';ctx.fill();
+  ctx.fillStyle='#185948';ctx.font='bold 8px monospace';ctx.fillText('SPAWN',x+g+4,m.spawn.y+3);
+  ctx.restore()
 }
 function drawDraft(){
   if(draftRect){ctx.save();const filling=mode==='fill';ctx.fillStyle=filling?'rgba(247,189,24,.20)':'rgba(51,120,205,.18)';ctx.strokeStyle=filling?'#b47c00':'#3378cd';ctx.lineWidth=2;ctx.fillRect(draftRect.x,draftRect.y,draftRect.w,draftRect.h);ctx.strokeRect(draftRect.x,draftRect.y,draftRect.w,draftRect.h);ctx.restore()}
@@ -768,8 +776,8 @@ function renderMapInspector(){
   $('#mapWidth').onchange=e=>{m.width=Math.max(160,Number(e.target.value)||640);m.spawn.x=clamp(m.spawn.x,0,m.width);saveLocal(false);resizeCanvas();renderMaps();draw()};
   $('#mapHeight').onchange=e=>{m.height=Math.max(120,Number(e.target.value)||480);m.spawn.y=clamp(m.spawn.y,0,m.height);saveLocal(false);resizeCanvas();renderMaps();draw()};
   $('#mapBg').oninput=e=>{m.bg=e.target.value;saveLocal(false);draw()};
-  $('#spawnX').onchange=e=>{m.spawn.x=snapV(Number(e.target.value)||0);saveLocal(false);draw()};
-  $('#spawnY').onchange=e=>{m.spawn.y=snapV(Number(e.target.value)||0);saveLocal(false);draw()};
+  $('#spawnX').onchange=e=>{m.spawn.x=snapCellCenter(Number(e.target.value)||0,m.width);e.target.value=m.spawn.x;saveLocal(false);draw()};
+  $('#spawnY').onchange=e=>{m.spawn.y=snapCellCenter(Number(e.target.value)||0,m.height);e.target.value=m.spawn.y;saveLocal(false);draw()};
   $('#setSpawnTool').onclick=()=>setMode('spawn');
   $('#clearMap').onclick=()=>{if(!confirm('Clear every placed asset, map link, NPC and quest item from "'+m.name+'"? The map itself and spawn point will stay.'))return;m.assets=[];m.transitions=[];m.npcs=[];m.questTargets=[];selected=null;clearMapSelection();saveLocal(false);renderMaps();renderSelectionInspector();draw();flashStatus('Map cleared.')};
   $('#duplicateMap').onclick=duplicateMap;$('#deleteMap').onclick=deleteMap;
