@@ -626,7 +626,14 @@ function drawGrid(m){
   const g=grid();ctx.save();ctx.strokeStyle='rgba(24,49,77,.10)';ctx.lineWidth=1;
   ctx.beginPath();for(let x=0;x<=m.width;x+=g){ctx.moveTo(x+.5,0);ctx.lineTo(x+.5,m.height)}for(let y=0;y<=m.height;y+=g){ctx.moveTo(0,y+.5);ctx.lineTo(m.width,y+.5)}ctx.stroke();ctx.restore();
 }
-function drawPlacedAsset(a){
+function depthGridSpec(a){
+  const size=16;
+  return {size,cols:Math.max(1,Math.ceil(a.w/size)),rows:Math.max(1,Math.ceil(a.h/size))}
+}
+function depthTileKey(col,row){return col+','+row}
+function depthTileAbove(a,col,row){return Array.isArray(a.depthAboveTiles)&&a.depthAboveTiles.includes(depthTileKey(col,row))}
+function hasTileDepth(a){const d=depthGridSpec(a);return !!a.tileDepthEnabled&&(d.cols>1||d.rows>1)}
+function drawPlacedAssetBody(a){
   const opt={width:a.w,height:a.h,rotation:a.rotation||0,flipX:a.flipX,flipY:a.flipY};
   const count=frameCount(a.asset);
   if(a.animated&&count>1){
@@ -636,7 +643,26 @@ function drawPlacedAsset(a){
   try{drawAsset(ctx,a.asset,a.x,a.y,opt)}catch(_){
     ctx.save();ctx.fillStyle='rgba(44,128,106,.18)';ctx.fillRect(a.x,a.y,a.w,a.h);ctx.restore()
   }
-  if(!play&&(selected?.type==='asset'&&selected.id===a.id||mapSelection.has(a.id))){ctx.save();ctx.strokeStyle=mapSelection.has(a.id)?'#2c806a':'#f7bd18';ctx.lineWidth=2;ctx.strokeRect(a.x-1,a.y-1,a.w+2,a.h+2);ctx.restore()}
+}
+function drawPlacedAsset(a,pass='all'){
+  if(pass==='all'){drawPlacedAssetBody(a);return}
+  if(!hasTileDepth(a)){
+    if((pass==='above')!==!!a.aboveCharacters)return;
+    drawPlacedAssetBody(a);return
+  }
+  const d=depthGridSpec(a),wantAbove=pass==='above';
+  ctx.save();ctx.beginPath();let clipped=0;
+  for(let row=0;row<d.rows;row++)for(let col=0;col<d.cols;col++){
+    if(depthTileAbove(a,col,row)!==wantAbove)continue;
+    const x=a.x+col*d.size,y=a.y+row*d.size,w=Math.min(d.size,a.x+a.w-x),h=Math.min(d.size,a.y+a.h-y);
+    if(w>0&&h>0){ctx.rect(x,y,w,h);clipped++}
+  }
+  if(clipped){ctx.clip();drawPlacedAssetBody(a)}
+  ctx.restore()
+}
+function drawPlacedAssetSelection(a){
+  if(play||!(selected?.type==='asset'&&selected.id===a.id||mapSelection.has(a.id)))return;
+  ctx.save();ctx.strokeStyle=mapSelection.has(a.id)?'#2c806a':'#f7bd18';ctx.lineWidth=2;ctx.strokeRect(a.x-1,a.y-1,a.w+2,a.h+2);ctx.restore()
 }
 function drawTransition(t){
   if(play)return;
@@ -699,19 +725,27 @@ function drawDraft(){
   if(marquee){ctx.save();ctx.fillStyle='rgba(44,128,106,.16)';ctx.strokeStyle='#2c806a';ctx.setLineDash([5,3]);ctx.lineWidth=2;ctx.fillRect(marquee.x,marquee.y,marquee.w,marquee.h);ctx.strokeRect(marquee.x,marquee.y,marquee.w,marquee.h);ctx.restore()}
 }
 function drawPlayer(now){
-  if(!play)return;const moving=play.moving,step=moving?Math.floor((now-play.animStart)/150)%4:0;const f=npcFrameForAsset('character.png',step,play.dir);ctx.imageSmoothingEnabled=false;ctx.fillStyle='rgba(16,36,29,.25)';ctx.beginPath();ctx.ellipse(play.x,play.y+2,8,3,0,0,Math.PI*2);ctx.fill();if(f)ctx.drawImage(f,Math.round(play.x-12),Math.round(play.y-20),24,24);
+  if(!play)return;
+  const sprite=window.WorldBuilderPlayerSprite,ready=sprite?.ready&&sprite.canvas;
+  ctx.imageSmoothingEnabled=false;ctx.fillStyle='rgba(16,36,29,.25)';ctx.beginPath();ctx.ellipse(play.x,play.y+2,7,3,0,0,Math.PI*2);ctx.fill();
+  if(ready){
+    const bob=play.moving?Math.round(Math.sin((now-play.animStart)/85)):0,w=sprite.width,h=sprite.height,x=Math.round(play.x-w/2),y=Math.round(play.y-h+5+bob);
+    ctx.save();if(play.dir==='left'){ctx.translate(Math.round(play.x*2),0);ctx.scale(-1,1)}ctx.drawImage(sprite.canvas,x,y,w,h);ctx.restore();return
+  }
+  const f=npcFrameForAsset('character.png',0,play.dir);if(f)ctx.drawImage(f,Math.round(play.x-12),Math.round(play.y-20),24,24)
 }
 function draw(now=performance.now()){
   if(!assets||!project)return;const m=activeMap();if(canvas.width!==m.width||canvas.height!==m.height)resizeCanvas();
   ctx.clearRect(0,0,m.width,m.height);ctx.fillStyle=m.bg;ctx.fillRect(0,0,m.width,m.height);
   const placed=[...m.assets].sort((a,b)=>(a.layer||0)-(b.layer||0));
-  for(const a of placed)if(!a.aboveCharacters)drawPlacedAsset(a);
+  for(const a of placed)drawPlacedAsset(a,'below');
   if(!play)drawGrid(m);
   for(const t of m.transitions)drawTransition(t);
   for(const q of m.questTargets)drawQuestTarget(q);
   for(const n of m.npcs)drawNpc(n);
   drawPlayer(now);
-  for(const a of placed)if(a.aboveCharacters)drawPlacedAsset(a);
+  for(const a of placed)drawPlacedAsset(a,'above');
+  for(const a of placed)drawPlacedAssetSelection(a);
   drawArrivalMarkers(m);drawSpawn(m);drawDraft();
 }
 function loop(now){
