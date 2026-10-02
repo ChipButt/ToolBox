@@ -16,7 +16,7 @@ const puzzleOverlay=$('#puzzleOverlay'),puzzleHeading=$('#puzzleHeading'),puzzle
 const STORE='chipin-world-builder-v1';
 const RECOVERY_STORE='chipin-world-builder-recovery-v1';
 const HISTORY_STORE='chipin-world-builder-history-v1';
-const SCHEMA_VERSION=6;
+const SCHEMA_VERSION=7;
 
 const VIRTUAL_ASSETS={
   'couch-horizontal':{label:'Couch — Horizontal',source:'couch.png',sx:0,sy:0,sw:32,sh:16},
@@ -244,15 +244,19 @@ function applyDynamicCategorySuggestions(){
 }
 
 function freshMap(name='New Map'){
-  return {id:uid('map'),name,width:640,height:480,bg:'#edf0e6',spawn:{x:88,y:88},assets:[],transitions:[],npcs:[],questTargets:[]};
+  return {id:uid('map'),name,width:640,height:480,bg:'#edf0e6',assets:[],transitions:[],npcs:[],questTargets:[]};
 }
 function freshProject(){
   const map=freshMap('Player House - Bedroom');
-  return {version:SCHEMA_VERSION,name:'Christmas World',activeMapId:map.id,maps:[map],editor:freshEditor()};
+  return {version:SCHEMA_VERSION,name:'Christmas World',activeMapId:map.id,startMapId:map.id,initialSpawn:{x:88,y:88},maps:[map],editor:freshEditor()};
 }
 function normaliseProject(p){
   if(!p||!Array.isArray(p.maps)||!p.maps.length)throw new Error('No maps found in project.');
   p.version=SCHEMA_VERSION;p.name=p.name||'Christmas World';
+  const legacyStart=p.maps.find(m=>m.id===p.startMapId)||p.maps[0];
+  const legacySpawn=legacyStart?.spawn||p.maps.find(m=>m.spawn)?.spawn||{x:88,y:88};
+  p.startMapId=p.maps.some(m=>m.id===p.startMapId)?p.startMapId:p.maps[0].id;
+  p.initialSpawn=p.initialSpawn&&typeof p.initialSpawn==='object'?p.initialSpawn:{x:Number(legacySpawn.x)||88,y:Number(legacySpawn.y)||88};
   p.editor=p.editor&&typeof p.editor==='object'?p.editor:freshEditor();
   p.editor.categories=Array.isArray(p.editor.categories)?p.editor.categories:[];
   p.editor.assetCategoryByAsset=p.editor.assetCategoryByAsset&&typeof p.editor.assetCategoryByAsset==='object'?p.editor.assetCategoryByAsset:{};
@@ -267,7 +271,7 @@ function normaliseProject(p){
   ensureDefaultCategories(p);
   for(const m of p.maps){
     m.id=m.id||uid('map');m.name=m.name||'Map';m.width=Math.max(160,Number(m.width)||640);m.height=Math.max(120,Number(m.height)||480);m.bg=m.bg||'#edf0e6';
-    m.spawn=m.spawn||{x:80,y:80};m.assets=Array.isArray(m.assets)?m.assets:[];m.transitions=Array.isArray(m.transitions)?m.transitions:[];m.npcs=Array.isArray(m.npcs)?m.npcs:[];m.questTargets=Array.isArray(m.questTargets)?m.questTargets:[];
+    m.assets=Array.isArray(m.assets)?m.assets:[];m.transitions=Array.isArray(m.transitions)?m.transitions:[];m.npcs=Array.isArray(m.npcs)?m.npcs:[];m.questTargets=Array.isArray(m.questTargets)?m.questTargets:[];
     for(const a of m.assets){
       a.id=a.id||uid('asset');a.layer=Number(a.layer)||0;a.solid=!!a.solid;a.flipX=!!a.flipX;a.flipY=!!a.flipY;
       a.rotation=((Math.round((Number(a.rotation)||0)/90)*90)%360+360)%360;
@@ -275,11 +279,21 @@ function normaliseProject(p){
       if(typeof a.animated!=='boolean')a.animated=a.asset==='fireplace.png';
       a.animationFps=clamp(Number(a.animationFps)||6,1,30)
     }
-    for(const t of m.transitions){t.id=t.id||uid('link');t.label=t.label||'Map Link'}
+    for(const t of m.transitions){
+      t.id=t.id||uid('link');t.label=t.label||'Map Link';
+      const hasArrival=Number.isFinite(Number(t.targetX))&&Number.isFinite(Number(t.targetY));
+      t.arrivalSet=typeof t.arrivalSet==='boolean'?t.arrivalSet:hasArrival;
+      if(t.arrivalSet){t.targetX=Number(t.targetX);t.targetY=Number(t.targetY)}else{t.targetX=null;t.targetY=null}
+    }
     for(const n of m.npcs){n.id=n.id||uid('npc');n.name=n.name||'Elf';n.characterAsset=n.characterAsset||'character.png';n.dialogue=n.dialogue||'Hello!';n.path=Array.isArray(n.path)?n.path:[];n.speed=Number(n.speed)||24;n.quest=n.quest||{enabled:false,title:'',description:'',itemName:'',reward:'Christmas Present',completeText:'Thank you!'}}
     for(const q of m.questTargets){q.id=q.id||uid('quest');q.label=q.label||'Quest Item';q.itemName=q.itemName||'Quest Item';q.puzzle=q.puzzle||{enabled:false,prompt:'Repeat the sequence.',sequence:[1,2,3,4]}}
   }
   if(!p.maps.some(m=>m.id===p.activeMapId))p.activeMapId=p.maps[0].id;
+  if(!p.maps.some(m=>m.id===p.startMapId))p.startMapId=p.maps[0].id;
+  const startMap=p.maps.find(m=>m.id===p.startMapId)||p.maps[0];
+  p.initialSpawn.x=snapCellCenter(Number(p.initialSpawn.x)||88,startMap.width);
+  p.initialSpawn.y=snapCellCenter(Number(p.initialSpawn.y)||88,startMap.height);
+  for(const m of p.maps)delete m.spawn;
   return p;
 }
 function recordHistory(raw){
