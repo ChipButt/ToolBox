@@ -860,7 +860,7 @@ function renderAssets(filter=''){
   for(const name of names){
     try{
       const b=document.createElement('button');
-      b.type='button';b.draggable=true;
+      b.type='button';b.draggable=true;b.dataset.assetName=name;
       b.className='assetCard'+(name===selectedAssetName?' active':'')+(organisedSelection.has(name)?' multiSelected':'');
 
       const thumb=document.createElement('span');thumb.className='assetThumb';
@@ -887,7 +887,7 @@ function renderAssets(filter=''){
       assetList.appendChild(b);rendered++;
     }catch(error){
       console.error('World Builder preview failed for',name,error);
-      const b=document.createElement('button');b.type='button';b.className='assetCard assetPreviewError';
+      const b=document.createElement('button');b.type='button';b.dataset.assetName=name;b.className='assetCard assetPreviewError';
       b.innerHTML='<span class="assetThumb">!</span><span>'+esc(assetLabel(name))+'</span>';
       b.title='Preview failed, but the rest of the palette remains available.';
       assetList.appendChild(b);
