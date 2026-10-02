@@ -930,6 +930,62 @@ function popupBackgroundUrl(name){
   if(!name)return '';
   try{return assetPreview(name).toDataURL('image/png')}catch(_){return ''}
 }
+const PIXEL_FONT={
+  'A':'01110/10001/10001/11111/10001/10001/10001','B':'11110/10001/10001/11110/10001/10001/11110','C':'01111/10000/10000/10000/10000/10000/01111','D':'11110/10001/10001/10001/10001/10001/11110','E':'11111/10000/10000/11110/10000/10000/11111','F':'11111/10000/10000/11110/10000/10000/10000','G':'01111/10000/10000/10111/10001/10001/01111','H':'10001/10001/10001/11111/10001/10001/10001','I':'11111/00100/00100/00100/00100/00100/11111','J':'00111/00010/00010/00010/10010/10010/01100','K':'10001/10010/10100/11000/10100/10010/10001','L':'10000/10000/10000/10000/10000/10000/11111','M':'10001/11011/10101/10101/10001/10001/10001','N':'10001/11001/10101/10011/10001/10001/10001','O':'01110/10001/10001/10001/10001/10001/01110','P':'11110/10001/10001/11110/10000/10000/10000','Q':'01110/10001/10001/10001/10101/10010/01101','R':'11110/10001/10001/11110/10100/10010/10001','S':'01111/10000/10000/01110/00001/00001/11110','T':'11111/00100/00100/00100/00100/00100/00100','U':'10001/10001/10001/10001/10001/10001/01110','V':'10001/10001/10001/10001/10001/01010/00100','W':'10001/10001/10001/10101/10101/10101/01010','X':'10001/10001/01010/00100/01010/10001/10001','Y':'10001/10001/01010/00100/00100/00100/00100','Z':'11111/00001/00010/00100/01000/10000/11111',
+  '0':'01110/10001/10011/10101/11001/10001/01110','1':'00100/01100/00100/00100/00100/00100/01110','2':'01110/10001/00001/00010/00100/01000/11111','3':'11110/00001/00001/01110/00001/00001/11110','4':'00010/00110/01010/10010/11111/00010/00010','5':'11111/10000/10000/11110/00001/00001/11110','6':'01110/10000/10000/11110/10001/10001/01110','7':'11111/00001/00010/00100/01000/01000/01000','8':'01110/10001/10001/01110/10001/10001/01110','9':'01110/10001/10001/01111/00001/00001/01110',
+  '.':'00000/00000/00000/00000/00000/00110/00110',',':'00000/00000/00000/00000/00110/00110/00100','!':'00100/00100/00100/00100/00100/00000/00100','?':'01110/10001/00001/00010/00100/00000/00100',':':'00000/00110/00110/00000/00110/00110/00000',';':'00000/00110/00110/00000/00110/00110/00100','-':'00000/00000/00000/11111/00000/00000/00000',"'":'00100/00100/00000/00000/00000/00000/00000','"':'01010/01010/00000/00000/00000/00000/00000','/':'00001/00010/00010/00100/01000/01000/10000','(':'00010/00100/01000/01000/01000/00100/00010',')':'01000/00100/00010/00010/00010/00100/01000','+':'00000/00100/00100/11111/00100/00100/00000','&':'01100/10010/10100/01000/10101/10010/01101',' ':'00000/00000/00000/00000/00000/00000/00000'
+};
+function pixelGlyph(ch){return (PIXEL_FONT[String(ch).toUpperCase()]||'11111/10001/00110/00110/00110/00000/00100').split('/')}
+function pixelLineWidth(text,scale){return Math.max(0,String(text).length*(6*scale)-scale)}
+function wrapPixelText(text,maxWidth,scale){
+  const maxChars=Math.max(1,Math.floor((maxWidth+scale)/(6*scale))),out=[];
+  for(const para of String(text||'').split('\n')){
+    if(!para){out.push('');continue}
+    let line='';
+    for(const word of para.split(/\s+/)){
+      if(word.length>maxChars){
+        if(line){out.push(line);line=''}
+        for(let i=0;i<word.length;i+=maxChars)out.push(word.slice(i,i+maxChars));
+        continue
+      }
+      const next=line?line+' '+word:word;
+      if(next.length>maxChars){out.push(line);line=word}else line=next
+    }
+    if(line)out.push(line)
+  }
+  return out
+}
+function drawPixelLine(ctx,text,x,y,scale,color){
+  ctx.fillStyle=color;
+  let dx=x;
+  for(const ch of String(text)){
+    const glyph=pixelGlyph(ch);
+    for(let row=0;row<7;row++)for(let col=0;col<5;col++)if(glyph[row]?.[col]==='1')ctx.fillRect(Math.round(dx+col*scale),Math.round(y+row*scale),scale,scale);
+    dx+=6*scale
+  }
+}
+function renderSignPixelText(el){
+  const canvas=el?.querySelector('.signPixelCanvas');if(!canvas)return;
+  const s=project.editor.signPopupStyle||defaultSignPopupStyle(),preview=el.id==='signPopupPreview';
+  const outerW=preview?Math.min(260,Number(s.width)||260):clamp(Number(s.width)||260,120,360);
+  const outerH=preview?Math.min(120,Number(s.height)||126):clamp(Number(s.height)||126,70,300);
+  const pad=clamp(Number(s.padding)||14,4,40),innerW=Math.max(40,outerW-pad*2),innerH=Math.max(36,outerH-pad*2-(preview?0:40));
+  canvas.width=Math.round(innerW);canvas.height=Math.round(innerH);canvas.style.height=innerH+'px';
+  const ctx=canvas.getContext('2d');ctx.imageSmoothingEnabled=false;ctx.clearRect(0,0,canvas.width,canvas.height);
+  const scale=Math.max(1,Math.round((Number(s.fontSize)||12)/7)),lineH=8*scale,align=s.textAlign==='center'?'center':'left';
+  const title=el.querySelector('strong')?.textContent||'',message=el.querySelector('p')?.textContent||'';
+  let y=0;
+  const drawLines=(arr,color)=>{
+    for(const line of arr){
+      const w=pixelLineWidth(line,scale),x=align==='center'?Math.max(0,Math.floor((canvas.width-w)/2)):0;
+      drawPixelLine(ctx,line,x,y,scale,color);y+=lineH;
+      if(y+7*scale>canvas.height)return false
+    }
+    return true
+  };
+  if(title){if(!drawLines(wrapPixelText(title,canvas.width,scale),s.title||'#173c2a'))return;y+=scale}
+  drawLines(wrapPixelText(message,canvas.width,scale),s.text||'#18231d')
+}
 function applySignPopupStyle(el,preview=false){
   if(!el)return;const s=project.editor.signPopupStyle||defaultSignPopupStyle();
   el.style.width=preview?'100%':clamp(Number(s.width)||260,120,360)+'px';
@@ -939,7 +995,8 @@ function applySignPopupStyle(el,preview=false){
   el.style.borderRadius=clamp(Number(s.radius)||10,0,40)+'px';el.style.padding=clamp(Number(s.padding)||14,4,40)+'px';
   el.style.color=s.text||'#18231d';el.style.fontSize=clamp(Number(s.fontSize)||12,7,26)+'px';
   const bg=popupBackgroundUrl(s.backgroundAsset);el.style.backgroundImage=bg?'url("'+bg+'")':'none';
-  const strong=el.querySelector('strong');if(strong)strong.style.color=s.title||'#173c2a'
+  const strong=el.querySelector('strong');if(strong)strong.style.color=s.title||'#173c2a';
+  renderSignPixelText(el)
 }
 function refreshSignDesignerPreview(message,title){
   const el=$('#signPopupPreview');if(!el)return;el.querySelector('strong').textContent=title||'Sign';el.querySelector('p').textContent=message||'Your sign message';applySignPopupStyle(el,true)
@@ -983,11 +1040,12 @@ function signInspectorHtml(a){
     '<label><span>Text</span><input id="signStyleText" type="color" value="'+esc(s.text)+'"></label>'+
     '<label><span>Title</span><input id="signStyleTitle" type="color" value="'+esc(s.title)+'"></label>'+
     '<label><span>Text size</span><input id="signStyleFont" type="number" min="7" max="26" value="'+esc(s.fontSize)+'"></label>'+
+    '<label><span>Text alignment</span><select id="signStyleAlign"><option value="left" '+(s.textAlign!=='center'?'selected':'')+'>Left</option><option value="center" '+(s.textAlign==='center'?'selected':'')+'>Center</option></select></label>'+
     '<label><span>Border width</span><input id="signStyleBorderWidth" type="number" min="0" max="12" value="'+esc(s.borderWidth)+'"></label>'+
     '<label><span>Corner radius</span><input id="signStyleRadius" type="number" min="0" max="40" value="'+esc(s.radius)+'"></label>'+
     '<label><span>Padding</span><input id="signStylePadding" type="number" min="4" max="40" value="'+esc(s.padding)+'"></label>'+
     '<label class="full"><span>Background artwork</span><select id="signStyleAsset"><option value="" '+(!s.backgroundAsset?'selected':'')+'>None / colour only</option><option value="sign-popup-background.png" '+(s.backgroundAsset==='sign-popup-background.png'?'selected':'')+'>Sign popup background</option><option value="parchment-menu.png" '+(s.backgroundAsset==='parchment-menu.png'?'selected':'')+'>Parchment menu</option></select></label>'+
-    '<div class="signPopupPreviewWrap"><div id="signPopupPreview" class="signPopupPreview"><strong></strong><p></p></div></div></div>'
+    '<div class="signPopupPreviewWrap"><div id="signPopupPreview" class="signPopupPreview"><strong></strong><p></p><canvas class="signPixelCanvas" aria-hidden="true"></canvas></div></div></div>'
 }
 function bindSignInspector(a){
   if(a.asset!=='sign-post.png'||!$('#signMessage'))return;const sign=a.sign,s=project.editor.signPopupStyle;
@@ -999,6 +1057,7 @@ function bindSignInspector(a){
   num('signStyleWidth','width',120,360);num('signStyleHeight','height',70,300);num('signStyleFont','fontSize',7,26);num('signStyleBorderWidth','borderWidth',0,12);num('signStyleRadius','radius',0,40);num('signStylePadding','padding',4,40);
   col('signStyleBg','background');col('signStyleBorder','border');col('signStyleText','text');col('signStyleTitle','title');
   $('#signStyleAsset').onchange=e=>{s.backgroundAsset=e.target.value;saveLocal(false);refreshSignDesignerPreview(sign.message,sign.title)};
+  $('#signStyleAlign').onchange=e=>{s.textAlign=e.target.value==='center'?'center':'left';saveLocal(false);refreshSignDesignerPreview(sign.message,sign.title)};
   refreshSignDesignerPreview(sign.message,sign.title)
 }
 function renderSelectionInspector(updateTitle=true){
