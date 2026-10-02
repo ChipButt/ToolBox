@@ -1042,7 +1042,9 @@ function renderSelectionInspector(updateTitle=true){
       depthEditorHtml(o)+signInspectorHtml(o)+
       '<div class="inspectorActions"><button id="rotateLeft" type="button">↶ 90°</button><button id="rotateRight" type="button">↷ 90°</button><span class="rotationReadout">'+(o.rotation||0)+'°</span></div>'+
       '<div class="inspectorActions"><button id="dupSelected" type="button">DUPLICATE</button><button id="layerUp" type="button">LAYER +</button><button id="layerDown" type="button">LAYER −</button></div>';
-    bindNumber('selX',o,'x');bindNumber('selY',o,'y');bindNumber('selW',o,'w');bindNumber('selH',o,'h');
+    bindNumber('selX',o,'x');bindNumber('selY',o,'y');
+    $('#selW').onchange=e=>{o.w=Math.max(1,Number(e.target.value)||1);saveLocal(false);renderSelectionInspector();draw()};
+    $('#selH').onchange=e=>{o.h=Math.max(1,Number(e.target.value)||1);saveLocal(false);renderSelectionInspector();draw()};
     if($('#selFrame'))$('#selFrame').onchange=e=>{o.frame=clamp(Number(e.target.value)||0,0,count-1);saveLocal(false);draw()};
     if($('#selAnimFps'))$('#selAnimFps').onchange=e=>{o.animationFps=clamp(Number(e.target.value)||6,1,30);e.target.value=o.animationFps;saveLocal(false);draw()};
     if($('#selAnimated'))$('#selAnimated').onchange=e=>{o.animated=e.target.checked;saveLocal(false);renderSelectionInspector();draw()};
