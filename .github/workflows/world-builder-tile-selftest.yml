@@ -601,15 +601,17 @@ jobs:
               # Sign-post interaction: message entry, popup designer, and in-play popup over the map.
               sign_state=driver.execute_script("""
                 document.querySelectorAll('#mapList .mapItem')[0].click();
+                const canvas=document.querySelector('#worldCanvas'),r=canvas.getBoundingClientRect();
+                const clickWorld=(id,wx,wy)=>canvas.dispatchEvent(new PointerEvent('pointerdown',{
+                  bubbles:true,cancelable:true,pointerId:id,pointerType:'mouse',button:0,buttons:1,
+                  clientX:r.left+wx*(r.width/canvas.width),clientY:r.top+wy*(r.height/canvas.height)
+                }));
+                document.querySelector('.modeBtn[data-mode="spawn"]').click();
+                clickWorld(300,120,120);
                 const card=[...document.querySelectorAll('#assetList .assetCard')].find(x=>x.textContent.includes('sign-post'));
                 if(!card)throw new Error('sign-post palette card not found');
                 card.click();
-                const canvas=document.querySelector('#worldCanvas'),r=canvas.getBoundingClientRect();
-                const wx=320,wy=208;
-                canvas.dispatchEvent(new PointerEvent('pointerdown',{
-                  bubbles:true,cancelable:true,pointerId:301,pointerType:'mouse',button:0,buttons:1,
-                  clientX:r.left+wx*(r.width/canvas.width),clientY:r.top+wy*(r.height/canvas.height)
-                }));
+                clickWorld(301,112,112);
                 const message=document.querySelector('#signMessage'),title=document.querySelector('#signTitle'),width=document.querySelector('#signStyleWidth');
                 if(!message||!title||!width)throw new Error('sign interaction inspector controls missing');
                 title.value='Village Notice';title.dispatchEvent(new Event('input',{bubbles:true}));title.dispatchEvent(new Event('change',{bubbles:true}));
