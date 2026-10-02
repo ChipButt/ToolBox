@@ -405,6 +405,104 @@ jobs:
               if spawn_persisted != {'x':328,'y':216,'xMod':8,'yMod':8}:
                   raise AssertionError(f"grid-centred spawn did not survive hard refresh: {spawn_persisted}")
 
+              # Create a second map and prove a Map Link can mark an exact arrival square there.
+              link_setup=driver.execute_script("""
+                document.querySelector('#addMap').click();
+                let p=JSON.parse(localStorage.getItem('chipin-world-builder-v1'));
+                const targetId=p.activeMapId,target=p.maps.find(m=>m.id===targetId);
+                const source=p.maps[0];
+                document.querySelectorAll('#mapList .mapItem')[0].click();
+                document.querySelector('.modeBtn[data-mode="transition"]').click();
+                const canvas=document.querySelector('#worldCanvas'),r=canvas.getBoundingClientRect();
+                const fire=(type,wx,wy,buttons)=>{
+                  canvas.dispatchEvent(new PointerEvent(type,{
+                    bubbles:true,cancelable:true,pointerId:211,pointerType:'mouse',
+                    button:0,buttons,
+                    clientX:r.left+wx*(r.width/canvas.width),clientY:r.top+wy*(r.height/canvas.height)
+                  }));
+                };
+                fire('pointerdown',320,208,1);
+                fire('pointermove',336,224,1);
+                fire('pointerup',336,224,0);
+                p=JSON.parse(localStorage.getItem('chipin-world-builder-v1'));
+                const sourceNow=p.maps.find(m=>m.id===source.id);
+                const link=sourceNow.transitions.at(-1);
+                return {
+                  sourceId:source.id,targetId,targetName:target.name,
+                  linkId:link?.id||null,linkTarget:link?.targetMapId||null,
+                  hasArrivalButton:!!document.querySelector('#setLinkArrival')
+                };
+              """)
+              print('MAP_LINK_SETUP',json.dumps(link_setup,sort_keys=True))
+              if not link_setup['linkId'] or link_setup['linkTarget'] != link_setup['targetId'] or not link_setup['hasArrivalButton']:
+                  raise AssertionError(f"Map Link setup failed: {link_setup}")
+
+              arrival_target=driver.execute_script("""
+                document.querySelector('#setLinkArrival').click();
+                return {
+                  mapTitle:document.querySelector('#mapInspectorTitle')?.textContent||'',
+                  status:document.querySelector('#modeStatus')?.textContent||''
+                };
+              """)
+              print('MAP_LINK_TARGET_VIEW',json.dumps(arrival_target,sort_keys=True))
+              if arrival_target['mapTitle'] != link_setup['targetName']:
+                  raise AssertionError(f"arrival editor did not open the target map: {arrival_target}")
+
+              driver.execute_script("""
+                const canvas=document.querySelector('#worldCanvas'),r=canvas.getBoundingClientRect();
+                const wx=131,wy=91;
+                canvas.dispatchEvent(new PointerEvent('pointerdown',{
+                  bubbles:true,cancelable:true,pointerId:212,pointerType:'mouse',button:0,buttons:1,
+                  clientX:r.left+wx*(r.width/canvas.width),clientY:r.top+wy*(r.height/canvas.height)
+                }));
+              """)
+
+              # Read the saved link directly after the arrival click auto-returns to the source map.
+              arrival_saved=driver.execute_script("""
+                const p=JSON.parse(localStorage.getItem('chipin-world-builder-v1'));
+                const source=p.maps.find(m=>m.id===arguments[0]);
+                const link=source.transitions.find(t=>t.id===arguments[1]);
+                document.querySelector('#saveProject').click();
+                return {
+                  activeMapId:p.activeMapId,
+                  targetMapId:link.targetMapId,
+                  targetX:link.targetX,targetY:link.targetY,
+                  xMod:link.targetX%16,yMod:link.targetY%16,
+                  arrivalButtonStillPresent:!!document.querySelector('#setLinkArrival')
+                };
+              """,link_setup['sourceId'],link_setup['linkId'])
+              print('MAP_LINK_ARRIVAL_STATE',json.dumps(arrival_saved,sort_keys=True))
+              if arrival_saved['targetMapId'] != link_setup['targetId'] or arrival_saved['targetX'] != 136 or arrival_saved['targetY'] != 88:
+                  raise AssertionError(f"Map Link arrival square was not saved correctly: {arrival_saved}")
+              if arrival_saved['xMod'] != 8 or arrival_saved['yMod'] != 8 or arrival_saved['activeMapId'] != link_setup['sourceId']:
+                  raise AssertionError(f"Map Link arrival did not snap/return correctly: {arrival_saved}")
+
+              # Playtest starts inside the source Map Link and must arrive at the marked target square.
+              driver.execute_script("document.querySelector('#playtestBtn').click()")
+              WebDriverWait(driver, 5).until(lambda d: d.execute_script(
+                  "return document.querySelector('#playMapName')?.textContent===arguments[0]",link_setup['targetName']
+              ))
+              play_arrival=driver.execute_script("""
+                return {mapId:play.mapId,x:Math.round(play.x),y:Math.round(play.y)};
+              """)
+              print('MAP_LINK_PLAY_ARRIVAL',json.dumps(play_arrival,sort_keys=True))
+              if play_arrival != {'mapId':link_setup['targetId'],'x':136,'y':88}:
+                  raise AssertionError(f"playtest did not arrive on the marked target square: {play_arrival}")
+              driver.execute_script("document.querySelector('#stopPlaytest').click()")
+
+              driver.execute_cdp_cmd('Network.clearBrowserCache', {})
+              driver.refresh()
+              wait_ready()
+              link_persisted=driver.execute_script("""
+                const p=JSON.parse(localStorage.getItem('chipin-world-builder-v1'));
+                const source=p.maps.find(m=>m.id===arguments[0]);
+                const link=source.transitions.find(t=>t.id===arguments[1]);
+                return {targetMapId:link.targetMapId,targetX:link.targetX,targetY:link.targetY};
+              """,link_setup['sourceId'],link_setup['linkId'])
+              print('MAP_LINK_REFRESH_STATE',json.dumps(link_persisted,sort_keys=True))
+              if link_persisted != {'targetMapId':link_setup['targetId'],'targetX':136,'targetY':88}:
+                  raise AssertionError(f"Map Link arrival square did not survive hard refresh: {link_persisted}")
+
               severe=[]
               for entry in driver.get_log('browser'):
                   print('BROWSER_LOG',entry['level'],entry['message'])
