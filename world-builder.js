@@ -17,7 +17,7 @@ const puzzleOverlay=$('#puzzleOverlay'),puzzleHeading=$('#puzzleHeading'),puzzle
 const STORE='chipin-world-builder-v1';
 const RECOVERY_STORE='chipin-world-builder-recovery-v1';
 const HISTORY_STORE='chipin-world-builder-history-v1';
-const SCHEMA_VERSION=9;
+const SCHEMA_VERSION=10;
 
 const VIRTUAL_ASSETS={
   'couch-horizontal':{label:'Couch — Horizontal',source:'couch.png',sx:0,sy:0,sw:32,sh:16},
@@ -303,6 +303,8 @@ function normaliseProject(p){
     for(const n of m.npcs){
       n.id=n.id||uid('npc');n.name=n.name||'Elf';n.characterAsset=n.characterAsset||'character.png';n.dialogue=n.dialogue||'Hello!';
       n.path=Array.isArray(n.path)?n.path:[];n.speed=Number(n.speed)||24;
+      const npcSize=npcNaturalSize(n.characterAsset);
+      n.w=clamp(Number(n.w)||npcSize.w,8,256);n.h=clamp(Number(n.h)||npcSize.h,8,256);
       n.movementMode=n.movementMode==='path'?'path':'idle';
       if(typeof n.idleAnimated!=='boolean')n.idleAnimated=true;
       n.quest=n.quest||{enabled:false,title:'',description:'',itemName:'',reward:'Christmas Present',completeText:'Thank you!'}
@@ -492,6 +494,12 @@ function defaultAssetSize(name){
   const meta=assetMeta(name);
   return meta.cell?{w:meta.cell.width,h:meta.cell.height,frame:0}:{w:meta.width,h:meta.height,frame:null};
 }
+function npcNaturalSize(name){
+  const meta=assetMeta(name),cell=meta.cell||{width:16,height:16};
+  const h=Math.min(53,Math.max(16,Number(cell.height)||16));
+  const w=Math.max(8,(Number(cell.width)||16)*(h/(Number(cell.height)||16)));
+  return {w:Math.round(w),h:Math.round(h)}
+}
 function getSelected(){
   if(!selected)return null;
   const m=activeMap(), list=selected.type==='asset'?m.assets:selected.type==='transition'?m.transitions:selected.type==='npc'?m.npcs:m.questTargets;
@@ -500,7 +508,7 @@ function getSelected(){
 function selectObject(type,id){selected={type,id};renderSelectionInspector();draw()}
 function hitTest(p){
   const m=activeMap();
-  for(let i=m.npcs.length-1;i>=0;i--){const n=m.npcs[i];if(Math.hypot(p.x-n.x,p.y-n.y)<=14)return {type:'npc',id:n.id}}
+  for(let i=m.npcs.length-1;i>=0;i--){const n=m.npcs[i],w=Number(n.w)||npcNaturalSize(n.characterAsset).w,h=Number(n.h)||npcNaturalSize(n.characterAsset).h;if(hitRect(p,{x:n.x-w/2,y:n.y-h+4,w,h}))return {type:'npc',id:n.id}}
   for(let i=m.questTargets.length-1;i>=0;i--){const q=m.questTargets[i];if(hitRect(p,{x:q.x-10,y:q.y-10,w:20,h:20}))return {type:'quest',id:q.id}}
   for(let i=m.transitions.length-1;i>=0;i--){const t=m.transitions[i];if(hitRect(p,t))return {type:'transition',id:t.id}}
   const arr=[...m.assets].sort((a,b)=>(b.layer||0)-(a.layer||0));
@@ -547,7 +555,8 @@ function fillAssetRect(){
 }
 function addNpcAt(x,y){
   const m=activeMap(),choices=npcAssetNames(),characterAsset=(choices.includes(project.editor.lastNpcAsset)?project.editor.lastNpcAsset:choices[0])||'character.png';
-  const n={id:uid('npc'),name:'Elf',characterAsset,x:snapCellCenter(x,m.width),y:snapCellCenter(y,m.height),speed:24,movementMode:'idle',idleAnimated:true,dialogue:'Hello!\nIt is lovely to see you.',path:[],quest:{enabled:false,title:'A Little Favour',description:'Could you fetch something for me?',itemName:'Quest Item',reward:'Christmas Present',completeText:'You found it! Thank you so much.'}};
+  const size=npcNaturalSize(characterAsset);
+  const n={id:uid('npc'),name:'Elf',characterAsset,x:snapCellCenter(x,m.width),y:snapCellCenter(y,m.height),w:size.w,h:size.h,speed:24,movementMode:'idle',idleAnimated:true,dialogue:'Hello!\nIt is lovely to see you.',path:[],quest:{enabled:false,title:'A Little Favour',description:'Could you fetch something for me?',itemName:'Quest Item',reward:'Christmas Present',completeText:'You found it! Thank you so much.'}};
   m.npcs.push(n);selectObject('npc',n.id);setMode('select');saveLocal(false)
 }
 function addQuestAt(x,y){
@@ -690,10 +699,10 @@ function npcFrameForAsset(name,step=0,dir='down'){
   try{return assetProvider(name).frame(name,index,cell.width,cell.height)}catch(_){return null}
 }
 function drawNpcAt(n,x=n.x,y=n.y,step=0,dir='down',selectedNpc=false){
-  const name=n.characterAsset||'character.png',meta=assetMeta(name),cell=meta.cell||{width:16,height:16};
-  const f=npcFrameForAsset(name,step,dir),drawH=Math.min(36,Math.max(24,cell.height)),drawW=Math.max(16,cell.width*(drawH/cell.height));
+  const name=n.characterAsset||'character.png',natural=npcNaturalSize(name),drawW=clamp(Number(n.w)||natural.w,8,256),drawH=clamp(Number(n.h)||natural.h,8,256);
+  const f=npcFrameForAsset(name,step,dir);
   if(f){ctx.imageSmoothingEnabled=false;ctx.drawImage(f,Math.round(x-drawW/2),Math.round(y-drawH+4),Math.round(drawW),Math.round(drawH))}
-  else{ctx.fillStyle='#2c806a';ctx.fillRect(Math.round(x-6),Math.round(y-16),12,16)}
+  else{ctx.fillStyle='#2c806a';ctx.fillRect(Math.round(x-drawW/2),Math.round(y-drawH+4),Math.round(drawW),Math.round(drawH))}
   if(selectedNpc&&!play){ctx.strokeStyle='#f7bd18';ctx.lineWidth=2;ctx.strokeRect(Math.round(x-drawW/2-1),Math.round(y-drawH+3),Math.round(drawW+2),Math.round(drawH+2))}
 }
 function drawNpc(n){
