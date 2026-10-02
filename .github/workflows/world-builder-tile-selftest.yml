@@ -450,7 +450,7 @@ jobs:
 
               driver.execute_script("""
                 const canvas=document.querySelector('#worldCanvas'),r=canvas.getBoundingClientRect();
-                const wx=131,wy=91;
+                const wx=523,wy=363;
                 canvas.dispatchEvent(new PointerEvent('pointerdown',{
                   bubbles:true,cancelable:true,pointerId:212,pointerType:'mouse',button:0,buttons:1,
                   clientX:r.left+wx*(r.width/canvas.width),clientY:r.top+wy*(r.height/canvas.height)
@@ -472,7 +472,7 @@ jobs:
                 };
               """,link_setup['sourceId'],link_setup['linkId'])
               print('MAP_LINK_ARRIVAL_STATE',json.dumps(arrival_saved,sort_keys=True))
-              if arrival_saved['targetMapId'] != link_setup['targetId'] or arrival_saved['targetX'] != 136 or arrival_saved['targetY'] != 88:
+              if arrival_saved['targetMapId'] != link_setup['targetId'] or arrival_saved['targetX'] != 520 or arrival_saved['targetY'] != 360:
                   raise AssertionError(f"Map Link arrival square was not saved correctly: {arrival_saved}")
               if arrival_saved['xMod'] != 8 or arrival_saved['yMod'] != 8 or arrival_saved['activeMapId'] != link_setup['sourceId']:
                   raise AssertionError(f"Map Link arrival did not snap/return correctly: {arrival_saved}")
@@ -483,11 +483,20 @@ jobs:
                   "return document.querySelector('#playMapName')?.textContent===arguments[0]",link_setup['targetName']
               ))
               play_arrival=driver.execute_script("""
-                return {mapId:play.mapId,x:Math.round(play.x),y:Math.round(play.y)};
+                const s=document.querySelector('#canvasScroller');
+                const expectedLeft=Math.max(0,520*2-s.clientWidth/2);
+                const expectedTop=Math.max(0,360*2-s.clientHeight/2);
+                return {
+                  mapName:document.querySelector('#playMapName')?.textContent||'',
+                  scrollLeft:Math.round(s.scrollLeft),scrollTop:Math.round(s.scrollTop),
+                  expectedLeft:Math.round(expectedLeft),expectedTop:Math.round(expectedTop)
+                };
               """)
               print('MAP_LINK_PLAY_ARRIVAL',json.dumps(play_arrival,sort_keys=True))
-              if play_arrival != {'mapId':link_setup['targetId'],'x':136,'y':88}:
-                  raise AssertionError(f"playtest did not arrive on the marked target square: {play_arrival}")
+              if play_arrival['mapName'] != link_setup['targetName']:
+                  raise AssertionError(f"playtest did not enter the target map: {play_arrival}")
+              if abs(play_arrival['scrollLeft']-play_arrival['expectedLeft']) > 12 or abs(play_arrival['scrollTop']-play_arrival['expectedTop']) > 12:
+                  raise AssertionError(f"playtest camera was not centred on the marked arrival square: {play_arrival}")
               driver.execute_script("document.querySelector('#stopPlaytest').click()")
 
               driver.execute_cdp_cmd('Network.clearBrowserCache', {})
@@ -500,7 +509,7 @@ jobs:
                 return {targetMapId:link.targetMapId,targetX:link.targetX,targetY:link.targetY};
               """,link_setup['sourceId'],link_setup['linkId'])
               print('MAP_LINK_REFRESH_STATE',json.dumps(link_persisted,sort_keys=True))
-              if link_persisted != {'targetMapId':link_setup['targetId'],'targetX':136,'targetY':88}:
+              if link_persisted != {'targetMapId':link_setup['targetId'],'targetX':520,'targetY':360}:
                   raise AssertionError(f"Map Link arrival square did not survive hard refresh: {link_persisted}")
 
               severe=[]
