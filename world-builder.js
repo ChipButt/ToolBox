@@ -244,7 +244,7 @@ function applyDynamicCategorySuggestions(){
 }
 
 function freshMap(name='New Map'){
-  return {id:uid('map'),name,width:640,height:480,bg:'#edf0e6',spawn:{x:80,y:80},assets:[],transitions:[],npcs:[],questTargets:[]};
+  return {id:uid('map'),name,width:640,height:480,bg:'#edf0e6',spawn:{x:88,y:88},assets:[],transitions:[],npcs:[],questTargets:[]};
 }
 function freshProject(){
   const map=freshMap('Player House - Bedroom');
