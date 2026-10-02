@@ -354,7 +354,6 @@ function saveLocal(show=true){
   if(previous&&previous!==next){
     try{localStorage.setItem(RECOVERY_STORE,previous)}catch(_){}
   }
-  try{localStorage.removeItem(HISTORY_STORE)}catch(_){}
   if(show)flashStatus('Saved all '+project.maps.length+' map'+(project.maps.length===1?'':'s')+'. Safe to refresh.');
   return true
 }
