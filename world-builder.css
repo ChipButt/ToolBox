@@ -142,3 +142,28 @@ body.mobilePlaytest .modalCard{
   .mobileDpad .up{left:33px}.mobileDpad .left{top:33px}.mobileDpad .down{left:33px;top:66px}.mobileDpad .right{left:66px;top:33px}
   .mobileInteract{width:62px;height:62px}
 }
+
+
+/* Per-tile depth editor */
+.tileDepthEditor{grid-column:1/-1;display:grid;gap:7px;padding:8px;border:2px solid #b7ccc4;border-radius:7px;background:#f3f8f5}
+.tileDepthEditor>strong{font-size:8px;color:#244f39}.tileDepthHelp{font-size:7px;line-height:1.4;color:#64776d}
+.depthTileGrid{display:grid;gap:3px;justify-content:start;max-width:100%;overflow:auto;padding:4px;background:#dbe7e2;border-radius:5px}
+.depthTileCell{width:34px;height:34px;border:2px solid #91aa9f;border-radius:4px;background:#fff;color:#526b60;font-size:7px;font-weight:900;line-height:1}
+.depthTileCell.above{background:#fff1b8;border-color:#b47c00;color:#805500}
+.depthTileLegend{display:flex;gap:8px;font-size:7px;font-weight:800;color:#5a6e64}
+
+/* Sign popup designer + playtest popup */
+.signDesigner{grid-column:1/-1;display:grid;gap:7px;padding:9px;border:2px solid #c2a96f;border-radius:7px;background:#fff9e4}
+.signDesignerTitle{font-size:8px;font-weight:900;color:#725200}
+.signPopupPreviewWrap{grid-column:1/-1;display:grid;place-items:center;min-height:120px;padding:10px;border:1px dashed #a9966a;border-radius:6px;background:#e8edea;overflow:auto}
+.signPopupPreview{box-sizing:border-box;display:grid;grid-template-rows:auto 1fr;gap:7px;image-rendering:pixelated;background-repeat:no-repeat;background-position:center;background-size:100% 100%;overflow:hidden}
+.signPopupPreview strong{display:block}.signPopupPreview p{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
+.signOverlay{position:fixed;inset:0;z-index:96;display:grid;place-items:center;pointer-events:none;background:transparent}
+.signOverlay[hidden]{display:none}
+.signPopupCard{box-sizing:border-box;pointer-events:auto;display:grid;grid-template-rows:auto 1fr auto;gap:10px;background-repeat:no-repeat;background-position:center;background-size:100% 100%;image-rendering:pixelated;box-shadow:0 8px 24px rgba(0,0,0,.28)}
+.signPopupCard strong{display:block}.signPopupCard p{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.45}
+.signPopupCard button{min-height:34px;border:2px solid currentColor;border-radius:5px;background:rgba(255,255,255,.82);color:inherit;font-size:8px;font-weight:900}
+body.mobilePlaytest .signOverlay{width:var(--phone-w);height:var(--phone-h);left:50%;top:50%;right:auto;bottom:auto;transform:translate(-50%,-50%)}
+
+/* NPC movement controls */
+.npcMovementSummary{grid-column:1/-1;padding:8px;border:2px solid #a7c5b9;border-radius:6px;background:#eef8f4;font-size:8px;line-height:1.4;color:#2b5d4c}
