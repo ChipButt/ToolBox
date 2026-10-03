@@ -629,7 +629,6 @@ function updatePlayer(dt){
     playState(ch,running?'run':'walk');
    } else {stamina=Math.min(100,stamina+18*dt);playState(ch,'idle')}
  } else {stamina=Math.min(100,stamina+18*dt)}
- }
 
  if(cameraMode==='follow'){
   const wanted=ch.root.position.clone().add(new THREE.Vector3(3.0,3.45,3.0));
