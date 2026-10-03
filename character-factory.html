@@ -18,7 +18,7 @@
 .badge{position:fixed;z-index:9;left:50%;top:72px;transform:translateX(-50%);padding:8px 11px;border-radius:12px;background:rgba(8,20,35,.58);border:1px solid rgba(255,255,255,.11);font-size:9px;font-weight:800;color:#dce8f0;pointer-events:none;text-align:center}
 .panel{position:fixed;z-index:18;top:68px;right:12px;bottom:12px;width:min(420px,calc(100% - 24px));overflow:auto;padding:14px;border-radius:20px;background:rgba(8,20,35,.91);border:1px solid var(--line);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);box-shadow:0 16px 44px rgba(5,16,28,.28)}
 .panel[hidden]{display:none}.panelHead{display:flex;align-items:center;justify-content:space-between;gap:8px}.panel h2{margin:0;font:700 21px Fredoka,Inter,sans-serif}.panel p{margin:5px 0 11px;color:#c8d7e3;font-size:11px;line-height:1.45}.close{width:36px;height:36px;border-radius:11px;border:1px solid var(--line);background:rgba(255,255,255,.07);color:#fff;font-size:18px}
-.palette{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:11px}.palette.choice3{grid-template-columns:repeat(3,minmax(0,1fr))}.palette button{min-height:42px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:#fff;font-size:10px;font-weight:900}.palette button.active{background:linear-gradient(#ffd85a,var(--gold));color:#142238;border-color:#ffe697}.footStatus{margin-top:8px;padding:9px 10px;border-radius:11px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#d7e4ed;font-size:10px;line-height:1.35}
+.palette{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:11px}.palette button{min-height:42px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:#fff;font-size:10px;font-weight:900}.palette button.active{background:linear-gradient(#ffd85a,var(--gold));color:#142238;border-color:#ffe697}
 .searchRow{display:grid;grid-template-columns:1fr auto;gap:7px}.searchRow input,.searchRow button{height:38px;border-radius:11px;border:1px solid rgba(255,255,255,.13)}.searchRow input{min-width:0;background:#122b45;color:#fff;padding:0 10px}.searchRow button{background:#21415f;color:#fff;padding:0 12px;font-weight:900;font-size:9px}
 .meta{display:flex;justify-content:space-between;gap:8px;margin:8px 0;font-size:9px;color:#abc1d2}.meta strong{color:white}.list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.anim{min-width:0;padding:9px;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.055);color:white;text-align:left;font-size:9px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.anim.active{background:linear-gradient(#ffd85a,var(--gold));color:#142238}
 .quick{position:fixed;z-index:12;left:50%;bottom:max(10px,env(safe-area-inset-bottom));transform:translateX(-50%);display:flex;gap:6px;max-width:calc(100% - 22px);overflow-x:auto;padding:7px;border-radius:15px;background:rgba(8,20,35,.79);border:1px solid var(--line);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}.quick::-webkit-scrollbar{display:none}.quick button{min-height:36px;padding:0 10px;border-radius:10px;border:1px solid rgba(255,255,255,.11);background:rgba(255,255,255,.07);color:white;font-size:9px;font-weight:900;white-space:nowrap}.quick button.active{background:linear-gradient(#ffd85a,var(--gold));color:#142238}
@@ -33,7 +33,7 @@
 <header class="top">
 <a class="back" href="./" aria-label="Back to ToolBox">‹</a>
 <div class="title"><small>GameBox character quality test</small><strong>Christmas Elf Benchmark</strong></div>
-<div class="actions"><button class="glassBtn" id="footBtn">FOOTWEAR</button><button class="glassBtn" id="paletteBtn">PALETTE</button><button class="glassBtn" id="animBtn">ALL ANIMS</button></div>
+<div class="actions"><button class="glassBtn" id="paletteBtn">PALETTE</button><button class="glassBtn" id="animBtn">ALL ANIMS</button></div>
 </header>
 <div class="badge">One finished model · one skeleton · real material regions · drag to rotate · framing locked to screen</div>
 
@@ -47,20 +47,9 @@
 
 <section class="panel" id="palettePanel" hidden>
 <div class="panelHead"><h2>Material Palette</h2><button class="close" id="closePalette">×</button></div>
-<p>Compare the original-style palette with the finished Christmas material treatment. The facial details remain part of the actual elf asset in both views.</p>
+<p>Compare the original-style palette with the clean Christmas material treatment.</p>
 <div class="palette"><button data-palette="original">ORIGINAL ELF</button><button data-palette="christmas" class="active">CHRISTMAS</button></div>
-<div class="info" style="position:static;max-width:none;margin-top:6px">The Christmas version is now a local production asset. It includes baked natural skin, a red hat, green clothes, <strong>white fur trim</strong>, rosy cheeks, a visible mouth and pink inner-ear detail. The face details are attached to the animated Head bone.</div>
-</section>
-
-<section class="panel" id="footPanel" hidden>
-<div class="panelHead"><h2>Footwear</h2><button class="close" id="closeFoot">×</button></div>
-<p>Swap the elf's footwear while keeping the same character and animation test.</p>
-<div class="palette choice3">
-<button data-footwear="original" class="active">ORIGINAL</button>
-<button data-footwear="wizard">WIZARD FEET</button>
-<button data-footwear="ranger">RANGER BOOTS</button>
-</div>
-<div class="footStatus" id="footStatus">Original elf footwear selected.</div>
+<div class="info" style="position:static;max-width:none;margin-top:6px">The Christmas version keeps the original elf geometry and animations. Only the existing material colours are changed: natural skin, red hat, green clothes, white trim and gold details.</div>
 </section>
 
 <div class="quick">
@@ -93,14 +82,7 @@ const floorMat=new THREE.MeshStandardMaterial({color:0xd7c7ae,roughness:.92});co
 const ring=new THREE.Mesh(new THREE.TorusGeometry(1.10,.018,8,64),new THREE.MeshStandardMaterial({color:0xf1e8db,roughness:.9}));ring.rotation.x=Math.PI/2;ring.position.y=.005;scene.add(ring);
 
 const MODEL='./assets/gamebox/christmas-elf.gltf';
-const FOOT_BASE='https://raw.githubusercontent.com/dustinc555/mygame/main/assets/vendor/quaternius/modular_character_outfits_fantasy/modular_parts/';
-const FOOTWEAR={
- wizard:{file:'Male_Wizard_Feet.gltf',label:'Wizard Feet',color:'#7d2f3c'},
- ranger:{file:'Male_Ranger_Feet_Boots.gltf',label:'Ranger Boots',color:'#3f3329'}
-};
 const loader=new GLTFLoader();let root=null,mixer=null,clips=[],action=null,current='',originalColours=new Map();
-let activeFootwear=null,activeFootKey='original',footwearToken=0;
-const footwearCache=new Map(),sourceRestWorld=new Map(),sourceRestPos=new Map();let footwearRig=null;
 
 function prep(r){r.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;const mats=Array.isArray(o.material)?o.material:[o.material];const cloned=mats.map(m=>m.clone());o.material=Array.isArray(o.material)?cloned:cloned[0];for(const m of cloned){if(m?.name&&!originalColours.has(m.name)&&m.color)originalColours.set(m.name,m.color.clone())}}})}
 function materialByName(name){const out=[];root?.traverse(o=>{if(!o.isMesh)return;for(const m of (Array.isArray(o.material)?o.material:[o.material]))if(m?.name===name)out.push(m)});return out}
@@ -111,140 +93,21 @@ function play(name){const clip=clips.find(c=>c.name===name);if(!clip||!mixer)ret
 function stop(){if(mixer)mixer.stopAllAction();action=null;current='';document.getElementById('playing').textContent='Stopped';document.querySelectorAll('[data-anim]').forEach(b=>b.classList.remove('active'));renderList()}
 function renderList(){const q=(document.getElementById('search').value||'').toLowerCase(),list=document.getElementById('list');list.innerHTML='';clips.filter(c=>!q||c.name.toLowerCase().includes(q)).forEach(c=>{const b=document.createElement('button');b.className='anim'+(c.name===current?' active':'');b.textContent=c.name;b.title=c.name;b.addEventListener('click',()=>play(c.name));list.appendChild(b)})}
 
-function rememberSourceRest(){
- root.updateMatrixWorld(true);
- for(const name of ['Bone','Body','Hips','UpperLeg.L','LowerLeg.L','Foot.L','UpperLeg.R','LowerLeg.R','Foot.R']){
-   const b=root.getObjectByName(name);if(!b)continue;
-   const q=new THREE.Quaternion(),p=new THREE.Vector3();b.getWorldQuaternion(q);b.getWorldPosition(p);
-   sourceRestWorld.set(name,q.clone());sourceRestPos.set(name,p.clone());
- }
-}
-async function loadLiteFootwear(key){
- if(footwearCache.has(key))return footwearCache.get(key);
- const cfg=FOOTWEAR[key],url=FOOT_BASE+cfg.file,base=url.slice(0,url.lastIndexOf('/')+1);
- const data=await fetch(url).then(r=>{if(!r.ok)throw new Error('Footwear HTTP '+r.status);return r.json()});
- (data.buffers||[]).forEach(b=>{if(b.uri&&!/^(data:|https?:)/i.test(b.uri))b.uri=base+b.uri});
- data.images=[];data.textures=[];data.samplers=[];
- data.materials=[{name:'Footwear Preview',pbrMetallicRoughness:{baseColorFactor:[1,1,1,1],metallicFactor:0,roughnessFactor:.82}}];
- (data.meshes||[]).forEach(m=>(m.primitives||[]).forEach(p=>{p.material=0}));
- const parsed=await new Promise((resolve,reject)=>loader.parse(JSON.stringify(data),base,resolve,reject));
- parsed.scene.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;const m=new THREE.MeshStandardMaterial({color:cfg.color,roughness:.82,metalness:0});o.material=m}});
- footwearCache.set(key,parsed.scene);
- return parsed.scene;
-}
-function cloneFootwearScene(src){
- const clone=src.clone(true);
- const srcSkins=[],cloneSkins=[];
- src.traverse(o=>{if(o.isSkinnedMesh)srcSkins.push(o)});
- clone.traverse(o=>{if(o.isSkinnedMesh)cloneSkins.push(o)});
- for(let i=0;i<cloneSkins.length;i++){
-   const sm=srcSkins[i],cm=cloneSkins[i];if(!sm||!cm)continue;
-   const bones=cm.skeleton.bones.map(b=>clone.getObjectByName(b.name)).filter(Boolean);
-   if(bones.length===cm.skeleton.bones.length)cm.bind(new THREE.Skeleton(bones,cm.skeleton.boneInverses.map(x=>x.clone())),cm.bindMatrix.clone());
- }
- return clone;
-}
-function fitFootwearToElf(sceneRoot){
- sceneRoot.position.set(0,0,0);sceneRoot.rotation.set(0,0,0);sceneRoot.scale.set(1,1,1);
- sceneRoot.updateMatrixWorld(true);root.updateMatrixWorld(true);
-
- const elfCalf=root.getObjectByName('LowerLeg.L'),elfFoot=root.getObjectByName('Foot.L');
- const shoeCalf=sceneRoot.getObjectByName('calf_l'),shoeFoot=sceneRoot.getObjectByName('foot_l');
- if(!elfCalf||!elfFoot||!shoeCalf||!shoeFoot)return 1;
-
- const a=new THREE.Vector3(),b=new THREE.Vector3(),c=new THREE.Vector3(),d=new THREE.Vector3();
- elfCalf.getWorldPosition(a);elfFoot.getWorldPosition(b);shoeCalf.getWorldPosition(c);shoeFoot.getWorldPosition(d);
- const elfLower=Math.max(.001,a.distanceTo(b));
- const shoeLower=Math.max(.001,c.distanceTo(d));
- const s=THREE.MathUtils.clamp(elfLower/shoeLower,.25,1.25);
- sceneRoot.scale.setScalar(s);
- sceneRoot.updateMatrixWorld(true);
-
- // Put the footwear armature root at the elf's root before the mapped bones take over.
- const elfRoot=root.getObjectByName('Bone')||root;
- const shoeRoot=sceneRoot.getObjectByName('root')||sceneRoot;
- const ep=new THREE.Vector3(),sp=new THREE.Vector3();
- elfRoot.getWorldPosition(ep);shoeRoot.getWorldPosition(sp);
- sceneRoot.position.add(ep.sub(sp));
- sceneRoot.updateMatrixWorld(true);
- return s;
-}
-
-function buildFootwearRig(sceneRoot){
- sceneRoot.updateMatrixWorld(true);root.updateMatrixWorld(true);
- const maps=[
-   ['Bone','root'],['Hips','pelvis'],
-   ['UpperLeg.L','thigh_l'],['LowerLeg.L','calf_l'],['Foot.L','foot_l'],
-   ['UpperLeg.R','thigh_r'],['LowerLeg.R','calf_r'],['Foot.R','foot_r']
- ];
- const pairs=[];
- for(const [srcName,dstName] of maps){
-   const src=root.getObjectByName(srcName),dst=sceneRoot.getObjectByName(dstName);
-   if(!src||!dst)continue;
-   const srcQ=new THREE.Quaternion(),dstQ=new THREE.Quaternion();
-   src.getWorldQuaternion(srcQ);dst.getWorldQuaternion(dstQ);
-   // Preserve only the authored orientation difference; position will be driven directly by the elf.
-   const orientationOffset=srcQ.clone().invert().multiply(dstQ);
-   pairs.push({src,srcName,dst,orientationOffset});
- }
- return {sceneRoot,pairs};
-}
-function setBoneWorldTransform(pair){
- const srcQ=new THREE.Quaternion(),srcP=new THREE.Vector3();
- pair.src.getWorldQuaternion(srcQ);pair.src.getWorldPosition(srcP);
-
- const desiredQ=srcQ.clone().multiply(pair.orientationOffset);
- const parentQ=new THREE.Quaternion(),parentP=new THREE.Vector3(),parentS=new THREE.Vector3();
- pair.dst.parent.getWorldQuaternion(parentQ);pair.dst.parent.getWorldPosition(parentP);pair.dst.parent.getWorldScale(parentS);
-
- pair.dst.quaternion.copy(parentQ.clone().invert().multiply(desiredQ));
-
- const local=srcP.clone().sub(parentP).applyQuaternion(parentQ.clone().invert());
- local.set(
-   parentS.x?local.x/parentS.x:local.x,
-   parentS.y?local.y/parentS.y:local.y,
-   parentS.z?local.z/parentS.z:local.z
- );
- pair.dst.position.copy(local);
- pair.dst.updateMatrixWorld(true);
-}
-function syncFootwear(){
- if(!footwearRig||!root)return;
- root.updateMatrixWorld(true);footwearRig.sceneRoot.updateMatrixWorld(true);
- // Parent-first order is intentional so every child is solved against the already-updated parent.
- for(const p of footwearRig.pairs)setBoneWorldTransform(p);
-}
-async function setFootwear(key){
- const status=document.getElementById('footStatus'),token=++footwearToken;
- activeFootKey=key;
- document.querySelectorAll('[data-footwear]').forEach(b=>b.classList.toggle('active',b.dataset.footwear===key));
- if(activeFootwear){scene.remove(activeFootwear);activeFootwear=null;footwearRig=null}
- if(key==='original'){status.textContent='Original elf footwear selected.';return}
- const cfg=FOOTWEAR[key];status.textContent='Loading '+cfg.label+'…';
- try{
-   const cached=await loadLiteFootwear(key);if(token!==footwearToken)return;
-   const shoes=cloneFootwearScene(cached);
-   shoes.name='GameBoxFootwear';
-   scene.add(shoes);shoes.updateMatrixWorld(true);
-   const fittedScale=fitFootwearToElf(shoes);
-   activeFootwear=shoes;footwearRig=buildFootwearRig(shoes);syncFootwear();
-   status.textContent=cfg.label+' selected · fitted at '+Math.round(fittedScale*100)+'% of source size · attached directly to the elf foot/leg bones.';
- }catch(err){console.error(err);if(token===footwearToken){status.textContent=cfg.label+' failed to initialise — original footwear restored.';activeFootKey='original';document.querySelectorAll('[data-footwear]').forEach(b=>b.classList.toggle('active',b.dataset.footwear==='original'))}}
-}
-
 loader.load(MODEL,g=>{
- root=g.scene;prep(root);scene.add(root);normalize(root);rememberSourceRest();mixer=new THREE.AnimationMixer(root);clips=(g.animations||[]).slice().sort((a,b)=>a.name.localeCompare(b.name));document.getElementById('count').textContent=clips.length;document.getElementById('loadBar').style.width='100%';palette('christmas');play(clips.some(c=>c.name==='Idle')?'Idle':clips[0]?.name);document.getElementById('loading').classList.add('hide');renderList();
+ root=g.scene;prep(root);scene.add(root);normalize(root);mixer=new THREE.AnimationMixer(root);clips=(g.animations||[]).slice().sort((a,b)=>a.name.localeCompare(b.name));document.getElementById('count').textContent=clips.length;document.getElementById('loadBar').style.width='100%';palette('christmas');play(clips.some(c=>c.name==='Idle')?'Idle':clips[0]?.name);document.getElementById('loading').classList.add('hide');renderList();
 },xhr=>{if(xhr.total){document.getElementById('loadBar').style.width=Math.max(15,Math.round(xhr.loaded/xhr.total*100))+'%'}},e=>{console.error(e);document.getElementById('loadText').textContent='Could not load the elf model.'});
 
-document.querySelectorAll('[data-anim]').forEach(b=>b.addEventListener('click',()=>play(b.dataset.anim)));document.querySelectorAll('[data-palette]').forEach(b=>b.addEventListener('click',()=>palette(b.dataset.palette)));document.querySelectorAll('[data-footwear]').forEach(b=>b.addEventListener('click',()=>setFootwear(b.dataset.footwear)));document.getElementById('search').addEventListener('input',renderList);document.getElementById('stop').addEventListener('click',stop);
-const ap=document.getElementById('animPanel'),pp=document.getElementById('palettePanel'),fp=document.getElementById('footPanel');
-function only(panel){for(const p of [ap,pp,fp])if(p!==panel)p.hidden=true}
-document.getElementById('animBtn').addEventListener('click',()=>{ap.hidden=!ap.hidden;if(!ap.hidden)only(ap)});
-document.getElementById('paletteBtn').addEventListener('click',()=>{pp.hidden=!pp.hidden;if(!pp.hidden)only(pp)});
-document.getElementById('footBtn').addEventListener('click',()=>{fp.hidden=!fp.hidden;if(!fp.hidden)only(fp)});
-document.getElementById('closeAnim').addEventListener('click',()=>ap.hidden=true);document.getElementById('closePalette').addEventListener('click',()=>pp.hidden=true);document.getElementById('closeFoot').addEventListener('click',()=>fp.hidden=true);
+document.querySelectorAll('[data-anim]').forEach(b=>b.addEventListener('click',()=>play(b.dataset.anim)));
+document.querySelectorAll('[data-palette]').forEach(b=>b.addEventListener('click',()=>palette(b.dataset.palette)));
+document.getElementById('search').addEventListener('input',renderList);
+document.getElementById('stop').addEventListener('click',stop);
+const ap=document.getElementById('animPanel'),pp=document.getElementById('palettePanel');
+document.getElementById('animBtn').addEventListener('click',()=>{ap.hidden=!ap.hidden;if(!ap.hidden)pp.hidden=true});
+document.getElementById('paletteBtn').addEventListener('click',()=>{pp.hidden=!pp.hidden;if(!pp.hidden)ap.hidden=true});
+document.getElementById('closeAnim').addEventListener('click',()=>ap.hidden=true);
+document.getElementById('closePalette').addEventListener('click',()=>pp.hidden=true);
 
-const clock=new THREE.Clock();function frame(){requestAnimationFrame(frame);const dt=Math.min(clock.getDelta(),.04);if(mixer)mixer.update(dt);syncFootwear();controls.update();renderer.render(scene,camera)}frame();
+const clock=new THREE.Clock();function frame(){requestAnimationFrame(frame);const dt=Math.min(clock.getDelta(),.04);if(mixer)mixer.update(dt);controls.update();renderer.render(scene,camera)}frame();
 let lastW=0,lastH=0;
 function resize(){
  const vv=window.visualViewport;
