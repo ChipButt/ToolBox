@@ -8,8 +8,8 @@
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Inter:wght@500;600;700;800&display=swap');
 :root{--glass:rgba(8,20,35,.86);--line:rgba(255,255,255,.14);--gold:#f4bf2b}
-*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#c8dbe8;color:#fff;font-family:Inter,system-ui,sans-serif}button,input{font:inherit}button{cursor:pointer}
-#stage{position:fixed;inset:0}canvas{display:block;width:100%;height:100%;touch-action:none}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;max-width:100%;max-height:100%;overflow:hidden;overscroll-behavior:none;background:#c8dbe8;color:#fff;font-family:Inter,system-ui,sans-serif;-webkit-text-size-adjust:100%;touch-action:manipulation}button,input{font:inherit}button{cursor:pointer}
+#stage{position:fixed;inset:0;overflow:hidden;touch-action:none}canvas{display:block;width:100%;height:100%;touch-action:none;user-select:none;-webkit-user-select:none}
 .top{position:fixed;z-index:20;left:10px;right:10px;top:max(10px,env(safe-area-inset-top));display:flex;align-items:center;gap:8px;pointer-events:none}
 .back,.glassBtn,.title{pointer-events:auto;background:var(--glass);border:1px solid var(--line);color:white;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 8px 24px rgba(5,16,28,.22)}
 .back{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;text-decoration:none;font-size:22px;font-weight:900}
@@ -100,7 +100,7 @@ const FOOTWEAR={
 };
 const loader=new GLTFLoader();let root=null,mixer=null,clips=[],action=null,current='',originalColours=new Map();
 let activeFootwear=null,activeFootKey='original',footwearToken=0;
-const footwearCache=new Map(),sourceRestWorld=new Map(),footwearRig=null;
+const footwearCache=new Map(),sourceRestWorld=new Map(),sourceRestPos=new Map();let footwearRig=null;
 
 function prep(r){r.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;const mats=Array.isArray(o.material)?o.material:[o.material];const cloned=mats.map(m=>m.clone());o.material=Array.isArray(o.material)?cloned:cloned[0];for(const m of cloned){if(m?.name&&!originalColours.has(m.name)&&m.color)originalColours.set(m.name,m.color.clone())}}})}
 function materialByName(name){const out=[];root?.traverse(o=>{if(!o.isMesh)return;for(const m of (Array.isArray(o.material)?o.material:[o.material]))if(m?.name===name)out.push(m)});return out}
@@ -113,9 +113,10 @@ function renderList(){const q=(document.getElementById('search').value||'').toLo
 
 function rememberSourceRest(){
  root.updateMatrixWorld(true);
- for(const name of ['UpperLeg.L','LowerLeg.L','Foot.L','UpperLeg.R','LowerLeg.R','Foot.R']){
+ for(const name of ['Bone','Body','Hips','UpperLeg.L','LowerLeg.L','Foot.L','UpperLeg.R','LowerLeg.R','Foot.R']){
    const b=root.getObjectByName(name);if(!b)continue;
-   const q=new THREE.Quaternion();b.getWorldQuaternion(q);sourceRestWorld.set(name,q.clone());
+   const q=new THREE.Quaternion(),p=new THREE.Vector3();b.getWorldQuaternion(q);b.getWorldPosition(p);
+   sourceRestWorld.set(name,q.clone());sourceRestPos.set(name,p.clone());
  }
 }
 async function loadLiteFootwear(key){
@@ -143,18 +144,56 @@ function cloneFootwearScene(src){
  }
  return clone;
 }
-function buildFootwearRig(sceneRoot){
+function fitFootwearToElf(sceneRoot){
+ sceneRoot.updateMatrixWorld(true);root.updateMatrixWorld(true);
+ const elfL=root.getObjectByName('Foot.L'),elfR=root.getObjectByName('Foot.R');
+ const shoeL=sceneRoot.getObjectByName('foot_l'),shoeR=sceneRoot.getObjectByName('foot_r');
+ if(!elfL||!elfR||!shoeL||!shoeR)return;
+
+ const epL=new THREE.Vector3(),epR=new THREE.Vector3(),spL=new THREE.Vector3(),spR=new THREE.Vector3();
+ elfL.getWorldPosition(epL);elfR.getWorldPosition(epR);shoeL.getWorldPosition(spL);shoeR.getWorldPosition(spR);
+ const elfSpan=Math.max(.001,epL.distanceTo(epR));
+ const shoeSpan=Math.max(.001,spL.distanceTo(spR));
+ let s=elfSpan/shoeSpan;
+ s=THREE.MathUtils.clamp(s,.35,2.2);
+ sceneRoot.scale.setScalar(s);
  sceneRoot.updateMatrixWorld(true);
+
+ shoeL.getWorldPosition(spL);shoeR.getWorldPosition(spR);
+ const elfMid=epL.clone().add(epR).multiplyScalar(.5);
+ const shoeMid=spL.clone().add(spR).multiplyScalar(.5);
+ sceneRoot.position.add(elfMid.sub(shoeMid));
+ sceneRoot.updateMatrixWorld(true);
+
+ const shoeBox=new THREE.Box3().setFromObject(sceneRoot);
+ const elfBox=new THREE.Box3();
+ const pts=[elfL,elfR].map(b=>{const p=new THREE.Vector3();b.getWorldPosition(p);return p});
+ for(const p of pts)elfBox.expandByPoint(p);
+ const soleOffset=Math.min(0,Math.min(...pts.map(p=>p.y))-shoeBox.min.y);
+ sceneRoot.position.y+=soleOffset;
+ sceneRoot.updateMatrixWorld(true);
+}
+
+function buildFootwearRig(sceneRoot){
+ sceneRoot.updateMatrixWorld(true);root.updateMatrixWorld(true);
  const maps=[
+   ['Bone','root'],['Hips','pelvis'],
    ['UpperLeg.L','thigh_l'],['LowerLeg.L','calf_l'],['Foot.L','foot_l'],
    ['UpperLeg.R','thigh_r'],['LowerLeg.R','calf_r'],['Foot.R','foot_r']
  ];
  const pairs=[];
  for(const [srcName,dstName] of maps){
    const src=root.getObjectByName(srcName),dst=sceneRoot.getObjectByName(dstName);
-   if(!src||!dst||!sourceRestWorld.has(srcName))continue;
-   const tq=new THREE.Quaternion();dst.getWorldQuaternion(tq);
-   pairs.push({src,srcName,dst,targetRestWorld:tq.clone()});
+   if(!src||!dst||!sourceRestWorld.has(srcName)||!sourceRestPos.has(srcName))continue;
+   const tq=new THREE.Quaternion(),tp=new THREE.Vector3();
+   dst.getWorldQuaternion(tq);dst.getWorldPosition(tp);
+   pairs.push({
+     src,srcName,dst,
+     sourceRestQ:sourceRestWorld.get(srcName).clone(),
+     sourceRestP:sourceRestPos.get(srcName).clone(),
+     targetRestWorldQ:tq.clone(),
+     targetRestWorldP:tp.clone()
+   });
  }
  return {sceneRoot,pairs};
 }
@@ -162,11 +201,26 @@ function syncFootwear(){
  if(!footwearRig||!root)return;
  root.updateMatrixWorld(true);footwearRig.sceneRoot.updateMatrixWorld(true);
  for(const p of footwearRig.pairs){
-   const srcNow=new THREE.Quaternion();p.src.getWorldQuaternion(srcNow);
-   const delta=srcNow.multiply(sourceRestWorld.get(p.srcName).clone().invert());
-   const desired=delta.multiply(p.targetRestWorld.clone());
-   const parentWorld=new THREE.Quaternion();p.dst.parent.getWorldQuaternion(parentWorld);
-   p.dst.quaternion.copy(parentWorld.invert().multiply(desired));
+   const srcQ=new THREE.Quaternion(),srcP=new THREE.Vector3();
+   p.src.getWorldQuaternion(srcQ);p.src.getWorldPosition(srcP);
+
+   const qDelta=srcQ.clone().multiply(p.sourceRestQ.clone().invert());
+   const desiredWorldQ=qDelta.multiply(p.targetRestWorldQ.clone());
+
+   const move=srcP.clone().sub(p.sourceRestP);
+   const desiredWorldP=p.targetRestWorldP.clone().add(move);
+
+   const parentQ=new THREE.Quaternion(),parentP=new THREE.Vector3(),parentS=new THREE.Vector3();
+   p.dst.parent.getWorldQuaternion(parentQ);p.dst.parent.getWorldPosition(parentP);p.dst.parent.getWorldScale(parentS);
+
+   p.dst.quaternion.copy(parentQ.clone().invert().multiply(desiredWorldQ));
+   const localP=desiredWorldP.clone().sub(parentP).applyQuaternion(parentQ.clone().invert());
+   localP.set(
+     parentS.x?localP.x/parentS.x:localP.x,
+     parentS.y?localP.y/parentS.y:localP.y,
+     parentS.z?localP.z/parentS.z:localP.z
+   );
+   p.dst.position.copy(localP);
    p.dst.updateMatrixWorld(true);
  }
 }
@@ -181,12 +235,11 @@ async function setFootwear(key){
    const cached=await loadLiteFootwear(key);if(token!==footwearToken)return;
    const shoes=cloneFootwearScene(cached);
    shoes.name='GameBoxFootwear';
-   shoes.scale.setScalar(1.16);
-   shoes.position.set(0,.004,.018);
    scene.add(shoes);shoes.updateMatrixWorld(true);
+   fitFootwearToElf(shoes);
    activeFootwear=shoes;footwearRig=buildFootwearRig(shoes);syncFootwear();
-   status.textContent=cfg.label+' selected. Drag around the elf and try the animations.';
- }catch(err){console.error(err);if(token===footwearToken){status.textContent='Could not load '+cfg.label+'.';activeFootKey='original';document.querySelectorAll('[data-footwear]').forEach(b=>b.classList.toggle('active',b.dataset.footwear==='original'))}}
+   status.textContent=cfg.label+' selected. Scale fitted automatically to the elf and attached to the animated leg/foot rig.';
+ }catch(err){console.error(err);if(token===footwearToken){status.textContent=cfg.label+' failed to initialise — original footwear restored.';activeFootKey='original';document.querySelectorAll('[data-footwear]').forEach(b=>b.classList.toggle('active',b.dataset.footwear==='original'))}}
 }
 
 loader.load(MODEL,g=>{
@@ -202,6 +255,23 @@ document.getElementById('footBtn').addEventListener('click',()=>{fp.hidden=!fp.h
 document.getElementById('closeAnim').addEventListener('click',()=>ap.hidden=true);document.getElementById('closePalette').addEventListener('click',()=>pp.hidden=true);document.getElementById('closeFoot').addEventListener('click',()=>fp.hidden=true);
 
 const clock=new THREE.Clock();function frame(){requestAnimationFrame(frame);const dt=Math.min(clock.getDelta(),.04);if(mixer)mixer.update(dt);syncFootwear();controls.update();renderer.render(scene,camera)}frame();
-function resize(){const a=innerWidth/innerHeight,v=innerWidth<760?3.15:3.55;camera.left=-v*a/2;camera.right=v*a/2;camera.top=v/2;camera.bottom=-v/2;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)}addEventListener('resize',resize);resize();
+let lastW=0,lastH=0;
+function resize(){
+ const vv=window.visualViewport;
+ const w=Math.round(vv?.width||document.documentElement.clientWidth||innerWidth);
+ const h=Math.round(vv?.height||document.documentElement.clientHeight||innerHeight);
+ if(!w||!h)return;
+ if(Math.abs(w-lastW)<2&&Math.abs(h-lastH)<2)return;
+ lastW=w;lastH=h;
+ const a=w/h,v=w<760?3.15:3.55;
+ camera.left=-v*a/2;camera.right=v*a/2;camera.top=v/2;camera.bottom=-v/2;camera.zoom=1;camera.updateProjectionMatrix();
+ renderer.setSize(w,h,false);
+}
+addEventListener('resize',resize,{passive:true});
+window.visualViewport?.addEventListener('resize',resize,{passive:true});
+document.addEventListener('gesturestart',e=>e.preventDefault(),{passive:false});
+document.addEventListener('gesturechange',e=>e.preventDefault(),{passive:false});
+document.addEventListener('gestureend',e=>e.preventDefault(),{passive:false});
+resize();
 </script>
 </body></html>
