@@ -145,33 +145,29 @@ function cloneFootwearScene(src){
  return clone;
 }
 function fitFootwearToElf(sceneRoot){
+ sceneRoot.position.set(0,0,0);sceneRoot.rotation.set(0,0,0);sceneRoot.scale.set(1,1,1);
  sceneRoot.updateMatrixWorld(true);root.updateMatrixWorld(true);
- const elfL=root.getObjectByName('Foot.L'),elfR=root.getObjectByName('Foot.R');
- const shoeL=sceneRoot.getObjectByName('foot_l'),shoeR=sceneRoot.getObjectByName('foot_r');
- if(!elfL||!elfR||!shoeL||!shoeR)return;
 
- const epL=new THREE.Vector3(),epR=new THREE.Vector3(),spL=new THREE.Vector3(),spR=new THREE.Vector3();
- elfL.getWorldPosition(epL);elfR.getWorldPosition(epR);shoeL.getWorldPosition(spL);shoeR.getWorldPosition(spR);
- const elfSpan=Math.max(.001,epL.distanceTo(epR));
- const shoeSpan=Math.max(.001,spL.distanceTo(spR));
- let s=elfSpan/shoeSpan;
- s=THREE.MathUtils.clamp(s,.35,2.2);
+ const elfCalf=root.getObjectByName('LowerLeg.L'),elfFoot=root.getObjectByName('Foot.L');
+ const shoeCalf=sceneRoot.getObjectByName('calf_l'),shoeFoot=sceneRoot.getObjectByName('foot_l');
+ if(!elfCalf||!elfFoot||!shoeCalf||!shoeFoot)return 1;
+
+ const a=new THREE.Vector3(),b=new THREE.Vector3(),c=new THREE.Vector3(),d=new THREE.Vector3();
+ elfCalf.getWorldPosition(a);elfFoot.getWorldPosition(b);shoeCalf.getWorldPosition(c);shoeFoot.getWorldPosition(d);
+ const elfLower=Math.max(.001,a.distanceTo(b));
+ const shoeLower=Math.max(.001,c.distanceTo(d));
+ const s=THREE.MathUtils.clamp(elfLower/shoeLower,.25,1.25);
  sceneRoot.scale.setScalar(s);
  sceneRoot.updateMatrixWorld(true);
 
- shoeL.getWorldPosition(spL);shoeR.getWorldPosition(spR);
- const elfMid=epL.clone().add(epR).multiplyScalar(.5);
- const shoeMid=spL.clone().add(spR).multiplyScalar(.5);
- sceneRoot.position.add(elfMid.sub(shoeMid));
+ // Put the footwear armature root at the elf's root before the mapped bones take over.
+ const elfRoot=root.getObjectByName('Bone')||root;
+ const shoeRoot=sceneRoot.getObjectByName('root')||sceneRoot;
+ const ep=new THREE.Vector3(),sp=new THREE.Vector3();
+ elfRoot.getWorldPosition(ep);shoeRoot.getWorldPosition(sp);
+ sceneRoot.position.add(ep.sub(sp));
  sceneRoot.updateMatrixWorld(true);
-
- const shoeBox=new THREE.Box3().setFromObject(sceneRoot);
- const elfBox=new THREE.Box3();
- const pts=[elfL,elfR].map(b=>{const p=new THREE.Vector3();b.getWorldPosition(p);return p});
- for(const p of pts)elfBox.expandByPoint(p);
- const soleOffset=Math.min(0,Math.min(...pts.map(p=>p.y))-shoeBox.min.y);
- sceneRoot.position.y+=soleOffset;
- sceneRoot.updateMatrixWorld(true);
+ return s;
 }
 
 function buildFootwearRig(sceneRoot){
@@ -184,45 +180,39 @@ function buildFootwearRig(sceneRoot){
  const pairs=[];
  for(const [srcName,dstName] of maps){
    const src=root.getObjectByName(srcName),dst=sceneRoot.getObjectByName(dstName);
-   if(!src||!dst||!sourceRestWorld.has(srcName)||!sourceRestPos.has(srcName))continue;
-   const tq=new THREE.Quaternion(),tp=new THREE.Vector3();
-   dst.getWorldQuaternion(tq);dst.getWorldPosition(tp);
-   pairs.push({
-     src,srcName,dst,
-     sourceRestQ:sourceRestWorld.get(srcName).clone(),
-     sourceRestP:sourceRestPos.get(srcName).clone(),
-     targetRestWorldQ:tq.clone(),
-     targetRestWorldP:tp.clone()
-   });
+   if(!src||!dst)continue;
+   const srcQ=new THREE.Quaternion(),dstQ=new THREE.Quaternion();
+   src.getWorldQuaternion(srcQ);dst.getWorldQuaternion(dstQ);
+   // Preserve only the authored orientation difference; position will be driven directly by the elf.
+   const orientationOffset=srcQ.clone().invert().multiply(dstQ);
+   pairs.push({src,srcName,dst,orientationOffset});
  }
  return {sceneRoot,pairs};
+}
+function setBoneWorldTransform(pair){
+ const srcQ=new THREE.Quaternion(),srcP=new THREE.Vector3();
+ pair.src.getWorldQuaternion(srcQ);pair.src.getWorldPosition(srcP);
+
+ const desiredQ=srcQ.clone().multiply(pair.orientationOffset);
+ const parentQ=new THREE.Quaternion(),parentP=new THREE.Vector3(),parentS=new THREE.Vector3();
+ pair.dst.parent.getWorldQuaternion(parentQ);pair.dst.parent.getWorldPosition(parentP);pair.dst.parent.getWorldScale(parentS);
+
+ pair.dst.quaternion.copy(parentQ.clone().invert().multiply(desiredQ));
+
+ const local=srcP.clone().sub(parentP).applyQuaternion(parentQ.clone().invert());
+ local.set(
+   parentS.x?local.x/parentS.x:local.x,
+   parentS.y?local.y/parentS.y:local.y,
+   parentS.z?local.z/parentS.z:local.z
+ );
+ pair.dst.position.copy(local);
+ pair.dst.updateMatrixWorld(true);
 }
 function syncFootwear(){
  if(!footwearRig||!root)return;
  root.updateMatrixWorld(true);footwearRig.sceneRoot.updateMatrixWorld(true);
- for(const p of footwearRig.pairs){
-   const srcQ=new THREE.Quaternion(),srcP=new THREE.Vector3();
-   p.src.getWorldQuaternion(srcQ);p.src.getWorldPosition(srcP);
-
-   const qDelta=srcQ.clone().multiply(p.sourceRestQ.clone().invert());
-   const desiredWorldQ=qDelta.multiply(p.targetRestWorldQ.clone());
-
-   const move=srcP.clone().sub(p.sourceRestP);
-   const desiredWorldP=p.targetRestWorldP.clone().add(move);
-
-   const parentQ=new THREE.Quaternion(),parentP=new THREE.Vector3(),parentS=new THREE.Vector3();
-   p.dst.parent.getWorldQuaternion(parentQ);p.dst.parent.getWorldPosition(parentP);p.dst.parent.getWorldScale(parentS);
-
-   p.dst.quaternion.copy(parentQ.clone().invert().multiply(desiredWorldQ));
-   const localP=desiredWorldP.clone().sub(parentP).applyQuaternion(parentQ.clone().invert());
-   localP.set(
-     parentS.x?localP.x/parentS.x:localP.x,
-     parentS.y?localP.y/parentS.y:localP.y,
-     parentS.z?localP.z/parentS.z:localP.z
-   );
-   p.dst.position.copy(localP);
-   p.dst.updateMatrixWorld(true);
- }
+ // Parent-first order is intentional so every child is solved against the already-updated parent.
+ for(const p of footwearRig.pairs)setBoneWorldTransform(p);
 }
 async function setFootwear(key){
  const status=document.getElementById('footStatus'),token=++footwearToken;
@@ -236,9 +226,9 @@ async function setFootwear(key){
    const shoes=cloneFootwearScene(cached);
    shoes.name='GameBoxFootwear';
    scene.add(shoes);shoes.updateMatrixWorld(true);
-   fitFootwearToElf(shoes);
+   const fittedScale=fitFootwearToElf(shoes);
    activeFootwear=shoes;footwearRig=buildFootwearRig(shoes);syncFootwear();
-   status.textContent=cfg.label+' selected. Scale fitted automatically to the elf and attached to the animated leg/foot rig.';
+   status.textContent=cfg.label+' selected · fitted at '+Math.round(fittedScale*100)+'% of source size · attached directly to the elf foot/leg bones.';
  }catch(err){console.error(err);if(token===footwearToken){status.textContent=cfg.label+' failed to initialise — original footwear restored.';activeFootKey='original';document.querySelectorAll('[data-footwear]').forEach(b=>b.classList.toggle('active',b.dataset.footwear==='original'))}}
 }
 
