@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#101820">
+<title>GameBox Visual Standard · ToolBox</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Inter:wght@500;600;700;800&display=swap');
+:root{--ink:#132238;--navy:#082f68;--gold:#f7bd18;--glass:rgba(12,26,42,.78);--line:rgba(255,255,255,.14);--white:#f8fbff}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;font-family:Inter,system-ui,sans-serif;background:#b8d6e8;color:var(--white)}
+button,a{font:inherit}
+#stage{position:fixed;inset:0}
+canvas{display:block;width:100%;height:100%;touch-action:none}
+.topbar{position:fixed;left:max(12px,env(safe-area-inset-left));right:max(12px,env(safe-area-inset-right));top:max(12px,env(safe-area-inset-top));z-index:10;display:flex;gap:10px;align-items:center;pointer-events:none}
+.back,.pill,.modeBtn,.lightBtn,.charBtn,.infoBtn{pointer-events:auto;border:1px solid var(--line);background:var(--glass);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);color:white;box-shadow:0 8px 26px rgba(5,16,28,.22)}
+.back{width:46px;height:46px;border-radius:15px;display:grid;place-items:center;text-decoration:none;font-weight:900;font-size:20px}
+.titleCard{pointer-events:none;min-width:0;padding:8px 14px;border-radius:16px;background:var(--glass);border:1px solid var(--line);box-shadow:0 8px 26px rgba(5,16,28,.22);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.titleCard small{display:block;font-size:9px;letter-spacing:.16em;font-weight:900;color:#a9cae6;text-transform:uppercase}
+.titleCard strong{display:block;font-family:Fredoka,Inter,sans-serif;font-size:clamp(15px,3vw,20px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.statusDot{width:8px;height:8px;border-radius:50%;background:#ffd451;display:inline-block;margin-right:7px;box-shadow:0 0 14px rgba(255,212,81,.7)}
+.actions{margin-left:auto;display:flex;gap:8px}
+.infoBtn{width:46px;height:46px;border-radius:15px;font-weight:900;font-size:18px}
+.bottomPanel{position:fixed;z-index:10;left:50%;bottom:max(14px,env(safe-area-inset-bottom));transform:translateX(-50%);width:min(760px,calc(100% - 24px));display:grid;gap:8px;pointer-events:none}
+.toolbar{pointer-events:auto;display:flex;gap:7px;align-items:center;padding:8px;border-radius:18px;background:var(--glass);border:1px solid var(--line);box-shadow:0 10px 30px rgba(5,16,28,.28);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);overflow-x:auto}
+.toolbar::-webkit-scrollbar{display:none}
+.toolbarLabel{padding:0 4px 0 7px;font-size:9px;text-transform:uppercase;letter-spacing:.14em;font-weight:900;color:#a9cae6;white-space:nowrap}
+.modeBtn,.lightBtn,.charBtn{min-height:38px;border-radius:12px;padding:0 11px;font-size:11px;font-weight:900;white-space:nowrap}
+.modeBtn.active,.lightBtn.active,.charBtn.active{background:linear-gradient(180deg,#ffd451,#f7bd18);color:#14233a;border-color:#ffe698}
+.controlRow{display:flex;justify-content:space-between;align-items:end;pointer-events:none}
+.dpad{pointer-events:auto;width:138px;height:138px;position:relative;border-radius:34px;background:rgba(10,22,36,.55);border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.dpad button{position:absolute;width:46px;height:46px;border:0;border-radius:15px;background:rgba(255,255,255,.86);color:#143150;font-size:18px;font-weight:900;box-shadow:0 4px 12px rgba(5,16,28,.22);touch-action:none}
+.dpad .up{left:46px;top:4px}.dpad .left{left:4px;top:46px}.dpad .right{right:4px;top:46px}.dpad .down{left:46px;bottom:4px}
+.hint{pointer-events:none;padding:8px 11px;border-radius:12px;background:rgba(10,22,36,.52);border:1px solid rgba(255,255,255,.12);font-size:10px;font-weight:800;color:#dce8f2;text-align:right}
+.panel{position:fixed;z-index:12;right:max(12px,env(safe-area-inset-right));top:72px;width:min(340px,calc(100% - 24px));max-height:calc(100% - 160px);overflow:auto;padding:16px;border-radius:20px;background:rgba(9,22,36,.92);border:1px solid var(--line);box-shadow:0 18px 50px rgba(5,16,28,.38);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+.panel[hidden]{display:none}
+.panel h2{font-family:Fredoka,Inter,sans-serif;margin:0 0 6px;font-size:20px}
+.panel p{font-size:12px;line-height:1.55;color:#c9d8e5;margin:0 0 12px}
+.spec{display:grid;grid-template-columns:1fr auto;gap:8px;padding:9px 0;border-top:1px solid rgba(255,255,255,.09);font-size:11px}.spec span:first-child{color:#9cb4c8}.spec strong{font-weight:900}
+.loading{position:fixed;inset:0;z-index:30;display:grid;place-items:center;background:linear-gradient(180deg,#b8d6e8,#d9e7dc);color:#17314d;transition:opacity .35s ease}
+.loading.hide{opacity:0;pointer-events:none}
+.loadCard{width:min(360px,calc(100% - 32px));padding:24px;border-radius:24px;background:rgba(255,255,255,.88);box-shadow:0 22px 60px rgba(16,42,66,.2);text-align:center}
+.loadCard strong{font-family:Fredoka,Inter,sans-serif;font-size:23px;color:#082f68}
+.loadCard p{font-size:12px;line-height:1.5;color:#52667a}
+.bar{height:8px;border-radius:99px;background:#dbe7e2;overflow:hidden}.bar i{display:block;width:8%;height:100%;background:linear-gradient(90deg,#f7bd18,#ffd451);transition:width .2s ease}
+.credit{position:fixed;z-index:9;right:12px;bottom:12px;font-size:8px;letter-spacing:.08em;text-transform:uppercase;font-weight:800;color:rgba(15,37,54,.5)}
+@media(max-width:700px){
+ .topbar{top:max(7px,env(safe-area-inset-top));left:7px;right:7px}.back,.infoBtn{width:42px;height:42px}.titleCard{padding:7px 11px}.actions{gap:5px}
+ .bottomPanel{bottom:max(8px,env(safe-area-inset-bottom));width:calc(100% - 14px)}.toolbar{border-radius:15px;padding:6px}
+ .modeBtn,.lightBtn,.charBtn{min-height:34px;padding:0 9px;font-size:10px}.dpad{width:124px;height:124px;border-radius:30px}.dpad button{width:42px;height:42px}.dpad .up{left:41px}.dpad .left{top:41px}.dpad .right{top:41px}.dpad .down{left:41px}
+ .hint{font-size:9px;max-width:150px}.credit{display:none}.panel{top:58px;max-height:calc(100% - 125px)}
+}
+</style>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
+</script>
+</head>
+<body>
+<div id="stage"></div>
+
+<header class="topbar">
+  <a class="back" href="./" aria-label="Back to ToolBox">‹</a>
+  <div class="titleCard">
+    <small><span class="statusDot"></span>GameBox reference scene</small>
+    <strong>Visual Standard Sandbox</strong>
+  </div>
+  <div class="actions"><button class="infoBtn" id="infoBtn" type="button" aria-label="About this sandbox">i</button></div>
+</header>
+
+<section class="panel" id="infoPanel" hidden>
+  <h2>GameBox Visual Standard</h2>
+  <p>This is the baseline art direction for future GameBox projects: real stylised low-poly 3D assets, consistent scale and materials, an orthographic game camera, proper lighting and shadows, and reusable rigged characters rather than individually positioned PNGs.</p>
+  <div class="spec"><span>Source art</span><strong>KayKit CC0</strong></div>
+  <div class="spec"><span>Character system</span><strong>Rigged + animated</strong></div>
+  <div class="spec"><span>Camera</span><strong>Orthographic / orbit</strong></div>
+  <div class="spec"><span>Target</span><strong>Mobile-first WebGL</strong></div>
+  <div class="spec"><span>Visual rule</span><strong>One coherent ecosystem</strong></div>
+  <p style="margin-top:12px">Use the controls below to test different characters, lighting and camera behaviour. This scene is a visual benchmark, not a finished game.</p>
+</section>
+
+<div class="bottomPanel">
+  <div class="toolbar">
+    <span class="toolbarLabel">Camera</span>
+    <button class="modeBtn active" data-camera="follow" type="button">PLAY</button>
+    <button class="modeBtn" data-camera="orbit" type="button">INSPECT</button>
+    <span class="toolbarLabel">Light</span>
+    <button class="lightBtn active" data-light="day" type="button">DAY</button>
+    <button class="lightBtn" data-light="golden" type="button">GOLDEN</button>
+    <button class="lightBtn" data-light="night" type="button">NIGHT</button>
+    <span class="toolbarLabel">Character</span>
+    <button class="charBtn active" data-char="0" type="button">KNIGHT</button>
+    <button class="charBtn" data-char="1" type="button">ROGUE</button>
+    <button class="charBtn" data-char="2" type="button">MAGE</button>
+    <button class="charBtn" data-char="3" type="button">BARBARIAN</button>
+  </div>
+  <div class="controlRow">
+    <div class="dpad" id="dpad">
+      <button class="up" data-move="up" type="button">▲</button>
+      <button class="left" data-move="left" type="button">◀</button>
+      <button class="right" data-move="right" type="button">▶</button>
+      <button class="down" data-move="down" type="button">▼</button>
+    </div>
+    <div class="hint">WASD / arrows to move<br>Shift to run<br>Inspect mode: drag to orbit</div>
+  </div>
+</div>
+
+<div class="credit">CC0 base models: KayKit · Visual test assembled for GameBox</div>
+
+<div class="loading" id="loading">
+  <div class="loadCard">
+    <strong>Building visual standard…</strong>
+    <p id="loadText">Loading the first reusable 3D asset set.</p>
+    <div class="bar"><i id="loadBar"></i></div>
+  </div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const stage = document.getElementById('stage');
+const renderer = new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.setSize(innerWidth,innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+stage.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xb8d6e8);
+scene.fog = new THREE.Fog(0xb8d6e8,18,40);
+
+const aspect = innerWidth/innerHeight;
+const view = innerWidth < 700 ? 8.2 : 9.8;
+const camera = new THREE.OrthographicCamera(-view*aspect/2,view*aspect/2,view/2,-view/2,.1,100);
+camera.position.set(8,8.5,8);
+camera.lookAt(0,0,0);
+
+const controls = new OrbitControls(camera,renderer.domElement);
+controls.enableDamping = true;
+controls.enablePan = false;
+controls.minZoom = .7;
+controls.maxZoom = 2.2;
+controls.enabled = false;
+controls.target.set(0,1,0);
+
+const hemi = new THREE.HemisphereLight(0xdff3ff,0x6f765f,2.0);
+scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xfff0d7,3.4);
+sun.position.set(-8,12,7);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048,2048);
+sun.shadow.camera.left=-16;sun.shadow.camera.right=16;sun.shadow.camera.top=16;sun.shadow.camera.bottom=-16;
+sun.shadow.bias=-.0005;
+scene.add(sun);
+
+const groundMat = new THREE.MeshStandardMaterial({color:0x91b47d,roughness:.92});
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(40,40),groundMat);
+ground.rotation.x=-Math.PI/2; ground.receiveShadow=true; scene.add(ground);
+
+const plazaMat = new THREE.MeshStandardMaterial({color:0xd8d0bd,roughness:.9});
+const plaza = new THREE.Mesh(new THREE.PlaneGeometry(9,7),plazaMat);
+plaza.rotation.x=-Math.PI/2; plaza.position.set(0,.012,1); plaza.receiveShadow=true; scene.add(plaza);
+
+const loader = new GLTFLoader();
+const mixers = [];
+const chars = [];
+let activeIndex=0;
+let cameraMode='follow';
+const keys={up:false,down:false,left:false,right:false,run:false};
+const clock=new THREE.Clock();
+
+const BASES = {
+ char:'https://raw.githubusercontent.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0/main/addons/kaykit_character_pack_adventures/Characters/gltf/',
+ city:'https://raw.githubusercontent.com/KayKit-Game-Assets/KayKit-City-Builder-Bits-1.0/main/addons/kaykit_city_builder_bits/Assets/gltf/',
+ furn:'https://raw.githubusercontent.com/KayKit-Game-Assets/KayKit-Furniture-Bits-1.0/main/addons/kaykit_furniture_bits/Assets/gltf/'
+};
+
+const loadBar=document.getElementById('loadBar');
+const loadText=document.getElementById('loadText');
+let completed=0;
+const total=17;
+function progress(label){
+ completed++;
+ loadText.textContent=label;
+ loadBar.style.width=Math.round((completed/total)*100)+'%';
+}
+
+function shadows(root){
+ root.traverse(function(o){
+   if(o.isMesh){o.castShadow=true;o.receiveShadow=true;
+     if(o.material){o.material.anisotropy=renderer.capabilities.getMaxAnisotropy();}
+   }
+ });
+}
+
+function loadModel(url,pos,rot,scale,label){
+ return new Promise(function(resolve,reject){
+  loader.load(url,function(g){
+   const root=g.scene;
+   shadows(root);
+   root.position.set(pos[0],pos[1],pos[2]);
+   root.rotation.y=rot||0;
+   root.scale.setScalar(scale||1);
+   scene.add(root);
+   progress(label);
+   resolve({root:root,animations:g.animations||[]});
+  },undefined,function(err){console.error(url,err);progress(label+' skipped');resolve(null);});
+ });
+}
+
+function chooseClip(clips,kind){
+ const tests = kind==='idle' ? [/idle/i,/stand/i] : kind==='run' ? [/run/i,/sprint/i] : [/walk/i,/move/i];
+ for(const re of tests){const f=clips.find(function(c){return re.test(c.name)});if(f)return f;}
+ return clips[0]||null;
+}
+function playState(ch,kind){
+ if(!ch || !ch.mixer)return;
+ const clip=chooseClip(ch.clips,kind); if(!clip)return;
+ if(ch.current===clip.name)return;
+ const next=ch.mixer.clipAction(clip); next.reset().fadeIn(.18).play();
+ if(ch.action)ch.action.fadeOut(.18);
+ ch.action=next;ch.current=clip.name;
+}
+
+async function addCharacter(file,pos,label){
+ const data=await loadModel(BASES.char+file,pos,0,1,label);
+ if(!data)return;
+ const box=new THREE.Box3().setFromObject(data.root);
+ const size=new THREE.Vector3();box.getSize(size);
+ if(size.y>0){
+   const target=1.8;
+   const s=target/size.y;
+   data.root.scale.multiplyScalar(s);
+ }
+ const box2=new THREE.Box3().setFromObject(data.root);
+ data.root.position.y-=box2.min.y;
+ const mixer=new THREE.AnimationMixer(data.root);
+ const ch={root:data.root,mixer:mixer,clips:data.animations,action:null,current:''};
+ mixers.push(mixer);chars.push(ch);playState(ch,'idle');
+}
+
+const assets = [
+ ['city','building_A.gltf',[-5,0,-4],.15,1,'Building A'],
+ ['city','building_C.gltf',[5,0,-4],-.12,1,'Building C'],
+ ['city','road_straight.gltf',[0,.02,-1.4],Math.PI/2,1,'Road'],
+ ['city','road_straight_crossing.gltf',[0,.025,3],Math.PI/2,1,'Crossing'],
+ ['city','bench.gltf',[-2.7,0,2.4],Math.PI/2,1,'Bench'],
+ ['city','streetlight.gltf',[-3.4,0,-.2],0,1,'Street light'],
+ ['city','streetlight.gltf',[3.4,0,-.2],Math.PI,1,'Street light'],
+ ['city','bush.gltf',[-4,0,1.2],0,1,'Bush'],
+ ['city','bush.gltf',[4,0,1.5],0,1,'Bush'],
+ ['furn','couch_pillows.gltf',[3.4,0,4.7],Math.PI,1,'Couch'],
+ ['furn','armchair.gltf',[1.9,0,4.6],2.7,1,'Armchair'],
+ ['furn','table_low.gltf',[2.7,0,3.7],0,1,'Coffee table'],
+ ['furn','lamp_standing.gltf',[4.2,0,4.5],0,1,'Floor lamp']
+];
+
+await Promise.all(assets.map(function(a){return loadModel(BASES[a[0]]+a[1],a[2],a[3],a[4],a[5]);}));
+await addCharacter('Knight.glb',[-.8,0,.9],'Knight');
+await addCharacter('Rogue.glb',[.8,0,.9],'Rogue');
+await addCharacter('Mage.glb',[-.8,0,2.1],'Mage');
+await addCharacter('Barbarian.glb',[.8,0,2.1],'Barbarian');
+
+chars.forEach(function(ch,i){
+ ch.root.visible = i===activeIndex;
+ ch.root.position.set(0,0,1.2);
+});
+
+document.getElementById('loading').classList.add('hide');
+
+function setLighting(kind){
+ document.querySelectorAll('.lightBtn').forEach(function(b){b.classList.toggle('active',b.dataset.light===kind)});
+ if(kind==='day'){
+  scene.background.set(0xb8d6e8);scene.fog.color.set(0xb8d6e8);hemi.color.set(0xdff3ff);hemi.groundColor.set(0x6f765f);hemi.intensity=2;sun.color.set(0xfff0d7);sun.intensity=3.4;renderer.toneMappingExposure=1.05;
+ } else if(kind==='golden'){
+  scene.background.set(0xdba786);scene.fog.color.set(0xdba786);hemi.color.set(0xf4c5ad);hemi.groundColor.set(0x6b624f);hemi.intensity=1.55;sun.color.set(0xffa76b);sun.intensity=4;renderer.toneMappingExposure=1.08;
+ } else {
+  scene.background.set(0x17243b);scene.fog.color.set(0x17243b);hemi.color.set(0x6f8fc5);hemi.groundColor.set(0x151a20);hemi.intensity=.85;sun.color.set(0x9fc2ff);sun.intensity=1.1;renderer.toneMappingExposure=.78;
+ }
+}
+document.querySelectorAll('.lightBtn').forEach(function(b){b.addEventListener('click',function(){setLighting(b.dataset.light)})});
+
+document.querySelectorAll('.modeBtn').forEach(function(b){b.addEventListener('click',function(){
+ cameraMode=b.dataset.camera;
+ document.querySelectorAll('.modeBtn').forEach(function(x){x.classList.toggle('active',x===b)});
+ controls.enabled=cameraMode==='orbit';
+ if(cameraMode==='orbit' && chars[activeIndex])controls.target.copy(chars[activeIndex].root.position).add(new THREE.Vector3(0,1,0));
+})});
+
+document.querySelectorAll('.charBtn').forEach(function(b){b.addEventListener('click',function(){
+ const n=Number(b.dataset.char); if(!chars[n])return;
+ const old=chars[activeIndex]; const p=old.root.position.clone(); old.root.visible=false;
+ activeIndex=n; chars[n].root.position.copy(p); chars[n].root.visible=true; playState(chars[n],'idle');
+ document.querySelectorAll('.charBtn').forEach(function(x){x.classList.toggle('active',x===b)});
+})});
+
+const infoPanel=document.getElementById('infoPanel');
+document.getElementById('infoBtn').addEventListener('click',function(){infoPanel.hidden=!infoPanel.hidden});
+document.addEventListener('pointerdown',function(e){
+ if(!infoPanel.hidden && !infoPanel.contains(e.target) && e.target.id!=='infoBtn')infoPanel.hidden=true;
+});
+
+function setMove(name,value){keys[name]=value}
+document.querySelectorAll('[data-move]').forEach(function(b){
+ const n=b.dataset.move;
+ b.addEventListener('pointerdown',function(e){e.preventDefault();setMove(n,true);b.setPointerCapture(e.pointerId)});
+ b.addEventListener('pointerup',function(){setMove(n,false)});
+ b.addEventListener('pointercancel',function(){setMove(n,false)});
+});
+addEventListener('keydown',function(e){
+ const k=e.key.toLowerCase();
+ if(k==='w'||k==='arrowup')keys.up=true;if(k==='s'||k==='arrowdown')keys.down=true;if(k==='a'||k==='arrowleft')keys.left=true;if(k==='d'||k==='arrowright')keys.right=true;if(k==='shift')keys.run=true;
+});
+addEventListener('keyup',function(e){
+ const k=e.key.toLowerCase();
+ if(k==='w'||k==='arrowup')keys.up=false;if(k==='s'||k==='arrowdown')keys.down=false;if(k==='a'||k==='arrowleft')keys.left=false;if(k==='d'||k==='arrowright')keys.right=false;if(k==='shift')keys.run=false;
+});
+
+function updatePlayer(dt){
+ const ch=chars[activeIndex];if(!ch)return;
+ const dx=(keys.right?1:0)-(keys.left?1:0), dz=(keys.down?1:0)-(keys.up?1:0);
+ const moving=dx!==0||dz!==0;
+ if(moving && cameraMode==='follow'){
+  const len=Math.hypot(dx,dz);const nx=dx/len,nz=dz/len;
+  const speed=keys.run?3.5:2.15;
+  ch.root.position.x=THREE.MathUtils.clamp(ch.root.position.x+nx*speed*dt,-3.5,3.5);
+  ch.root.position.z=THREE.MathUtils.clamp(ch.root.position.z+nz*speed*dt,-.2,4.0);
+  const targetAngle=Math.atan2(nx,nz);
+  let diff=targetAngle-ch.root.rotation.y;
+  diff=Math.atan2(Math.sin(diff),Math.cos(diff));
+  ch.root.rotation.y+=diff*Math.min(1,dt*12);
+  playState(ch,keys.run?'run':'walk');
+ } else playState(ch,'idle');
+
+ if(cameraMode==='follow'){
+  const wanted=ch.root.position.clone().add(new THREE.Vector3(7,7.4,7));
+  camera.position.lerp(wanted,1-Math.pow(.002,dt));
+  const t=ch.root.position.clone().add(new THREE.Vector3(0,1,0));
+  const dir=t.clone().sub(camera.position).normalize();
+  const look=camera.position.clone().add(dir);
+  camera.lookAt(look);
+ }
+}
+
+function animate(){
+ requestAnimationFrame(animate);
+ const dt=Math.min(clock.getDelta(),.04);
+ mixers.forEach(function(m){m.update(dt)});
+ updatePlayer(dt);
+ if(controls.enabled)controls.update();
+ renderer.render(scene,camera);
+}
+animate();
+
+function resize(){
+ const a=innerWidth/innerHeight; const v=innerWidth<700?8.2:9.8;
+ camera.left=-v*a/2;camera.right=v*a/2;camera.top=v/2;camera.bottom=-v/2;camera.updateProjectionMatrix();
+ renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));
+}
+addEventListener('resize',resize);
+</script>
+</body>
+</html>
