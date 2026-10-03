@@ -33,7 +33,7 @@
 <header class="top">
 <a class="back" href="./" aria-label="Back to ToolBox">‹</a>
 <div class="title"><small>GameBox character quality test</small><strong>Christmas Elf Benchmark</strong></div>
-<div class="actions"><button class="glassBtn" id="paletteBtn">PALETTE</button><button class="glassBtn" id="animBtn">ALL ANIMS</button></div>
+<div class="actions"><button class="glassBtn" id="headBtn">HEAD</button><button class="glassBtn" id="paletteBtn">PALETTE</button><button class="glassBtn" id="animBtn">ALL ANIMS</button></div>
 </header>
 <div class="badge">One finished model · one skeleton · real material regions · drag to rotate · framing locked to screen</div>
 
@@ -50,6 +50,16 @@
 <p>Compare the original-style palette with the clean Christmas material treatment.</p>
 <div class="palette"><button data-palette="original">ORIGINAL ELF</button><button data-palette="christmas" class="active">CHRISTMAS</button></div>
 <div class="info" style="position:static;max-width:none;margin-top:6px">The Christmas version keeps the original elf geometry and animations. Only the existing material colours are changed: natural skin, red hat, green clothes, white trim and gold details.</div>
+</section>
+
+<section class="panel" id="headPanel" hidden>
+<div class="panelHead"><h2>Head</h2><button class="close" id="closeHead">×</button></div>
+<p>Compare the original elf head with a goblin-head variant using the same elf body, clothes, skeleton and animations.</p>
+<div class="palette">
+<button data-head="elf" class="active">ORIGINAL ELF</button>
+<button data-head="goblin">GOBLIN HEAD</button>
+</div>
+<div class="info" style="position:static;max-width:none;margin-top:6px">The goblin option uses the authored Quaternius goblin head and pointed ears. Its separate white <strong>Teeth</strong> geometry has been removed completely.</div>
 </section>
 
 <div class="quick">
@@ -81,8 +91,11 @@ scene.add(new THREE.HemisphereLight(0xeef8ff,0x6a6358,2.1));const sun=new THREE.
 const floorMat=new THREE.MeshStandardMaterial({color:0xd7c7ae,roughness:.92});const floor=new THREE.Mesh(new THREE.CylinderGeometry(1.35,1.45,.16,48),floorMat);floor.position.y=-.09;floor.receiveShadow=true;scene.add(floor);
 const ring=new THREE.Mesh(new THREE.TorusGeometry(1.10,.018,8,64),new THREE.MeshStandardMaterial({color:0xf1e8db,roughness:.9}));ring.rotation.x=Math.PI/2;ring.position.y=.005;scene.add(ring);
 
-const MODEL='./assets/gamebox/christmas-elf.gltf';
-const loader=new GLTFLoader();let root=null,mixer=null,clips=[],action=null,current='',originalColours=new Map();
+const MODELS={
+ elf:'./assets/gamebox/christmas-elf.gltf',
+ goblin:'./assets/gamebox/christmas-elf-goblin-head.gltf'
+};
+const loader=new GLTFLoader();let root=null,mixer=null,clips=[],action=null,current='',originalColours=new Map(),activeHead='elf',loadToken=0;
 
 function prep(r){r.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;const mats=Array.isArray(o.material)?o.material:[o.material];const cloned=mats.map(m=>m.clone());o.material=Array.isArray(o.material)?cloned:cloned[0];for(const m of cloned){if(m?.name&&!originalColours.has(m.name)&&m.color)originalColours.set(m.name,m.color.clone())}}})}
 function materialByName(name){const out=[];root?.traverse(o=>{if(!o.isMesh)return;for(const m of (Array.isArray(o.material)?o.material:[o.material]))if(m?.name===name)out.push(m)});return out}
@@ -93,19 +106,40 @@ function play(name){const clip=clips.find(c=>c.name===name);if(!clip||!mixer)ret
 function stop(){if(mixer)mixer.stopAllAction();action=null;current='';document.getElementById('playing').textContent='Stopped';document.querySelectorAll('[data-anim]').forEach(b=>b.classList.remove('active'));renderList()}
 function renderList(){const q=(document.getElementById('search').value||'').toLowerCase(),list=document.getElementById('list');list.innerHTML='';clips.filter(c=>!q||c.name.toLowerCase().includes(q)).forEach(c=>{const b=document.createElement('button');b.className='anim'+(c.name===current?' active':'');b.textContent=c.name;b.title=c.name;b.addEventListener('click',()=>play(c.name));list.appendChild(b)})}
 
-loader.load(MODEL,g=>{
- root=g.scene;prep(root);scene.add(root);normalize(root);mixer=new THREE.AnimationMixer(root);clips=(g.animations||[]).slice().sort((a,b)=>a.name.localeCompare(b.name));document.getElementById('count').textContent=clips.length;document.getElementById('loadBar').style.width='100%';palette('christmas');play(clips.some(c=>c.name==='Idle')?'Idle':clips[0]?.name);document.getElementById('loading').classList.add('hide');renderList();
-},xhr=>{if(xhr.total){document.getElementById('loadBar').style.width=Math.max(15,Math.round(xhr.loaded/xhr.total*100))+'%'}},e=>{console.error(e);document.getElementById('loadText').textContent='Could not load the elf model.'});
+function loadCharacter(kind){
+ const token=++loadToken,model=MODELS[kind]||MODELS.elf;
+ activeHead=kind;
+ document.querySelectorAll('[data-head]').forEach(b=>b.classList.toggle('active',b.dataset.head===kind));
+ const previous=current||'Idle';
+ document.getElementById('loadText').textContent=kind==='goblin'?'Loading goblin-head elf…':'Loading original elf…';
+ document.getElementById('loading').classList.remove('hide');
+ loader.load(model,g=>{
+   if(token!==loadToken)return;
+   if(root)scene.remove(root);
+   if(mixer)mixer.stopAllAction();
+   root=g.scene;originalColours.clear();prep(root);scene.add(root);normalize(root);
+   mixer=new THREE.AnimationMixer(root);clips=(g.animations||[]).slice().sort((a,b)=>a.name.localeCompare(b.name));
+   document.getElementById('count').textContent=clips.length;document.getElementById('loadBar').style.width='100%';
+   palette('christmas');
+   const next=clips.some(c=>c.name===previous)?previous:(clips.some(c=>c.name==='Idle')?'Idle':clips[0]?.name);
+   play(next);document.getElementById('loading').classList.add('hide');renderList();
+ },xhr=>{if(token===loadToken&&xhr.total){document.getElementById('loadBar').style.width=Math.max(15,Math.round(xhr.loaded/xhr.total*100))+'%'}},e=>{console.error(e);if(token===loadToken){document.getElementById('loadText').textContent='Could not load this head option.'}});
+}
+loadCharacter('elf');
 
 document.querySelectorAll('[data-anim]').forEach(b=>b.addEventListener('click',()=>play(b.dataset.anim)));
 document.querySelectorAll('[data-palette]').forEach(b=>b.addEventListener('click',()=>palette(b.dataset.palette)));
 document.getElementById('search').addEventListener('input',renderList);
 document.getElementById('stop').addEventListener('click',stop);
-const ap=document.getElementById('animPanel'),pp=document.getElementById('palettePanel');
-document.getElementById('animBtn').addEventListener('click',()=>{ap.hidden=!ap.hidden;if(!ap.hidden)pp.hidden=true});
-document.getElementById('paletteBtn').addEventListener('click',()=>{pp.hidden=!pp.hidden;if(!pp.hidden)ap.hidden=true});
+document.querySelectorAll('[data-head]').forEach(b=>b.addEventListener('click',()=>loadCharacter(b.dataset.head)));
+const ap=document.getElementById('animPanel'),pp=document.getElementById('palettePanel'),hp=document.getElementById('headPanel');
+function only(panel){for(const p of [ap,pp,hp])if(p!==panel)p.hidden=true}
+document.getElementById('animBtn').addEventListener('click',()=>{ap.hidden=!ap.hidden;if(!ap.hidden)only(ap)});
+document.getElementById('paletteBtn').addEventListener('click',()=>{pp.hidden=!pp.hidden;if(!pp.hidden)only(pp)});
+document.getElementById('headBtn').addEventListener('click',()=>{hp.hidden=!hp.hidden;if(!hp.hidden)only(hp)});
 document.getElementById('closeAnim').addEventListener('click',()=>ap.hidden=true);
 document.getElementById('closePalette').addEventListener('click',()=>pp.hidden=true);
+document.getElementById('closeHead').addEventListener('click',()=>hp.hidden=true);
 
 const clock=new THREE.Clock();function frame(){requestAnimationFrame(frame);const dt=Math.min(clock.getDelta(),.04);if(mixer)mixer.update(dt);controls.update();renderer.render(scene,camera)}frame();
 let lastW=0,lastH=0;
