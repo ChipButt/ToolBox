@@ -245,13 +245,11 @@ sun.shadow.camera.left=-8;sun.shadow.camera.right=8;sun.shadow.camera.top=8;sun.
 sun.shadow.bias=-.0005;
 scene.add(sun);
 
-const groundMat = new THREE.MeshStandardMaterial({color:0x91b47d,roughness:.92});
+const groundMat = new THREE.MeshStandardMaterial({color:0x1a2530,roughness:1});
 const ground = new THREE.Mesh(new THREE.PlaneGeometry(12,12),groundMat);
-ground.rotation.x=-Math.PI/2; ground.receiveShadow=true; scene.add(ground);
+ground.rotation.x=-Math.PI/2;ground.position.y=-.09;ground.receiveShadow=true;scene.add(ground);
 
-const plazaMat = new THREE.MeshStandardMaterial({color:0xd8d0bd,roughness:.9});
-const plaza = new THREE.Mesh(new THREE.PlaneGeometry(2.5,2.25),plazaMat);
-plaza.rotation.x=-Math.PI/2; plaza.position.set(2.15,.012,2.25); plaza.receiveShadow=true; scene.add(plaza);
+const plaza = new THREE.Group();scene.add(plaza);
 
 const loader = new GLTFLoader();
 const mixers = [];
