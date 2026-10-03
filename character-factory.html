@@ -47,9 +47,9 @@
 
 <section class="panel" id="palettePanel" hidden>
 <div class="panelHead"><h2>Material Palette</h2><button class="close" id="closePalette">×</button></div>
-<p>This recolours the elf's existing named material regions. The model itself is unchanged.</p>
+<p>Compare the original-style palette with the finished Christmas material treatment. The facial details remain part of the actual elf asset in both views.</p>
 <div class="palette"><button data-palette="original">ORIGINAL ELF</button><button data-palette="christmas" class="active">CHRISTMAS</button></div>
-<div class="info" style="position:static;max-width:none;margin-top:6px">The source GLTF's <strong>Skin</strong> material is near-black, so the benchmark corrects Skin and Face to natural tones. Christmas then recolours the existing <strong>Hat</strong>, <strong>Clothes</strong>, <strong>Belt</strong> and <strong>Gold</strong> materials without adding geometry.</div>
+<div class="info" style="position:static;max-width:none;margin-top:6px">The Christmas version is now a local production asset. It includes baked natural skin, a red hat, green clothes, <strong>white fur trim</strong>, rosy cheeks, a visible mouth and pink inner-ear detail. The face details are attached to the animated Head bone.</div>
 </section>
 
 <div class="quick">
@@ -81,13 +81,13 @@ scene.add(new THREE.HemisphereLight(0xeef8ff,0x6a6358,2.1));const sun=new THREE.
 const floorMat=new THREE.MeshStandardMaterial({color:0xd7c7ae,roughness:.92});const floor=new THREE.Mesh(new THREE.CylinderGeometry(1.35,1.45,.16,48),floorMat);floor.position.y=-.09;floor.receiveShadow=true;scene.add(floor);
 const ring=new THREE.Mesh(new THREE.TorusGeometry(1.10,.018,8,64),new THREE.MeshStandardMaterial({color:0xf1e8db,roughness:.9}));ring.rotation.x=Math.PI/2;ring.position.y=.005;scene.add(ring);
 
-const MODEL='https://raw.githubusercontent.com/AbrahamBrookes/hey-you-steal-that-bling/main/stolen_assets/Quaternius-characters/Elf.gltf';
+const MODEL='./assets/gamebox/christmas-elf.gltf';
 const loader=new GLTFLoader();let root=null,mixer=null,clips=[],action=null,current='',originalColours=new Map();
 
 function prep(r){r.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;const mats=Array.isArray(o.material)?o.material:[o.material];const cloned=mats.map(m=>m.clone());o.material=Array.isArray(o.material)?cloned:cloned[0];for(const m of cloned){if(m?.name&&!originalColours.has(m.name)&&m.color)originalColours.set(m.name,m.color.clone())}}})}
 function materialByName(name){const out=[];root?.traverse(o=>{if(!o.isMesh)return;for(const m of (Array.isArray(o.material)?o.material:[o.material]))if(m?.name===name)out.push(m)});return out}
 function setMat(name,color){materialByName(name).forEach(m=>m.color.set(color))}
-function palette(kind){if(!root)return;document.querySelectorAll('[data-palette]').forEach(b=>b.classList.toggle('active',b.dataset.palette===kind));if(kind==='original'){root.traverse(o=>{if(!o.isMesh)return;for(const m of (Array.isArray(o.material)?o.material:[o.material]))if(m?.name&&m.color&&originalColours.has(m.name))m.color.copy(originalColours.get(m.name))});setMat('Skin','#c98362');setMat('Face','#f1c5a7')}else{setMat('Skin','#c98362');setMat('Face','#f1c5a7');setMat('Hat','#b62f3f');setMat('Clothes','#276f43');setMat('Belt','#5a2e1d');setMat('Gold','#d5a52e')}}
+function palette(kind){if(!root)return;document.querySelectorAll('[data-palette]').forEach(b=>b.classList.toggle('active',b.dataset.palette===kind));if(kind==='original'){setMat('Skin','#c98362');setMat('Face','#f1c5a7');setMat('Hat','#315f30');setMat('Clothes','#276f43');setMat('White Fur Trim','#5a2e1d');setMat('Gold','#d5a52e')}else{setMat('Skin','#c98362');setMat('Face','#f1c5a7');setMat('Hat','#b62f3f');setMat('Clothes','#276f43');setMat('White Fur Trim','#f5f0e7');setMat('Gold','#d5a52e')}}
 function normalize(r){const b=new THREE.Box3().setFromObject(r),s=new THREE.Vector3();b.getSize(s);if(s.y>0)r.scale.setScalar(1.72/s.y);const b2=new THREE.Box3().setFromObject(r);r.position.y-=b2.min.y}
 function play(name){const clip=clips.find(c=>c.name===name);if(!clip||!mixer)return;if(action)action.fadeOut(.10);const a=mixer.clipAction(clip);a.reset();a.enabled=true;const loop=/^(Idle|Walk|Run|Run_Carry|Walk_Carry)$/i.test(name);a.setLoop(loop?THREE.LoopRepeat:THREE.LoopOnce,loop?Infinity:1);a.clampWhenFinished=!loop;a.fadeIn(.10).play();action=a;current=name;document.getElementById('playing').textContent=name;document.querySelectorAll('[data-anim]').forEach(b=>b.classList.toggle('active',b.dataset.anim===name));renderList()}
 function stop(){if(mixer)mixer.stopAllAction();action=null;current='';document.getElementById('playing').textContent='Stopped';document.querySelectorAll('[data-anim]').forEach(b=>b.classList.remove('active'));renderList()}
