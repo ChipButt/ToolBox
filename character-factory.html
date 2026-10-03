@@ -45,8 +45,8 @@ scene.add(new THREE.HemisphereLight(0xeaf8ff,0x655d50,2));const sun=new THREE.Di
 const loader=new GLTFLoader(),cache=new Map();
 const RAW='https://raw.githubusercontent.com/dustinc555/mygame/main/assets/vendor/quaternius/';
 const BASE=RAW+'universal_base_characters/base_characters/',HAIR=RAW+'universal_base_characters/head_attachments/',OUT=RAW+'modular_character_outfits_fantasy/modular_parts/';
-const UAL1='https://github.com/dustinc555/mygame/raw/refs/heads/main/assets/vendor/quaternius/universal_animation_library_1/UAL1_Standard.glb';
-const UAL2='https://github.com/dustinc555/mygame/raw/refs/heads/main/assets/vendor/quaternius/universal_animation_library_2/UAL2_Standard.glb';
+const UAL1='https://media.githubusercontent.com/media/dustinc555/mygame/main/assets/vendor/quaternius/universal_animation_library_1/UAL1_Standard.glb';
+const UAL2='https://media.githubusercontent.com/media/dustinc555/mygame/main/assets/vendor/quaternius/universal_animation_library_2/UAL2_Standard.glb';
 let clips=[],character=null,buildToken=0,current='';
 const state={body:'Regular_Male',height:.82,skin:'#f2c7a5',ears:true,hat:true,hatColor:'#b72d3c',trim:'#f3e7cf',hair:'Hair_SimpleParted',hairColor:'#7b4a26',outfit:'Peasant',outfitColor:'#237243',accent:'#b72d3c'};
 const load=url=>cache.get(url)||cache.set(url,new Promise((resolve,reject)=>loader.load(url,resolve,undefined,reject))).get(url);
