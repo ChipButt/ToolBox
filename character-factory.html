@@ -3,121 +3,104 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
-<title>GameBox Character Factory</title>
+<meta name="theme-color" content="#10243a">
+<title>GameBox Christmas Elf Benchmark</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Inter:wght@500;700;800&display=swap');
-*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#c9dce7;color:#fff;font-family:Inter,system-ui,sans-serif}button,input,select{font:inherit}#stage{position:fixed;inset:0}canvas{display:block;width:100%;height:100%;touch-action:none}
-.top{position:fixed;z-index:20;left:10px;right:10px;top:10px;display:flex;gap:8px;align-items:center;pointer-events:none}.back,.btn,.title{pointer-events:auto;background:rgba(8,20,35,.87);border:1px solid rgba(255,255,255,.14);color:#fff;backdrop-filter:blur(14px);box-shadow:0 8px 24px rgba(5,16,28,.2)}.back{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;text-decoration:none;font-size:22px;font-weight:900}.title{padding:8px 12px;border-radius:14px}.title small{display:block;font-size:8px;letter-spacing:.13em;text-transform:uppercase;color:#a9c3d7;font-weight:900}.title strong{font:700 19px Fredoka,Inter,sans-serif}.actions{margin-left:auto;display:flex;gap:7px;pointer-events:none}.btn{height:44px;border-radius:14px;padding:0 12px;font-size:9px;font-weight:900}
-.panel{position:fixed;z-index:18;top:68px;bottom:12px;width:min(350px,calc(100% - 24px));overflow:auto;padding:14px;border-radius:20px;background:rgba(8,20,35,.91);border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(18px);box-shadow:0 16px 44px rgba(5,16,28,.28)}.left{left:12px}.right{right:12px;width:min(410px,calc(100% - 24px))}.panel[hidden]{display:none}.panel h2{margin:0 0 5px;font:700 21px Fredoka,Inter,sans-serif}.panel p{margin:0 0 11px;color:#c8d7e3;font-size:11px;line-height:1.45}.preset{width:100%;min-height:44px;border:1px solid #ffe99c;border-radius:13px;background:linear-gradient(#ffd85a,#f4bf2b);color:#142238;font-weight:900;font-size:11px}.section{border-top:1px solid rgba(255,255,255,.09);margin-top:11px;padding-top:11px}.section>b{display:block;margin-bottom:7px;color:#a7bfd2;font-size:9px;letter-spacing:.12em;text-transform:uppercase}.field{display:grid;grid-template-columns:85px 1fr;gap:8px;align-items:center;margin:7px 0}.field label{font-size:10px;font-weight:900}.field select,.field input,.search{width:100%;min-width:0;height:38px;border-radius:11px;border:1px solid rgba(255,255,255,.13);background:#122b45;color:#fff;padding:0 9px}.field input[type=color]{padding:3px}.toggles{display:flex;gap:7px;flex-wrap:wrap}.toggle{min-height:38px;padding:0 10px;border-radius:11px;border:1px solid rgba(255,255,255,.13);background:rgba(255,255,255,.07);color:#fff;font-size:9px;font-weight:900}.toggle.active{background:linear-gradient(#ffd85a,#f4bf2b);color:#142238}.status{margin-top:10px;padding:9px;border-radius:11px;background:rgba(255,255,255,.055);font-size:9px;line-height:1.45;color:#cbd9e4}.status strong{color:#fff}
-.quick{position:fixed;z-index:12;left:50%;bottom:10px;transform:translateX(-50%);display:flex;gap:6px;max-width:calc(100% - 22px);overflow-x:auto;padding:7px;border-radius:15px;background:rgba(8,20,35,.79);border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(12px)}.quick button{min-height:36px;padding:0 10px;border-radius:10px;border:1px solid rgba(255,255,255,.11);background:rgba(255,255,255,.07);color:#fff;font-size:9px;font-weight:900;white-space:nowrap}.quick button.active{background:linear-gradient(#ffd85a,#f4bf2b);color:#142238}
-.animTop{display:grid;grid-template-columns:1fr auto;gap:7px}.animTop button{height:38px;border-radius:11px;border:1px solid rgba(255,255,255,.14);background:#21415f;color:#fff;font-weight:900}.meta{display:flex;justify-content:space-between;gap:8px;margin:8px 0;font-size:9px;color:#adc2d2}.list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.anim{min-width:0;padding:9px;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.055);color:#fff;text-align:left;font-size:9px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.anim.active{background:linear-gradient(#ffd85a,#f4bf2b);color:#142238}
-.tip{position:fixed;z-index:8;left:50%;top:72px;transform:translateX(-50%);padding:7px 10px;border-radius:10px;background:rgba(8,20,35,.54);border:1px solid rgba(255,255,255,.1);font-size:8px;font-weight:800;color:#dce8f0}.loading{position:fixed;inset:0;z-index:40;display:grid;place-items:center;background:linear-gradient(#c9dce7,#dce8e0);color:#17314d;transition:opacity .3s}.loading.hide{opacity:0;pointer-events:none}.card{width:min(360px,calc(100% - 30px));padding:22px;border-radius:22px;background:rgba(255,255,255,.92);text-align:center}.card strong{font:700 22px Fredoka,Inter,sans-serif;color:#0b2f62}.card p{font-size:11px;color:#50657a}.bar{height:8px;border-radius:99px;background:#d9e5df;overflow:hidden}.bar i{display:block;width:8%;height:100%;background:linear-gradient(90deg,#f4bf2b,#ffd85a);transition:width .2s}
-@media(max-width:820px){.title small{display:none}.title strong{font-size:16px}.panel{top:60px;bottom:8px;left:7px!important;right:7px!important;width:auto!important}.tip{top:auto;bottom:60px;max-width:185px;text-align:center}.quick{bottom:7px}}
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Inter:wght@500;600;700;800&display=swap');
+:root{--glass:rgba(8,20,35,.86);--line:rgba(255,255,255,.14);--gold:#f4bf2b}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#c8dbe8;color:#fff;font-family:Inter,system-ui,sans-serif}button,input{font:inherit}button{cursor:pointer}
+#stage{position:fixed;inset:0}canvas{display:block;width:100%;height:100%;touch-action:none}
+.top{position:fixed;z-index:20;left:10px;right:10px;top:max(10px,env(safe-area-inset-top));display:flex;align-items:center;gap:8px;pointer-events:none}
+.back,.glassBtn,.title{pointer-events:auto;background:var(--glass);border:1px solid var(--line);color:white;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 8px 24px rgba(5,16,28,.22)}
+.back{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;text-decoration:none;font-size:22px;font-weight:900}
+.title{padding:8px 12px;border-radius:14px;min-width:0}.title small{display:block;color:#a9c3d7;font-size:8px;font-weight:900;letter-spacing:.13em;text-transform:uppercase}.title strong{font:700 18px Fredoka,Inter,sans-serif}
+.actions{margin-left:auto;display:flex;gap:7px;pointer-events:none}.glassBtn{height:44px;border-radius:14px;padding:0 12px;font-size:9px;font-weight:900;letter-spacing:.06em}
+.badge{position:fixed;z-index:9;left:50%;top:72px;transform:translateX(-50%);padding:8px 11px;border-radius:12px;background:rgba(8,20,35,.58);border:1px solid rgba(255,255,255,.11);font-size:9px;font-weight:800;color:#dce8f0;pointer-events:none;text-align:center}
+.panel{position:fixed;z-index:18;top:68px;right:12px;bottom:12px;width:min(420px,calc(100% - 24px));overflow:auto;padding:14px;border-radius:20px;background:rgba(8,20,35,.91);border:1px solid var(--line);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);box-shadow:0 16px 44px rgba(5,16,28,.28)}
+.panel[hidden]{display:none}.panelHead{display:flex;align-items:center;justify-content:space-between;gap:8px}.panel h2{margin:0;font:700 21px Fredoka,Inter,sans-serif}.panel p{margin:5px 0 11px;color:#c8d7e3;font-size:11px;line-height:1.45}.close{width:36px;height:36px;border-radius:11px;border:1px solid var(--line);background:rgba(255,255,255,.07);color:#fff;font-size:18px}
+.palette{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:11px}.palette button{min-height:42px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:#fff;font-size:10px;font-weight:900}.palette button.active{background:linear-gradient(#ffd85a,var(--gold));color:#142238;border-color:#ffe697}
+.searchRow{display:grid;grid-template-columns:1fr auto;gap:7px}.searchRow input,.searchRow button{height:38px;border-radius:11px;border:1px solid rgba(255,255,255,.13)}.searchRow input{min-width:0;background:#122b45;color:#fff;padding:0 10px}.searchRow button{background:#21415f;color:#fff;padding:0 12px;font-weight:900;font-size:9px}
+.meta{display:flex;justify-content:space-between;gap:8px;margin:8px 0;font-size:9px;color:#abc1d2}.meta strong{color:white}.list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.anim{min-width:0;padding:9px;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.055);color:white;text-align:left;font-size:9px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.anim.active{background:linear-gradient(#ffd85a,var(--gold));color:#142238}
+.quick{position:fixed;z-index:12;left:50%;bottom:max(10px,env(safe-area-inset-bottom));transform:translateX(-50%);display:flex;gap:6px;max-width:calc(100% - 22px);overflow-x:auto;padding:7px;border-radius:15px;background:rgba(8,20,35,.79);border:1px solid var(--line);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}.quick::-webkit-scrollbar{display:none}.quick button{min-height:36px;padding:0 10px;border-radius:10px;border:1px solid rgba(255,255,255,.11);background:rgba(255,255,255,.07);color:white;font-size:9px;font-weight:900;white-space:nowrap}.quick button.active{background:linear-gradient(#ffd85a,var(--gold));color:#142238}
+.info{position:fixed;z-index:8;left:12px;bottom:68px;max-width:285px;padding:10px 12px;border-radius:14px;background:rgba(8,20,35,.62);border:1px solid rgba(255,255,255,.1);font-size:9px;line-height:1.45;color:#d6e2eb}.info strong{color:white}
+.loading{position:fixed;inset:0;z-index:40;display:grid;place-items:center;background:linear-gradient(#c8dbe8,#dce8e0);color:#17314d;transition:opacity .25s}.loading.hide{opacity:0;pointer-events:none}.card{width:min(340px,calc(100% - 30px));padding:22px;border-radius:22px;background:rgba(255,255,255,.93);text-align:center;box-shadow:0 20px 55px rgba(16,42,66,.18)}.card strong{font:700 22px Fredoka,Inter,sans-serif;color:#0b2f62}.card p{font-size:11px;color:#50657a}.bar{height:8px;border-radius:99px;background:#d9e5df;overflow:hidden}.bar i{display:block;height:100%;width:15%;background:linear-gradient(90deg,var(--gold),#ffd85a);transition:width .2s}
+@media(max-width:760px){.title small{display:none}.title strong{font-size:15px}.glassBtn{padding:0 9px}.badge{top:auto;bottom:62px;max-width:190px}.panel{top:60px;left:7px;right:7px;bottom:7px;width:auto}.info{display:none}.quick{bottom:7px}}
 </style>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}</script>
 </head>
 <body>
 <div id="stage"></div>
-<header class="top"><a class="back" href="./">‹</a><div class="title"><small>GameBox universal character system</small><strong>Character Factory</strong></div><div class="actions"><button class="btn" id="buildBtn">BUILD</button><button class="btn" id="animsBtn">ANIMS</button></div></header>
-<div class="tip">Drag to rotate · pinch/scroll to zoom · Christmas Elf is the first preset</div>
-<section class="panel left" id="buildPanel">
-<h2>Build Character</h2><p>One humanoid rig, interchangeable body/hair/outfit layers, and a shared animation library.</p><button class="preset" id="preset">LOAD CHRISTMAS ELF</button>
-<div class="section"><b>Body</b><div class="field"><label>Base</label><select id="body"><option value="Regular_Male">Regular Male</option><option value="Regular_Female">Regular Female</option><option value="Teen_Male">Teen Male</option><option value="Teen_Female">Teen Female</option><option value="Superhero_Male">Hero Male</option><option value="Superhero_Female">Hero Female</option></select></div><div class="field"><label>Height</label><input id="height" type="range" min=".72" max="1.12" step=".01" value=".82"></div><div class="field"><label>Ear colour</label><input id="skin" type="color" value="#704b3b"></div></div>
-<div class="section"><b>Elf details</b><div class="toggles"><button class="toggle active" id="ears">POINTED EARS</button><button class="toggle active" id="hat">ELF HAT</button></div><div class="field"><label>Hat</label><input id="hatColor" type="color" value="#b72d3c"></div><div class="field"><label>Trim</label><input id="trim" type="color" value="#f3e7cf"></div></div>
-<div class="section"><b>Hair</b><div class="field"><label>Style</label><select id="hair"><option value="Hair_SimpleParted">Simple Parted</option><option value="Hair_Bob">Bob</option><option value="Hair_Buns">Buns</option><option value="Hair_Buzzed">Buzzed</option><option value="Hair_Dreads">Dreads</option><option value="Hair_Long">Long</option><option value="Hair_Mohawk">Mohawk</option><option value="Hair_Ponytail">Ponytail</option><option value="Hair_SlickBack">Slick Back</option></select></div><div class="field"><label>Colour</label><input id="hairColor" type="color" value="#7b4a26"></div></div>
-<div class="section"><b>Outfit</b><div class="field"><label>Style</label><select id="outfit"><option value="Peasant">Elf / Peasant</option><option value="Ranger">Ranger</option><option value="Wizard">Wizard</option><option value="Knight">Knight</option><option value="Noble">Noble</option><option value="None">Base only</option></select></div><div class="field"><label>Main</label><input id="outfitColor" type="color" value="#237243"></div><div class="field"><label>Accent</label><input id="accent" type="color" value="#b72d3c"></div></div>
-<div class="status" id="status"><strong>Christmas Elf</strong><br>Universal humanoid rig · modular outfit · shared animation set.</div>
+<header class="top">
+<a class="back" href="./" aria-label="Back to ToolBox">‹</a>
+<div class="title"><small>GameBox character quality test</small><strong>Christmas Elf Benchmark</strong></div>
+<div class="actions"><button class="glassBtn" id="paletteBtn">PALETTE</button><button class="glassBtn" id="animBtn">ALL ANIMS</button></div>
+</header>
+<div class="badge">One finished model · one skeleton · real material regions · drag to rotate · pinch/scroll to zoom</div>
+
+<section class="panel" id="animPanel" hidden>
+<div class="panelHead"><h2>Elf Animations</h2><button class="close" id="closeAnim">×</button></div>
+<p>These are the animations actually embedded in this character file. Nothing is being retargeted or faked.</p>
+<div class="searchRow"><input id="search" type="search" placeholder="Search animations…"><button id="stop">STOP</button></div>
+<div class="meta"><span><strong id="count">0</strong> clips</span><span>Playing: <strong id="playing">—</strong></span></div>
+<div class="list" id="list"></div>
 </section>
-<section class="panel right" id="animPanel" hidden><h2>Animation Library</h2><p>Libraries load only when requested so the factory stays stable on mobile. Switch between the two Standard libraries to access the full set without keeping both in memory.</p><div class="field"><label>Library</label><select id="library"><option value="ual1">Standard Library 1</option><option value="ual2">Standard Library 2</option></select></div><div class="animTop"><input class="search" id="search" type="search" placeholder="Search animations…"><button id="stop">STOP</button></div><div class="meta"><span><b id="count">0</b> clips</span><span>Playing: <b id="playing">—</b></span></div><div class="status" id="animStatus"><strong>Not loaded</strong><br>Open this panel or use a quick animation button to load Library 1.</div><div class="list" id="list"></div></section>
-<div class="quick"><button data-q="Idle">IDLE</button><button data-q="Walk">WALK</button><button data-q="Run">RUN</button><button data-q="Jump">JUMP</button><button data-q="Roll">ROLL</button><button data-q="Dance">DANCE</button></div>
-<div class="loading" id="loading"><div class="card"><strong>Building Character Factory…</strong><p id="loadText">Loading the universal rig and standard animation libraries.</p><div class="bar"><i id="loadBar"></i></div></div></div>
+
+<section class="panel" id="palettePanel" hidden>
+<div class="panelHead"><h2>Material Palette</h2><button class="close" id="closePalette">×</button></div>
+<p>This recolours the elf's existing named material regions. The model itself is unchanged.</p>
+<div class="palette"><button data-palette="original">ORIGINAL ELF</button><button data-palette="christmas" class="active">CHRISTMAS</button></div>
+<div class="info" style="position:static;max-width:none;margin-top:6px">Christmas palette changes the existing <strong>Hat</strong>, <strong>Clothes</strong>, <strong>Belt</strong> and <strong>Gold</strong> materials rather than adding procedural costume pieces.</div>
+</section>
+
+<div class="quick">
+<button data-anim="Idle">IDLE</button>
+<button data-anim="Walk">WALK</button>
+<button data-anim="Run">RUN</button>
+<button data-anim="Jump">JUMP</button>
+<button data-anim="Roll">ROLL</button>
+<button data-anim="PickUp">PICK UP</button>
+<button data-anim="SitDown">SIT</button>
+<button data-anim="StandUp">STAND</button>
+<button data-anim="Victory">VICTORY</button>
+</div>
+
+<div class="info"><strong>What this is testing</strong><br>This is the visual-quality checkpoint before rebuilding a reusable Character Factory. If this character itself is not good enough, the factory does not move forward.</div>
+<div class="loading" id="loading"><div class="card"><strong>Loading finished elf…</strong><p id="loadText">Loading one self-contained character file.</p><div class="bar"><i id="loadBar"></i></div></div></div>
+
 <script type="module">
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
-import {clone as cloneSkeleton} from 'three/addons/utils/SkeletonUtils.js';
 
-const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));renderer.setSize(innerWidth,innerHeight);renderer.shadowMap.enabled=true;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.03;document.getElementById('stage').appendChild(renderer.domElement);
-const scene=new THREE.Scene();scene.background=new THREE.Color(0xc9dce7);scene.fog=new THREE.Fog(0xc9dce7,6,14);
-const camera=new THREE.OrthographicCamera(-2,2,2,-2,.1,50);camera.position.set(2.4,2.1,2.4);const controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.enablePan=false;controls.target.set(0,.68,0);controls.minZoom=.75;controls.maxZoom=2.5;
-scene.add(new THREE.HemisphereLight(0xeaf8ff,0x655d50,2));const sun=new THREE.DirectionalLight(0xfff0db,3.2);sun.position.set(-4,7,5);sun.castShadow=true;scene.add(sun);const floor=new THREE.Mesh(new THREE.CylinderGeometry(1.25,1.38,.16,48),new THREE.MeshStandardMaterial({color:0xe7dfd2,roughness:.9}));floor.position.y=-.1;floor.receiveShadow=true;scene.add(floor);
+const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
+renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));renderer.setSize(innerWidth,innerHeight);renderer.shadowMap.enabled=true;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.08;document.getElementById('stage').appendChild(renderer.domElement);
+const scene=new THREE.Scene();scene.background=new THREE.Color(0xc8dbe8);scene.fog=new THREE.Fog(0xc8dbe8,7,16);
+const camera=new THREE.OrthographicCamera(-2,2,2,-2,.1,50);camera.position.set(2.45,2.2,2.45);
+const controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.enablePan=false;controls.target.set(0,.78,0);controls.minZoom=.72;controls.maxZoom=2.8;
+scene.add(new THREE.HemisphereLight(0xeef8ff,0x6a6358,2.1));const sun=new THREE.DirectionalLight(0xffefd5,3.4);sun.position.set(-4,7,5);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);scene.add(sun);
+const floorMat=new THREE.MeshStandardMaterial({color:0xd7c7ae,roughness:.92});const floor=new THREE.Mesh(new THREE.CylinderGeometry(1.35,1.45,.16,48),floorMat);floor.position.y=-.09;floor.receiveShadow=true;scene.add(floor);
+const ring=new THREE.Mesh(new THREE.TorusGeometry(1.10,.018,8,64),new THREE.MeshStandardMaterial({color:0xf1e8db,roughness:.9}));ring.rotation.x=Math.PI/2;ring.position.y=.005;scene.add(ring);
 
-const loader=new GLTFLoader(),cache=new Map();
-const RAW='https://raw.githubusercontent.com/dustinc555/mygame/main/assets/vendor/quaternius/';
-const BASE=RAW+'universal_base_characters/base_characters/',HAIR=RAW+'universal_base_characters/head_attachments/',OUT=RAW+'modular_character_outfits_fantasy/modular_parts/';
-const UAL1='https://media.githubusercontent.com/media/dustinc555/mygame/main/assets/vendor/quaternius/universal_animation_library_1/UAL1_Standard.glb';
-const UAL2='https://media.githubusercontent.com/media/dustinc555/mygame/main/assets/vendor/quaternius/universal_animation_library_2/UAL2_Standard.glb';
-let clips=[],character=null,buildToken=0,current='',animLibrary='',animLoading=null;
-const state={body:'Regular_Male',height:.82,skin:'#704b3b',ears:true,hat:true,hatColor:'#b72d3c',trim:'#f3e7cf',hair:'Hair_SimpleParted',hairColor:'#7b4a26',outfit:'Peasant',outfitColor:'#237243',accent:'#b72d3c'};
-async function loadLite(url){
- if(cache.has(url))return cache.get(url);
- const promise=(async()=>{
-   const res=await fetch(url,{cache:'force-cache'});if(!res.ok)throw new Error('HTTP '+res.status+' loading '+url);
-   const json=await res.json();
-   (json.buffers||[]).forEach(b=>{if(b.uri&&!/^(?:data:|https?:)/i.test(b.uri))b.uri=new URL(b.uri,url).href});
-   json.images=[];json.textures=[];json.samplers=[];
-   if(json.materials)json.materials=json.materials.map(m=>({name:m.name||'GameBox Lite',doubleSided:true,pbrMetallicRoughness:{baseColorFactor:[1,1,1,1],metallicFactor:0,roughnessFactor:.86}}));
-   return await new Promise((resolve,reject)=>loader.parse(JSON.stringify(json),'',resolve,reject));
- })();
- cache.set(url,promise);return promise;
-}
-function prep(root){root.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;const ms=Array.isArray(o.material)?o.material:[o.material];const out=ms.map(m=>m.clone());o.material=Array.isArray(o.material)?out:out[0]}})}
-function setColour(root,hex){const col=new THREE.Color(hex);root.traverse(o=>{if(!o.isMesh)return;for(const m of (Array.isArray(o.material)?o.material:[o.material]))if(m&&m.color)m.color.copy(col)})}
-function applyBasePalette(root){
- root.traverse(o=>{if(!o.isMesh)return;const n=(o.name||'').toLowerCase();if(n.includes('eye'))setColour(o,'#3a2b24');else if(n.includes('eyebrow'))setColour(o,state.hairColor);else setColour(o,state.skin)});
-}
-const sex=()=>state.body.includes('Female')?'Female':'Male',isTeen=()=>state.body.startsWith('Teen_');
-function hairFile(){return state.hair+(isTeen()?'_Teen':'')+'.gltf'}
-function outfitFiles(){if(state.outfit==='None'||isTeen())return[];const s=sex();if(state.outfit==='Peasant')return[s+'_Peasant_Body.gltf',s+'_Peasant_Arms.gltf',s+'_Peasant_Legs.gltf',s+'_Peasant_Feet.gltf'];if(state.outfit==='Ranger')return[s+'_Ranger_Body.gltf',s+'_Ranger_Arms.gltf',s+'_Ranger_Legs.gltf',s+'_Ranger_Feet'+(s==='Male'?'_Boots':'')+'.gltf'];if(state.outfit==='Wizard')return[s+'_Wizard_Body.gltf',s+'_Wizard_Arms.gltf',s+'_Wizard_Legs.gltf',s+'_Wizard_Feet.gltf'];if(state.outfit==='Noble')return[s+'_Noble_Body.gltf',s+'_Noble_Arms.gltf',s+'_Noble_Legs.gltf',s+'_Noble_Feet.gltf'];if(state.outfit==='Knight')return[s+'_Knight_Body_Cloth.gltf',s+'_Knight_Arms.gltf',s+'_Knight_Legs'+(s==='Male'?'_Armor':'')+'.gltf',s+'_Knight_Feet'+(s==='Male'?'_Armor':'')+'.gltf'];return[]}
-function head(root){return root.getObjectByName('Head')||root.getObjectByName('neck_01')}
-function addElfBits(h){if(!h)return;if(state.ears){const m=new THREE.MeshStandardMaterial({color:state.skin,roughness:.75});[-1,1].forEach(s=>{const e=new THREE.Mesh(new THREE.ConeGeometry(.038,.15,7),m);e.rotation.z=s*-Math.PI/2;e.rotation.y=Math.PI/2;e.position.set(s*.095,.015,.005);h.add(e)})}if(state.hat){const g=new THREE.Group(),a=new THREE.MeshStandardMaterial({color:state.hatColor}),b=new THREE.MeshStandardMaterial({color:state.trim});const br=new THREE.Mesh(new THREE.CylinderGeometry(.115,.125,.045,24),b);br.position.y=.105;const co=new THREE.Mesh(new THREE.ConeGeometry(.115,.31,24),a);co.position.set(.025,.275,0);co.rotation.z=-.18;const po=new THREE.Mesh(new THREE.SphereGeometry(.038,12,8),b);po.position.set(.075,.418,0);g.add(br,co,po);h.add(g)}}
-function component(root){return{root:root,mixer:new THREE.AnimationMixer(root),action:null}}
-function normalize(g){g.scale.setScalar(1);g.position.set(0,0,0);const b=new THREE.Box3().setFromObject(g),s=new THREE.Vector3();b.getSize(s);if(s.y)g.scale.setScalar((1.55*state.height)/s.y);const b2=new THREE.Box3().setFromObject(g);g.position.y-=b2.min.y}
-async function build(){
- const my=++buildToken;document.getElementById('status').innerHTML='<strong>Building…</strong><br>Loading lightweight rig layers.';
- if(character){scene.remove(character.group);character.components.forEach(c=>c.mixer.stopAllAction());character=null}
- const group=new THREE.Group(),components=[];
- try{
-   const bg=await loadLite(BASE+state.body+'_FullBody.gltf');if(my!==buildToken)return;
-   const base=cloneSkeleton(bg.scene);prep(base);applyBasePalette(base);group.add(base);components.push(component(base));addElfBits(head(base));
-   try{const hg=await loadLite(HAIR+hairFile());if(my!==buildToken)return;const hr=cloneSkeleton(hg.scene);prep(hr);setColour(hr,state.hairColor);group.add(hr);components.push(component(hr))}catch(e){console.warn('hair',e)}
-   const fs=outfitFiles();
-   for(let i=0;i<fs.length;i++){try{const og=await loadLite(OUT+fs[i]);if(my!==buildToken)return;const p=cloneSkeleton(og.scene);prep(p);setColour(p,i===2?state.accent:state.outfitColor);group.add(p);components.push(component(p))}catch(e){console.warn(fs[i],e)}}
-   scene.add(group);normalize(group);character={group:group,components:components};
-   document.getElementById('status').innerHTML='<strong>'+(state.ears&&state.hat?'Christmas Elf':'Universal Character')+'</strong><br>'+state.body.replaceAll('_',' ')+' · '+(state.outfit==='None'?'base body':state.outfit+' outfit')+' · '+components.length+' synchronized rig layers · mobile-safe materials.';
-   if(clips.length)quick('Idle');
- }catch(e){console.error(e);document.getElementById('status').innerHTML='<strong>Load failed</strong><br>'+String(e.message||e)}
-}
-function findClip(q){const exact=clips.find(c=>c.name.toLowerCase()===q.toLowerCase());if(exact)return exact;const safe=clips.filter(c=>!/(attack|weapon|bow|sword|rifle|crouch|crawl|strafe)/i.test(c.name));return safe.find(c=>c.name.toLowerCase().includes(q.toLowerCase()))||clips.find(c=>c.name.toLowerCase().includes(q.toLowerCase()))}
-function play(name,loop){const clip=clips.find(c=>c.name===name);if(!clip||!character)return;character.components.forEach(c=>{const a=c.mixer.clipAction(clip);if(c.action&&c.action!==a)c.action.fadeOut(.08);a.reset();a.enabled=true;a.setLoop(loop?THREE.LoopRepeat:THREE.LoopOnce,loop?Infinity:1);a.clampWhenFinished=!loop;a.fadeIn(.08).play();c.action=a});current=clip.name;document.getElementById('playing').textContent=current;renderList()}
-function quick(q){const c=findClip(q);if(c)play(c.name,/idle|walk|run/i.test(q));document.querySelectorAll('[data-q]').forEach(b=>b.classList.toggle('active',b.dataset.q===q))}
-function stop(){if(!character)return;character.components.forEach(c=>c.mixer.stopAllAction());current='';document.getElementById('playing').textContent='Stopped';renderList()}
-function disposeScene(root){if(!root)return;root.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material){const ms=Array.isArray(o.material)?o.material:[o.material];ms.forEach(m=>{for(const k in m){const v=m[k];if(v&&v.isTexture)v.dispose()}m.dispose&&m.dispose()})}})}
-async function loadAnimations(which){
- which=which||document.getElementById('library').value||'ual1';
- if(animLibrary===which&&clips.length)return;
- if(animLoading)return animLoading;
- const url=which==='ual2'?UAL2:UAL1,label=which==='ual2'?'Standard Library 2':'Standard Library 1';
- const stat=document.getElementById('animStatus');stat.innerHTML='<strong>Loading '+label+'…</strong><br>Only one animation library is kept in memory at a time.';
- animLoading=new Promise((resolve)=>{
-   loader.load(url,g=>{
-     if(character)character.components.forEach(c=>{c.mixer.stopAllAction();clips.forEach(old=>c.mixer.uncacheClip(old))});
-     clips=(g.animations||[]).slice().sort((a,b)=>a.name.localeCompare(b.name));animLibrary=which;current='';
-     document.getElementById('count').textContent=clips.length;document.getElementById('playing').textContent='—';
-     stat.innerHTML='<strong>'+label+'</strong><br>'+clips.length+' animations loaded. Switch library to access the other set.';
-     disposeScene(g.scene);renderList();animLoading=null;quick('Idle');resolve();
-   },undefined,e=>{console.error(e);stat.innerHTML='<strong>Animation load failed</strong><br>'+String(e&&e.message||e);animLoading=null;resolve()});
- });
- return animLoading;
-}
-async function ensureAnimations(){if(!clips.length)await loadAnimations(document.getElementById('library').value||'ual1')}
-function renderList(){const q=(document.getElementById('search').value||'').toLowerCase(),el=document.getElementById('list');el.innerHTML='';clips.filter(c=>!q||c.name.toLowerCase().includes(q)).forEach(c=>{const b=document.createElement('button');b.className='anim'+(c.name===current?' active':'');b.textContent=c.name;b.title=c.name;b.addEventListener('click',()=>play(c.name,/idle|walk|run|loop/i.test(c.name)));el.appendChild(b)})}
-function read(){state.body=document.getElementById('body').value;state.height=+document.getElementById('height').value;state.skin=document.getElementById('skin').value;state.hair=document.getElementById('hair').value;state.hairColor=document.getElementById('hairColor').value;state.outfit=document.getElementById('outfit').value;state.outfitColor=document.getElementById('outfitColor').value;state.accent=document.getElementById('accent').value;state.hatColor=document.getElementById('hatColor').value;state.trim=document.getElementById('trim').value}
-function preset(){Object.assign(state,{body:'Regular_Male',height:.82,skin:'#704b3b',ears:true,hat:true,hatColor:'#b72d3c',trim:'#f3e7cf',hair:'Hair_SimpleParted',hairColor:'#7b4a26',outfit:'Peasant',outfitColor:'#237243',accent:'#b72d3c'});[['body','body'],['height','height'],['skin','skin'],['hair','hair'],['hairColor','hairColor'],['outfit','outfit'],['outfitColor','outfitColor'],['accent','accent'],['hatColor','hatColor'],['trim','trim']].forEach(x=>document.getElementById(x[0]).value=state[x[1]]);document.getElementById('ears').classList.add('active');document.getElementById('hat').classList.add('active');build()}
-['body','height','skin','hair','hairColor','outfit','outfitColor','accent','hatColor','trim'].forEach(id=>document.getElementById(id).addEventListener('change',()=>{read();build()}));document.getElementById('ears').addEventListener('click',e=>{state.ears=!state.ears;e.currentTarget.classList.toggle('active',state.ears);build()});document.getElementById('hat').addEventListener('click',e=>{state.hat=!state.hat;e.currentTarget.classList.toggle('active',state.hat);build()});document.getElementById('preset').addEventListener('click',preset);document.getElementById('search').addEventListener('input',renderList);document.getElementById('stop').addEventListener('click',stop);document.getElementById('library').addEventListener('change',e=>loadAnimations(e.target.value));document.querySelectorAll('[data-q]').forEach(b=>b.addEventListener('click',async()=>{await ensureAnimations();quick(b.dataset.q)}));
-const bp=document.getElementById('buildPanel'),ap=document.getElementById('animPanel');document.getElementById('buildBtn').addEventListener('click',()=>{bp.hidden=!bp.hidden;if(!bp.hidden)ap.hidden=true});document.getElementById('animsBtn').addEventListener('click',async()=>{ap.hidden=!ap.hidden;if(!ap.hidden){bp.hidden=true;await ensureAnimations()}});
-const clock=new THREE.Clock();function frame(){requestAnimationFrame(frame);const dt=Math.min(clock.getDelta(),.04);if(character)character.components.forEach(c=>c.mixer.update(dt));controls.update();renderer.render(scene,camera)}frame();
-function resize(){const a=innerWidth/innerHeight,v=innerWidth<820?3:3.45;camera.left=-v*a/2;camera.right=v*a/2;camera.top=v/2;camera.bottom=-v/2;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)}addEventListener('resize',resize);resize();
-document.getElementById('loadText').textContent='Loading lightweight universal character rig…';document.getElementById('loadBar').style.width='35%';await build();document.getElementById('loadBar').style.width='100%';document.getElementById('loading').classList.add('hide');
+const MODEL='https://raw.githubusercontent.com/AbrahamBrookes/hey-you-steal-that-bling/main/stolen_assets/Quaternius-characters/Elf.gltf';
+const loader=new GLTFLoader();let root=null,mixer=null,clips=[],action=null,current='',originalColours=new Map();
+
+function prep(r){r.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;const mats=Array.isArray(o.material)?o.material:[o.material];const cloned=mats.map(m=>m.clone());o.material=Array.isArray(o.material)?cloned:cloned[0];for(const m of cloned){if(m?.name&&!originalColours.has(m.name)&&m.color)originalColours.set(m.name,m.color.clone())}}})}
+function materialByName(name){const out=[];root?.traverse(o=>{if(!o.isMesh)return;for(const m of (Array.isArray(o.material)?o.material:[o.material]))if(m?.name===name)out.push(m)});return out}
+function setMat(name,color){materialByName(name).forEach(m=>m.color.set(color))}
+function palette(kind){if(!root)return;document.querySelectorAll('[data-palette]').forEach(b=>b.classList.toggle('active',b.dataset.palette===kind));if(kind==='original'){root.traverse(o=>{if(!o.isMesh)return;for(const m of (Array.isArray(o.material)?o.material:[o.material]))if(m?.name&&m.color&&originalColours.has(m.name))m.color.copy(originalColours.get(m.name))})}else{setMat('Hat','#b62f3f');setMat('Clothes','#276f43');setMat('Belt','#5a2e1d');setMat('Gold','#d5a52e')}}
+function normalize(r){const b=new THREE.Box3().setFromObject(r),s=new THREE.Vector3();b.getSize(s);if(s.y>0)r.scale.setScalar(1.72/s.y);const b2=new THREE.Box3().setFromObject(r);r.position.y-=b2.min.y}
+function play(name){const clip=clips.find(c=>c.name===name);if(!clip||!mixer)return;if(action)action.fadeOut(.10);const a=mixer.clipAction(clip);a.reset();a.enabled=true;const loop=/^(Idle|Walk|Run|Run_Carry|Walk_Carry)$/i.test(name);a.setLoop(loop?THREE.LoopRepeat:THREE.LoopOnce,loop?Infinity:1);a.clampWhenFinished=!loop;a.fadeIn(.10).play();action=a;current=name;document.getElementById('playing').textContent=name;document.querySelectorAll('[data-anim]').forEach(b=>b.classList.toggle('active',b.dataset.anim===name));renderList()}
+function stop(){if(mixer)mixer.stopAllAction();action=null;current='';document.getElementById('playing').textContent='Stopped';document.querySelectorAll('[data-anim]').forEach(b=>b.classList.remove('active'));renderList()}
+function renderList(){const q=(document.getElementById('search').value||'').toLowerCase(),list=document.getElementById('list');list.innerHTML='';clips.filter(c=>!q||c.name.toLowerCase().includes(q)).forEach(c=>{const b=document.createElement('button');b.className='anim'+(c.name===current?' active':'');b.textContent=c.name;b.title=c.name;b.addEventListener('click',()=>play(c.name));list.appendChild(b)})}
+
+loader.load(MODEL,g=>{
+ root=g.scene;prep(root);scene.add(root);normalize(root);mixer=new THREE.AnimationMixer(root);clips=(g.animations||[]).slice().sort((a,b)=>a.name.localeCompare(b.name));document.getElementById('count').textContent=clips.length;document.getElementById('loadBar').style.width='100%';palette('christmas');play(clips.some(c=>c.name==='Idle')?'Idle':clips[0]?.name);document.getElementById('loading').classList.add('hide');renderList();
+},xhr=>{if(xhr.total){document.getElementById('loadBar').style.width=Math.max(15,Math.round(xhr.loaded/xhr.total*100))+'%'}},e=>{console.error(e);document.getElementById('loadText').textContent='Could not load the elf model.'});
+
+document.querySelectorAll('[data-anim]').forEach(b=>b.addEventListener('click',()=>play(b.dataset.anim)));document.querySelectorAll('[data-palette]').forEach(b=>b.addEventListener('click',()=>palette(b.dataset.palette)));document.getElementById('search').addEventListener('input',renderList);document.getElementById('stop').addEventListener('click',stop);
+const ap=document.getElementById('animPanel'),pp=document.getElementById('palettePanel');document.getElementById('animBtn').addEventListener('click',()=>{ap.hidden=!ap.hidden;if(!ap.hidden)pp.hidden=true});document.getElementById('paletteBtn').addEventListener('click',()=>{pp.hidden=!pp.hidden;if(!pp.hidden)ap.hidden=true});document.getElementById('closeAnim').addEventListener('click',()=>ap.hidden=true);document.getElementById('closePalette').addEventListener('click',()=>pp.hidden=true);
+
+const clock=new THREE.Clock();function frame(){requestAnimationFrame(frame);const dt=Math.min(clock.getDelta(),.04);if(mixer)mixer.update(dt);controls.update();renderer.render(scene,camera)}frame();
+function resize(){const a=innerWidth/innerHeight,v=innerWidth<760?3.15:3.55;camera.left=-v*a/2;camera.right=v*a/2;camera.top=v/2;camera.bottom=-v/2;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)}addEventListener('resize',resize);resize();
 </script>
 </body></html>
