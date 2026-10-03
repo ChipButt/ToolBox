@@ -35,7 +35,7 @@
 <div class="title"><small>GameBox character quality test</small><strong>Christmas Elf Benchmark</strong></div>
 <div class="actions"><button class="glassBtn" id="footBtn">FOOTWEAR</button><button class="glassBtn" id="paletteBtn">PALETTE</button><button class="glassBtn" id="animBtn">ALL ANIMS</button></div>
 </header>
-<div class="badge">One finished model · one skeleton · real material regions · drag to rotate · pinch/scroll to zoom</div>
+<div class="badge">One finished model · one skeleton · real material regions · drag to rotate · framing locked to screen</div>
 
 <section class="panel" id="animPanel" hidden>
 <div class="panelHead"><h2>Elf Animations</h2><button class="close" id="closeAnim">×</button></div>
@@ -87,7 +87,7 @@ const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-per
 renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));renderer.setSize(innerWidth,innerHeight);renderer.shadowMap.enabled=true;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.08;document.getElementById('stage').appendChild(renderer.domElement);
 const scene=new THREE.Scene();scene.background=new THREE.Color(0xc8dbe8);scene.fog=new THREE.Fog(0xc8dbe8,7,16);
 const camera=new THREE.OrthographicCamera(-2,2,2,-2,.1,50);camera.position.set(2.45,2.2,2.45);
-const controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.enablePan=false;controls.target.set(0,.78,0);controls.minZoom=.72;controls.maxZoom=2.8;
+const controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.enablePan=false;controls.enableZoom=false;controls.target.set(0,.78,0);
 scene.add(new THREE.HemisphereLight(0xeef8ff,0x6a6358,2.1));const sun=new THREE.DirectionalLight(0xffefd5,3.4);sun.position.set(-4,7,5);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);scene.add(sun);
 const floorMat=new THREE.MeshStandardMaterial({color:0xd7c7ae,roughness:.92});const floor=new THREE.Mesh(new THREE.CylinderGeometry(1.35,1.45,.16,48),floorMat);floor.position.y=-.09;floor.receiveShadow=true;scene.add(floor);
 const ring=new THREE.Mesh(new THREE.TorusGeometry(1.10,.018,8,64),new THREE.MeshStandardMaterial({color:0xf1e8db,roughness:.9}));ring.rotation.x=Math.PI/2;ring.position.y=.005;scene.add(ring);
