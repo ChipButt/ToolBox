@@ -176,7 +176,8 @@ const CATEGORY_MATERIALS={
  bottom:['Clothes','Gold','Pants']
 };
 const loader=new GLTFLoader();
-let root=null,mixer=null,clips=[],action=null,current='',originalColours=new Map(),activeHead='elf',loadToken=0,wearableToken=0;
+let root=null,mixer=null,clips=[],action=null,current='',originalColours=new Map(),activeHead='elf',loadToken=0;
+const wearableTokens={footwear:0,hair:0,hat:0};
 let activeSlot='character',activeFootwear=null;
 const activeHeadAssets={hair:null,hat:null};
 const selections={character:'christmasElf',head:'elf',hair:'none',hat:'none',top:'base',bottom:'base',footwear:'none'};
@@ -235,9 +236,9 @@ function setHeadAsset(slot,key,silent=false){
  clearHeadAsset(slot);selections[slot]=key;
  if(key==='none'){if(!silent)updateBuilderUI();return}
  const cfg=HEAD_ASSETS[key];if(!cfg||cfg.slot!==slot){if(!silent)updateBuilderUI();return}
- const token=++wearableToken;
+ const token=++wearableTokens[slot];
  loader.load(cfg.path,g=>{
-   if(token!==wearableToken||!root)return;
+   if(token!==wearableTokens.footwears[slot]||!root)return;
    const holder=new THREE.Group();holder.name='Quaternius_'+slot+'_'+key;
    const baseMesh=baseSkinnedMesh();
    const baseByName=baseMesh?new Map(baseMesh.skeleton.bones.map((b,i)=>[b.name,{bone:b,inverse:baseMesh.skeleton.boneInverses[i]}])):new Map();
@@ -267,7 +268,7 @@ function setFootwear(key,silent=false){
  if(key==='none'){updateBuilderUI();return}
  const cfg=WEARABLES[key];if(!cfg){updateBuilderUI();return}
  loader.load(cfg.path,g=>{
-   if(token!==wearableToken||!root)return;
+   if(token!==wearableTokens.footwear||!root)return;
    const baseMesh=baseSkinnedMesh();if(!baseMesh){console.error('No base skinned mesh found');return}
    const baseByName=new Map(baseMesh.skeleton.bones.map((b,i)=>[b.name,{bone:b,inverse:baseMesh.skeleton.boneInverses[i]}]));
    const holder=new THREE.Group();holder.name='Wearable_Footwear_'+key;
@@ -281,7 +282,7 @@ function setFootwear(key,silent=false){
      if(!valid)continue;
      mesh.bind(new THREE.Skeleton(bones,inverses),baseMesh.bindMatrix.clone());mesh.castShadow=true;mesh.receiveShadow=true;holder.add(mesh);
    }
-   if(token!==wearableToken)return;root.add(holder);activeFootwear=holder;updateBuilderUI();
+   if(token!==wearableTokens.footwear)return;root.add(holder);activeFootwear=holder;updateBuilderUI();
  },undefined,e=>{console.error(e);if(token===wearableToken){selections.footwear='none';updateBuilderUI()}});
  if(!silent)updateBuilderUI();
 }
