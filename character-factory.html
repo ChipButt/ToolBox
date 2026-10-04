@@ -151,14 +151,19 @@ const CHARACTERS={
  zombieFemale:{label:'Zombie Female',path:QUATERNIUS_BASE+'electronstudio/rlzero/b5be4555cb802daf9737cb7fd376887281fd3932/examples/data/models/characters/Zombie_Female.glb'},
  zombieMale:{label:'Zombie Male',path:QUATERNIUS_BASE+'electronstudio/rlzero/b5be4555cb802daf9737cb7fd376887281fd3932/examples/data/models/characters/Zombie_Male.glb'}
 };
+const HEAD_ASSETS={
+ cowboyHair:{slot:'hair',label:'Cowboy Hair',path:q('cowboy_hair.glb')},
+ ninjaHair:{slot:'hair',label:'Ninja Hair',path:q('ninja_male_hair.glb')},
+ chefHat:{slot:'hat',label:'Chef Hat',path:q('chef_hat.glb')}
+};
 const WEARABLES={
  traditional:{path:'./assets/gamebox/wearables/footwear/traditional-elf-shoes/traditional-elf-shoes.glb',label:'Traditional Elf Shoes'}
 };
 const SLOT_OPTIONS={
  character:Object.entries(CHARACTERS).map(([id,c])=>({id,label:c.label})),
  head:[{id:'elf',label:'Original Elf'},{id:'goblin',label:'Goblin Head'}],
- hair:[{id:'none',label:'No Hair Assets Yet'}],
- hat:[{id:'base',label:'Base Hat / None'}],
+ hair:[{id:'none',label:'No Added Hair'},{id:'cowboyHair',label:'Cowboy Hair'},{id:'ninjaHair',label:'Ninja Hair'}],
+ hat:[{id:'none',label:'No Added Hat'},{id:'chefHat',label:'Chef Hat'}],
  top:[{id:'base',label:'Base Top'}],
  bottom:[{id:'base',label:'Base Bottom'}],
  footwear:[{id:'none',label:'Original Feet'},{id:'traditional',label:'Traditional Elf Shoes'}]
@@ -173,7 +178,8 @@ const CATEGORY_MATERIALS={
 const loader=new GLTFLoader();
 let root=null,mixer=null,clips=[],action=null,current='',originalColours=new Map(),activeHead='elf',loadToken=0,wearableToken=0;
 let activeSlot='character',activeFootwear=null;
-const selections={character:'christmasElf',head:'elf',hair:'none',hat:'base',top:'base',bottom:'base',footwear:'none'};
+const activeHeadAssets={hair:null,hat:null};
+const selections={character:'christmasElf',head:'elf',hair:'none',hat:'none',top:'base',bottom:'base',footwear:'none'};
 
 function prep(r){r.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;const mats=Array.isArray(o.material)?o.material:[o.material];const cloned=mats.map(m=>m.clone());o.material=Array.isArray(o.material)?cloned:cloned[0];for(const m of cloned){if(m?.name&&!originalColours.has(m.name)&&m.color)originalColours.set(m.name,m.color.clone())}}})}
 function materialByName(name){const out=[];root?.traverse(o=>{if(!o.isMesh)return;for(const m of (Array.isArray(o.material)?o.material:[o.material]))if(m?.name===name)out.push(m)});return out}
@@ -195,6 +201,7 @@ function refreshColours(){
  const box=document.getElementById('colorRows');if(!box)return;box.innerHTML='';
  let mats;
  if(activeSlot==='footwear'&&activeFootwear)mats=materialsIn(activeFootwear);
+ else if((activeSlot==='hair'||activeSlot==='hat')&&activeHeadAssets[activeSlot])mats=materialsIn(activeHeadAssets[activeSlot]);
  else if(activeSlot==='character')mats=materialsIn(root);
  else mats=materialsIn(root,CATEGORY_MATERIALS[activeSlot]||[]);
  if(!mats||!mats.size){box.innerHTML='<div class="emptyNote">No recolourable material regions are available for this selection yet.</div>';return}
@@ -220,6 +227,39 @@ function setSlot(slot){if(!SLOT_OPTIONS[slot])return;activeSlot=slot;updateBuild
 function cycleChoice(dir){
  const opts=availableOptions(activeSlot);if(opts.length<2){updateBuilderUI();return}
  let i=Math.max(0,opts.findIndex(o=>o.id===selections[activeSlot]));i=(i+dir+opts.length)%opts.length;applyChoice(activeSlot,opts[i].id);
+}
+function clearHeadAsset(slot){
+ const obj=activeHeadAssets[slot];if(obj?.parent)obj.parent.remove(obj);activeHeadAssets[slot]=null;
+}
+function setHeadAsset(slot,key,silent=false){
+ clearHeadAsset(slot);selections[slot]=key;
+ if(key==='none'){if(!silent)updateBuilderUI();return}
+ const cfg=HEAD_ASSETS[key];if(!cfg||cfg.slot!==slot){if(!silent)updateBuilderUI();return}
+ const token=++wearableToken;
+ loader.load(cfg.path,g=>{
+   if(token!==wearableToken||!root)return;
+   const holder=new THREE.Group();holder.name='Quaternius_'+slot+'_'+key;
+   const baseMesh=baseSkinnedMesh();
+   const baseByName=baseMesh?new Map(baseMesh.skeleton.bones.map((b,i)=>[b.name,{bone:b,inverse:baseMesh.skeleton.boneInverses[i]}])):new Map();
+   g.scene.updateMatrixWorld(true);
+   g.scene.traverse(src=>{
+     if(!src.isMesh)return;
+     const mats=(Array.isArray(src.material)?src.material:[src.material]).map(m=>m.clone());
+     if(src.isSkinnedMesh&&baseMesh){
+       const bones=[],inverses=[];let valid=true;
+       for(const sb of src.skeleton.bones){const hit=baseByName.get(sb.name);if(!hit){valid=false;break}bones.push(hit.bone);inverses.push(hit.inverse.clone())}
+       if(!valid)return;
+       const mesh=new THREE.SkinnedMesh(src.geometry,mats.length===1?mats[0]:mats);mesh.name=src.name;
+       src.matrixWorld.decompose(mesh.position,mesh.quaternion,mesh.scale);
+       mesh.bind(new THREE.Skeleton(bones,inverses),baseMesh.bindMatrix.clone());mesh.castShadow=true;mesh.receiveShadow=true;holder.add(mesh);
+     }else{
+       const mesh=new THREE.Mesh(src.geometry,mats.length===1?mats[0]:mats);mesh.name=src.name;
+       src.matrixWorld.decompose(mesh.position,mesh.quaternion,mesh.scale);mesh.castShadow=true;mesh.receiveShadow=true;holder.add(mesh);
+     }
+   });
+   root.add(holder);activeHeadAssets[slot]=holder;updateBuilderUI();
+ },undefined,e=>{console.error(e);selections[slot]='none';if(!silent)updateBuilderUI()});
+ if(!silent)updateBuilderUI();
 }
 function clearFootwear(){if(activeFootwear?.parent)activeFootwear.parent.remove(activeFootwear);activeFootwear=null}
 function setFootwear(key,silent=false){
@@ -259,6 +299,7 @@ function applyChoice(slot,id){
  }
  selections[slot]=id;
  if(slot==='footwear'){setFootwear(id);return}
+ if(slot==='hair'||slot==='hat'){setHeadAsset(slot,id);return}
  updateBuilderUI();
 }
 function loadCharacter(){
@@ -266,12 +307,12 @@ function loadCharacter(){
  const charId=selections.character;
  const char=CHARACTERS[charId]||CHARACTERS.christmasElf;
  const model=charId==='christmasElf'?(MODELS[selections.head]||MODELS.elf):char.path;
- const previous=current||'Idle',foot=selections.footwear;
+ const previous=current||'Idle',foot=selections.footwear,hair=selections.hair,hat=selections.hat;
  document.getElementById('loadText').textContent='Loading '+char.label+'…';
  document.getElementById('loading').classList.remove('hide');
  loader.load(model,g=>{
    if(token!==loadToken)return;
-   clearFootwear();if(root)scene.remove(root);if(mixer)mixer.stopAllAction();
+   clearFootwear();clearHeadAsset('hair');clearHeadAsset('hat');if(root)scene.remove(root);if(mixer)mixer.stopAllAction();
    root=g.scene;originalColours.clear();prep(root);scene.add(root);normalize(root);
    mixer=new THREE.AnimationMixer(root);clips=(g.animations||[]).slice().sort((a,b)=>a.name.localeCompare(b.name));
    document.getElementById('count').textContent=clips.length;document.getElementById('loadBar').style.width='100%';
@@ -280,6 +321,8 @@ function loadCharacter(){
    if(next)play(next);else{current='';document.getElementById('playing').textContent='No clips';renderList()}
    document.getElementById('loading').classList.add('hide');updateBuilderUI();
    if(foot&&foot!=='none')setFootwear(foot,true);
+   if(hair&&hair!=='none')setHeadAsset('hair',hair,true);
+   if(hat&&hat!=='none')setHeadAsset('hat',hat,true);
  },xhr=>{if(token===loadToken&&xhr.total){document.getElementById('loadBar').style.width=Math.max(15,Math.round(xhr.loaded/xhr.total*100))+'%'}},e=>{console.error(e);if(token===loadToken){document.getElementById('loadText').textContent='Could not load '+char.label+'.'}});
 }
 loadCharacter();
