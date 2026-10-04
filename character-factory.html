@@ -108,19 +108,48 @@ const MODELS={
  goblin:'./assets/gamebox/christmas-elf-goblin-head.gltf'
 };
 const QUATERNIUS_BASE='https://raw.githubusercontent.com/';
+const QUATERNIUS_LFS='https://github.com/ConcordDev/concord-cognitive-engine/raw/56ad188316f8130d5630fb42e3c6834eb7bc7029/apps/concordia-living-world/unity-client/Assets/StreamingAssets/HubKit/';
+const q=id=>QUATERNIUS_LFS+id;
 const CHARACTERS={
  christmasElf:{label:'Christmas Elf',path:null},
- blueSoldierFemale:{label:'Blue Soldier Female',path:QUATERNIUS_BASE+'electronstudio/rlzero/b5be4555cb802daf9737cb7fd376887281fd3932/examples/data/models/characters/BlueSoldier_Female.glb'},
- blueSoldierMale:{label:'Blue Soldier Male',path:QUATERNIUS_BASE+'electronstudio/rlzero/b5be4555cb802daf9737cb7fd376887281fd3932/examples/data/models/characters/BlueSoldier_Male.glb'},
- casual2Female:{label:'Casual Female',path:QUATERNIUS_BASE+'electronstudio/rlzero/b5be4555cb802daf9737cb7fd376887281fd3932/examples/data/models/characters/Casual2_Female.glb'},
- casual2Male:{label:'Casual Male',path:QUATERNIUS_BASE+'electronstudio/rlzero/b5be4555cb802daf9737cb7fd376887281fd3932/examples/data/models/characters/Casual2_Male.glb'},
+ blueSoldierFemale:{label:'Blue Soldier Female',path:q('bluesoldier_female.glb')},
+ blueSoldierMale:{label:'Blue Soldier Male',path:q('bluesoldier_male.glb')},
+ casual2Female:{label:'Casual 2 Female',path:q('casual2_female.glb')},
+ casual2Male:{label:'Casual 2 Male',path:q('casual2_male.glb')},
+ casual3Female:{label:'Casual 3 Female',path:q('casual3_female.glb')},
+ casual3Male:{label:'Casual 3 Male',path:q('casual3_male.glb')},
+ casualBald:{label:'Casual Bald',path:q('casual_bald.glb')},
+ casualFemale:{label:'Casual Female',path:q('casual_female.glb')},
+ casualMale:{label:'Casual Male',path:q('casual_male.glb')},
+ chefFemale:{label:'Chef Female',path:q('chef_female.glb')},
+ chefMale:{label:'Chef Male',path:q('chef_male.glb')},
+ cowboyFemale:{label:'Cowboy Female',path:q('cowboy_female.glb')},
+ cowboyMale:{label:'Cowboy Male',path:q('cowboy_male.glb')},
+ doctorFemaleOld:{label:'Doctor Female Old',path:q('doctor_female_old.glb')},
+ doctorFemaleYoung:{label:'Doctor Female Young',path:q('doctor_female_young.glb')},
+ doctorMaleOld:{label:'Doctor Male Old',path:q('doctor_male_old.glb')},
+ doctorMaleYoung:{label:'Doctor Male Young',path:q('doctor_male_young.glb')},
+ goblinFemale:{label:'Goblin Female',path:q('goblin_female.glb')},
+ goblinMale:{label:'Goblin Male',path:q('goblin_male.glb')},
+ kimonoFemale:{label:'Kimono Female',path:q('kimono_female.glb')},
+ kimonoMale:{label:'Kimono Male',path:q('kimono_male.glb')},
+ knightGoldenFemale:{label:'Golden Knight Female',path:q('knight_golden_female.glb')},
+ knightGoldenMale:{label:'Golden Knight Male',path:q('knight_golden_male.glb')},
+ knightMale:{label:'Knight Male',path:q('knight_male.glb')},
+ ninjaFemale:{label:'Ninja Female',path:q('ninja_female.glb')},
+ ninjaMale:{label:'Ninja Male',path:q('ninja_male.glb')},
+ ninjaSand:{label:'Sand Ninja',path:q('ninja_sand.glb')},
+ ninjaSandFemale:{label:'Sand Ninja Female',path:q('ninja_sand_female.glb')},
+ oldClassyFemale:{label:'Old Classy Female',path:q('oldclassy_female.glb')},
+ oldClassyMale:{label:'Old Classy Male',path:q('oldclassy_male.glb')},
+ pirateFemale:{label:'Pirate Female',path:q('pirate_female.glb')},
+ pirateMale:{label:'Pirate Male',path:q('pirate_male.glb')},
+ vikingFemale:{label:'Viking Female',path:QUATERNIUS_BASE+'smileynet/teach-me/40478a1d779ae660c0dd19e4877a4dd61c04489c/test-scene/assets/quaternius-characters/Viking_Female.glb'},
+ wizard:{label:'Wizard',path:QUATERNIUS_BASE+'smileynet/teach-me/40478a1d779ae660c0dd19e4877a4dd61c04489c/test-scene/assets/quaternius-characters/Wizard.glb'},
  workerFemale:{label:'Worker Female',path:QUATERNIUS_BASE+'electronstudio/rlzero/b5be4555cb802daf9737cb7fd376887281fd3932/examples/data/models/characters/Worker_Female.glb'},
  workerMale:{label:'Worker Male',path:QUATERNIUS_BASE+'electronstudio/rlzero/b5be4555cb802daf9737cb7fd376887281fd3932/examples/data/models/characters/Worker_Male.glb'},
  zombieFemale:{label:'Zombie Female',path:QUATERNIUS_BASE+'electronstudio/rlzero/b5be4555cb802daf9737cb7fd376887281fd3932/examples/data/models/characters/Zombie_Female.glb'},
- zombieMale:{label:'Zombie Male',path:QUATERNIUS_BASE+'electronstudio/rlzero/b5be4555cb802daf9737cb7fd376887281fd3932/examples/data/models/characters/Zombie_Male.glb'},
- knightGoldenFemale:{label:'Golden Knight Female',path:QUATERNIUS_BASE+'smileynet/teach-me/40478a1d779ae660c0dd19e4877a4dd61c04489c/test-scene/assets/quaternius-characters/Knight_Golden_Female.glb'},
- vikingFemale:{label:'Viking Female',path:QUATERNIUS_BASE+'smileynet/teach-me/40478a1d779ae660c0dd19e4877a4dd61c04489c/test-scene/assets/quaternius-characters/Viking_Female.glb'},
- wizard:{label:'Wizard',path:QUATERNIUS_BASE+'smileynet/teach-me/40478a1d779ae660c0dd19e4877a4dd61c04489c/test-scene/assets/quaternius-characters/Wizard.glb'}
+ zombieMale:{label:'Zombie Male',path:QUATERNIUS_BASE+'electronstudio/rlzero/b5be4555cb802daf9737cb7fd376887281fd3932/examples/data/models/characters/Zombie_Male.glb'}
 };
 const WEARABLES={
  traditional:{path:'./assets/gamebox/wearables/footwear/traditional-elf-shoes/traditional-elf-shoes.glb',label:'Traditional Elf Shoes'}
