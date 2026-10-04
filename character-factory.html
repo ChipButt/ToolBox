@@ -38,10 +38,10 @@
 <div id="stage"></div>
 <header class="top">
 <a class="back" href="./" aria-label="Back to ToolBox">‹</a>
-<div class="title"><small>GameBox character quality test</small><strong>Christmas Elf Benchmark</strong></div>
+<div class="title"><small>GameBox character quality test</small><strong>GameBox Character Factory</strong></div>
 <div class="actions"><button class="glassBtn" id="paletteBtn">COLOURS</button><button class="glassBtn" id="animBtn">ANIMS</button></div>
 </header>
-<div class="badge">One finished model · one skeleton · real material regions · drag to rotate · framing locked to screen</div>
+<div class="badge">Quaternius character builder · choose a category · use ‹ › to cycle · recolour materials</div>
 
 <section class="panel" id="animPanel" hidden>
 <div class="panelHead"><h2>Elf Animations</h2><button class="close" id="closeAnim">×</button></div>
@@ -64,7 +64,8 @@
 <div class="builderDock">
   <div class="builderChoice"><small id="builderSlot">HEAD</small><strong id="builderOption">Original Elf</strong></div>
   <div class="slotRail">
-    <button data-slot="head" class="active">HEAD</button>
+    <button data-slot="character" class="active">CHARACTER</button>
+    <button data-slot="head">HEAD</button>
     <button data-slot="hair">HAIR</button>
     <button data-slot="hat">HAT</button>
     <button data-slot="top">TOP</button>
@@ -106,28 +107,44 @@ const MODELS={
  elf:'./assets/gamebox/christmas-elf.gltf',
  goblin:'./assets/gamebox/christmas-elf-goblin-head.gltf'
 };
+const QUATERNIUS_BASE='https://raw.githubusercontent.com/';
+const CHARACTERS={
+ christmasElf:{label:'Christmas Elf',path:null},
+ blueSoldierFemale:{label:'Blue Soldier Female',path:QUATERNIUS_BASE+'electronstudio/rlzero/b5be4555cb802daf9737cb7fd376887281fd3932/examples/data/models/characters/BlueSoldier_Female.glb'},
+ blueSoldierMale:{label:'Blue Soldier Male',path:QUATERNIUS_BASE+'electronstudio/rlzero/b5be4555cb802daf9737cb7fd376887281fd3932/examples/data/models/characters/BlueSoldier_Male.glb'},
+ casual2Female:{label:'Casual Female',path:QUATERNIUS_BASE+'electronstudio/rlzero/b5be4555cb802daf9737cb7fd376887281fd3932/examples/data/models/characters/Casual2_Female.glb'},
+ casual2Male:{label:'Casual Male',path:QUATERNIUS_BASE+'electronstudio/rlzero/b5be4555cb802daf9737cb7fd376887281fd3932/examples/data/models/characters/Casual2_Male.glb'},
+ workerFemale:{label:'Worker Female',path:QUATERNIUS_BASE+'electronstudio/rlzero/b5be4555cb802daf9737cb7fd376887281fd3932/examples/data/models/characters/Worker_Female.glb'},
+ workerMale:{label:'Worker Male',path:QUATERNIUS_BASE+'electronstudio/rlzero/b5be4555cb802daf9737cb7fd376887281fd3932/examples/data/models/characters/Worker_Male.glb'},
+ zombieFemale:{label:'Zombie Female',path:QUATERNIUS_BASE+'electronstudio/rlzero/b5be4555cb802daf9737cb7fd376887281fd3932/examples/data/models/characters/Zombie_Female.glb'},
+ zombieMale:{label:'Zombie Male',path:QUATERNIUS_BASE+'electronstudio/rlzero/b5be4555cb802daf9737cb7fd376887281fd3932/examples/data/models/characters/Zombie_Male.glb'},
+ knightGoldenFemale:{label:'Golden Knight Female',path:QUATERNIUS_BASE+'smileynet/teach-me/40478a1d779ae660c0dd19e4877a4dd61c04489c/test-scene/assets/quaternius-characters/Knight_Golden_Female.glb'},
+ vikingFemale:{label:'Viking Female',path:QUATERNIUS_BASE+'smileynet/teach-me/40478a1d779ae660c0dd19e4877a4dd61c04489c/test-scene/assets/quaternius-characters/Viking_Female.glb'},
+ wizard:{label:'Wizard',path:QUATERNIUS_BASE+'smileynet/teach-me/40478a1d779ae660c0dd19e4877a4dd61c04489c/test-scene/assets/quaternius-characters/Wizard.glb'}
+};
 const WEARABLES={
  traditional:{path:'./assets/gamebox/wearables/footwear/traditional-elf-shoes/traditional-elf-shoes.glb',label:'Traditional Elf Shoes'}
 };
 const SLOT_OPTIONS={
+ character:Object.entries(CHARACTERS).map(([id,c])=>({id,label:c.label})),
  head:[{id:'elf',label:'Original Elf'},{id:'goblin',label:'Goblin Head'}],
  hair:[{id:'none',label:'No Hair Assets Yet'}],
- hat:[{id:'base',label:'Elf Hat (Base Model)'}],
- top:[{id:'base',label:'Elf Outfit (Base Model)'}],
- bottom:[{id:'base',label:'Elf Outfit (Base Model)'}],
+ hat:[{id:'base',label:'Base Hat / None'}],
+ top:[{id:'base',label:'Base Top'}],
+ bottom:[{id:'base',label:'Base Bottom'}],
  footwear:[{id:'none',label:'Original Feet'},{id:'traditional',label:'Traditional Elf Shoes'}]
 };
 const CATEGORY_MATERIALS={
  head:['Skin','Face','Goblin Face','Inner Ear Pink'],
  hair:[],
  hat:['Hat','White Fur Trim','Gold'],
- top:['Clothes','White Fur Trim','Gold'],
- bottom:['Clothes','Gold']
+ top:['Clothes','White Fur Trim','Gold','Shirt','Top','Jacket'],
+ bottom:['Clothes','Gold','Pants']
 };
 const loader=new GLTFLoader();
 let root=null,mixer=null,clips=[],action=null,current='',originalColours=new Map(),activeHead='elf',loadToken=0,wearableToken=0;
-let activeSlot='head',activeFootwear=null;
-const selections={head:'elf',hair:'none',hat:'base',top:'base',bottom:'base',footwear:'none'};
+let activeSlot='character',activeFootwear=null;
+const selections={character:'christmasElf',head:'elf',hair:'none',hat:'base',top:'base',bottom:'base',footwear:'none'};
 
 function prep(r){r.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;const mats=Array.isArray(o.material)?o.material:[o.material];const cloned=mats.map(m=>m.clone());o.material=Array.isArray(o.material)?cloned:cloned[0];for(const m of cloned){if(m?.name&&!originalColours.has(m.name)&&m.color)originalColours.set(m.name,m.color.clone())}}})}
 function materialByName(name){const out=[];root?.traverse(o=>{if(!o.isMesh)return;for(const m of (Array.isArray(o.material)?o.material:[o.material]))if(m?.name===name)out.push(m)});return out}
@@ -149,6 +166,7 @@ function refreshColours(){
  const box=document.getElementById('colorRows');if(!box)return;box.innerHTML='';
  let mats;
  if(activeSlot==='footwear'&&activeFootwear)mats=materialsIn(activeFootwear);
+ else if(activeSlot==='character')mats=materialsIn(root);
  else mats=materialsIn(root,CATEGORY_MATERIALS[activeSlot]||[]);
  if(!mats||!mats.size){box.innerHTML='<div class="emptyNote">No recolourable material regions are available for this selection yet.</div>';return}
  for(const [name,list] of mats){
@@ -158,16 +176,20 @@ function refreshColours(){
    row.append(span,input);box.appendChild(row);
  }
 }
+function availableOptions(slot){
+ if(slot==='head'&&selections.character!=='christmasElf')return [{id:'base',label:'Original Head'}];
+ return SLOT_OPTIONS[slot]||[];
+}
 function updateBuilderUI(){
  document.querySelectorAll('[data-slot]').forEach(b=>b.classList.toggle('active',b.dataset.slot===activeSlot));
- const opts=SLOT_OPTIONS[activeSlot]||[],id=selections[activeSlot],opt=opts.find(o=>o.id===id)||opts[0];
+ const opts=availableOptions(activeSlot),id=selections[activeSlot],opt=opts.find(o=>o.id===id)||opts[0];
  document.getElementById('builderSlot').textContent=activeSlot.toUpperCase();
  document.getElementById('builderOption').textContent=opt?.label||'No options';
  refreshColours();
 }
 function setSlot(slot){if(!SLOT_OPTIONS[slot])return;activeSlot=slot;updateBuilderUI()}
 function cycleChoice(dir){
- const opts=SLOT_OPTIONS[activeSlot]||[];if(opts.length<2){updateBuilderUI();return}
+ const opts=availableOptions(activeSlot);if(opts.length<2){updateBuilderUI();return}
  let i=Math.max(0,opts.findIndex(o=>o.id===selections[activeSlot]));i=(i+dir+opts.length)%opts.length;applyChoice(activeSlot,opts[i].id);
 }
 function clearFootwear(){if(activeFootwear?.parent)activeFootwear.parent.remove(activeFootwear);activeFootwear=null}
@@ -195,16 +217,28 @@ function setFootwear(key,silent=false){
  if(!silent)updateBuilderUI();
 }
 function applyChoice(slot,id){
+ if(slot==='character'){
+   selections.character=id;
+   if(id!=='christmasElf'){selections.head='base';selections.footwear='none';clearFootwear()}
+   else if(selections.head==='base')selections.head='elf';
+   loadCharacter();
+   return;
+ }
+ if(slot==='head'){
+   if(selections.character!=='christmasElf'){updateBuilderUI();return}
+   selections.head=id;activeHead=id;loadCharacter();return;
+ }
  selections[slot]=id;
- if(slot==='head'){activeHead=id;loadCharacter(id);return}
  if(slot==='footwear'){setFootwear(id);return}
  updateBuilderUI();
 }
-function loadCharacter(kind){
- const token=++loadToken,model=MODELS[kind]||MODELS.elf;
- activeHead=kind;selections.head=kind;
+function loadCharacter(){
+ const token=++loadToken;
+ const charId=selections.character;
+ const char=CHARACTERS[charId]||CHARACTERS.christmasElf;
+ const model=charId==='christmasElf'?(MODELS[selections.head]||MODELS.elf):char.path;
  const previous=current||'Idle',foot=selections.footwear;
- document.getElementById('loadText').textContent=kind==='goblin'?'Loading goblin-head elf…':'Loading original elf…';
+ document.getElementById('loadText').textContent='Loading '+char.label+'…';
  document.getElementById('loading').classList.remove('hide');
  loader.load(model,g=>{
    if(token!==loadToken)return;
@@ -212,13 +246,14 @@ function loadCharacter(kind){
    root=g.scene;originalColours.clear();prep(root);scene.add(root);normalize(root);
    mixer=new THREE.AnimationMixer(root);clips=(g.animations||[]).slice().sort((a,b)=>a.name.localeCompare(b.name));
    document.getElementById('count').textContent=clips.length;document.getElementById('loadBar').style.width='100%';
-   palette('christmas');
+   if(charId==='christmasElf')palette('christmas');else refreshColours();
    const next=clips.some(c=>c.name===previous)?previous:(clips.some(c=>c.name==='Idle')?'Idle':clips[0]?.name);
-   play(next);document.getElementById('loading').classList.add('hide');renderList();updateBuilderUI();
+   if(next)play(next);else{current='';document.getElementById('playing').textContent='No clips';renderList()}
+   document.getElementById('loading').classList.add('hide');updateBuilderUI();
    if(foot&&foot!=='none')setFootwear(foot,true);
- },xhr=>{if(token===loadToken&&xhr.total){document.getElementById('loadBar').style.width=Math.max(15,Math.round(xhr.loaded/xhr.total*100))+'%'}},e=>{console.error(e);if(token===loadToken){document.getElementById('loadText').textContent='Could not load this head option.'}});
+ },xhr=>{if(token===loadToken&&xhr.total){document.getElementById('loadBar').style.width=Math.max(15,Math.round(xhr.loaded/xhr.total*100))+'%'}},e=>{console.error(e);if(token===loadToken){document.getElementById('loadText').textContent='Could not load '+char.label+'.'}});
 }
-loadCharacter('elf');
+loadCharacter();
 
 document.querySelectorAll('[data-anim]').forEach(b=>b.addEventListener('click',()=>play(b.dataset.anim)));
 document.querySelectorAll('[data-palette]').forEach(b=>b.addEventListener('click',()=>palette(b.dataset.palette)));
