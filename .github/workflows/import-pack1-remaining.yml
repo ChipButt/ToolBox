@@ -23,10 +23,17 @@ jobs:
       - name: Install gdown
         run: python -m pip install --disable-pip-version-check gdown
 
-      - name: Download official Quaternius source folder
+      - name: Download exact official Quaternius glTF sources
         run: |
           mkdir -p /tmp/quaternius
-          gdown --folder 'https://drive.google.com/drive/folders/1sNi1AfenfPRrvRt5yfaj5QMMd6KKcUJ5?usp=sharing' -O /tmp/quaternius || true
+          gdown 1O41fF83DdwoRNGpymuv6YI3q4CvmX9MK -O /tmp/quaternius/VikingHelmet.gltf
+          gdown 1iE0SfQLo9hNZQzaRQsA2Gd3scgJ4P3LV -O /tmp/quaternius/Viking_Male.gltf
+          gdown 1EFjDcONKk6r-yJoqShGi2XY4lYydxg2Y -O /tmp/quaternius/Witch.gltf
+          gdown 1kVJicV3OAdeL96Uif-3ud1bh8gsl7QGT -O /tmp/quaternius/Wizard.gltf
+          gdown 1rnm-vJlpnt0QFKOzwbV1-wUQKaFxJ-1T -O /tmp/quaternius/Worker_Female.gltf
+          gdown 10TWw1W-6aa4KmwKbQYewSG4-m67_4nof -O /tmp/quaternius/Worker_Male.gltf
+          gdown 1-4EzSd9H7pclipM5PipQLzQaPd1amg47 -O /tmp/quaternius/Zombie_Female.gltf
+          gdown 1-12K5xAgi8ZPHTrtMYGbA6dSk2jRY0Ib -O /tmp/quaternius/Zombie_Male.gltf
 
       - name: Import exact remaining glTF sources one asset per commit
         shell: bash
