@@ -24,11 +24,12 @@ jobs:
           ref: main
           fetch-depth: 0
 
-      - name: Fetch exact Pack 2 batch through Git LFS
+      - name: Fetch and verify full Pack 2 FBX source
         shell: bash
         run: |
           set -euo pipefail
-          rm -rf /tmp/pack2-transfer
+          rm -rf /tmp/pack2-transfer /tmp/quaternius
+          mkdir -p /tmp/quaternius
           export GIT_LFS_SKIP_SMUDGE=1
           git clone --depth 1 --filter=blob:none --sparse https://github.com/Maisha617/Maze-Runner-Game-.git /tmp/pack2-transfer
           cd /tmp/pack2-transfer
@@ -36,7 +37,27 @@ jobs:
           git checkout main
           git lfs install --local
           unset GIT_LFS_SKIP_SMUDGE
-          git lfs pull --include="Ultimate Nature Pack - Jun 2019/FBX/BushBerries_1.fbx,Ultimate Nature Pack - Jun 2019/FBX/BushBerries_2.fbx,Ultimate Nature Pack - Jun 2019/FBX/Bush_1.fbx,Ultimate Nature Pack - Jun 2019/FBX/Bush_2.fbx,Ultimate Nature Pack - Jun 2019/FBX/Bush_Snow_1.fbx,Ultimate Nature Pack - Jun 2019/FBX/Bush_Snow_2.fbx,Ultimate Nature Pack - Jun 2019/FBX/CactusFlower_1.fbx,Ultimate Nature Pack - Jun 2019/FBX/CactusFlowers_2.fbx,Ultimate Nature Pack - Jun 2019/FBX/CactusFlowers_3.fbx,Ultimate Nature Pack - Jun 2019/FBX/CactusFlowers_4.fbx" --exclude=""
+          git lfs pull --include="Ultimate Nature Pack - Jun 2019/FBX/*.fbx" --exclude=""
+          cp -a "Ultimate Nature Pack - Jun 2019/FBX" /tmp/quaternius/FBX
+
+          fbx_dir="/tmp/quaternius/FBX"
+          count="$(find "$fbx_dir" -maxdepth 1 -type f -name '*.fbx' | wc -l | tr -d ' ')"
+          [ "$count" = "150" ] || { echo "Expected 150 FBX files, found $count"; exit 1; }
+
+          : > /tmp/pack2-fbx-manifest.sha256
+          while IFS= read -r name; do
+            hash="$(sha256sum "$fbx_dir/$name" | awk '{print $1}')"
+            printf '%s  %s\n' "$hash" "$name" >> /tmp/pack2-fbx-manifest.sha256
+          done < <(find "$fbx_dir" -maxdepth 1 -type f -name '*.fbx' -printf '%f\n' | LC_ALL=C sort)
+
+          actual_manifest_hash="$(sha256sum /tmp/pack2-fbx-manifest.sha256 | awk '{print $1}')"
+          expected_manifest_hash="e4d8b3343ce35e4f57f7c6c48ccc42f939d55695882d62ee2a65c9e23250909d"
+          [ "$actual_manifest_hash" = "$expected_manifest_hash" ] || {
+            echo "Pack 2 full manifest mismatch"
+            echo "expected=$expected_manifest_hash"
+            echo "actual=$actual_manifest_hash"
+            exit 1
+          }
 
       - name: Import verified batch one FBX per commit
         shell: bash
@@ -44,7 +65,7 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          src_dir="/tmp/pack2-transfer/Ultimate Nature Pack - Jun 2019/FBX"
+          src_dir="/tmp/quaternius/FBX"
           dest_dir="assets/gamebox/quaternius/ultimate-nature"
 
           import_one() {
