@@ -1,0 +1,127 @@
+name: Import Quaternius Pack 2 Ultimate Nature assets
+
+on:
+  push:
+    branches:
+      - pack2-import-helper
+    paths:
+      - .github/workflows/import-pack2-ultimate-nature.yml
+
+permissions:
+  contents: write
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Install and patch gdown folder limit
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check gdown
+          python - <<'PY2'
+          import importlib
+          from pathlib import Path
+          m = importlib.import_module("gdown.download_folder")
+          p = Path(m.__file__)
+          s = p.read_text()
+          if "MAX_NUMBER_FILES = 50" in s:
+              s = s.replace("MAX_NUMBER_FILES = 50", "MAX_NUMBER_FILES = 1000")
+              p.write_text(s)
+          print("gdown folder module:", p)
+          PY2
+
+      - name: Download official Quaternius Ultimate Nature source folder
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/quaternius
+          python - <<'PY2'
+          import gdown
+          url = "https://drive.google.com/drive/folders/1-Kl0L_Jg8awbh0S5T-z3zxh4mVlnxTpa?usp=sharing"
+          result = gdown.download_folder(url=url, output="/tmp/quaternius", quiet=False, use_cookies=False)
+          if not result:
+              raise SystemExit("gdown returned no downloaded files")
+          print("Downloaded", len(result), "files")
+          PY2
+
+      - name: Verify all 150 FBX sources against uploaded ZIP manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          fbx_dir="$(find /tmp/quaternius -type d -name FBX -print -quit)"
+          if [ -z "$fbx_dir" ]; then
+            echo "FBX source directory not found"
+            exit 1
+          fi
+          count="$(find "$fbx_dir" -maxdepth 1 -type f -name '*.fbx' | wc -l | tr -d ' ')"
+          if [ "$count" != "150" ]; then
+            echo "Expected 150 FBX assets, found $count"
+            exit 1
+          fi
+          : > /tmp/pack2-fbx-manifest.sha256
+          while IFS= read -r name; do
+            hash="$(sha256sum "$fbx_dir/$name" | awk '{print $1}')"
+            printf '%s  %s\n' "$hash" "$name" >> /tmp/pack2-fbx-manifest.sha256
+          done < <(find "$fbx_dir" -maxdepth 1 -type f -name '*.fbx' -printf '%f\n' | LC_ALL=C sort)
+          actual_manifest_hash="$(sha256sum /tmp/pack2-fbx-manifest.sha256 | awk '{print $1}')"
+          expected_manifest_hash="e4d8b3343ce35e4f57f7c6c48ccc42f939d55695882d62ee2a65c9e23250909d"
+          echo "expected=$expected_manifest_hash"
+          echo "actual=$actual_manifest_hash"
+          if [ "$actual_manifest_hash" != "$expected_manifest_hash" ]; then
+            echo "Pack 2 FBX manifest mismatch; refusing to touch main."
+            exit 1
+          fi
+
+      - name: Import Pack 2 one FBX asset per commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          fbx_dir="$(find /tmp/quaternius -type d -name FBX -print -quit)"
+          dest_dir="assets/gamebox/quaternius/ultimate-nature"
+
+          while IFS= read -r name; do
+            src="$fbx_dir/$name"
+            expected="$(sha256sum "$src" | awk '{print $1}')"
+
+            git fetch origin main
+            git checkout main
+            git reset --hard origin/main
+            mkdir -p "$dest_dir"
+            dest="$dest_dir/$name"
+
+            if [ -f "$dest" ]; then
+              current="$(sha256sum "$dest" | awk '{print $1}')"
+              if [ "$current" = "$expected" ]; then
+                echo "$name already present with exact checksum; skipping."
+                continue
+              fi
+              echo "$name already exists but checksum differs; refusing to overwrite."
+              exit 1
+            fi
+
+            cp "$src" "$dest"
+            verify="$(sha256sum "$dest" | awk '{print $1}')"
+            if [ "$verify" != "$expected" ]; then
+              echo "Post-copy checksum mismatch for $name"
+              exit 1
+            fi
+
+            magic="$(head -c 18 "$dest")"
+            if [ "$magic" != "Kaydara FBX Binary" ]; then
+              echo "Unexpected FBX header for $name"
+              exit 1
+            fi
+
+            git add "$dest"
+            git commit -m "Import Quaternius Ultimate Nature $name"
+            git push origin HEAD:main
+          done < <(find "$fbx_dir" -maxdepth 1 -type f -name '*.fbx' -printf '%f\n' | LC_ALL=C sort)
