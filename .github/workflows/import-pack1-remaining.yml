@@ -1,0 +1,92 @@
+name: Import remaining Quaternius Pack 1 assets
+
+on:
+  push:
+    branches:
+      - pack1-import-helper
+    paths:
+      - .github/workflows/import-pack1-remaining.yml
+
+permissions:
+  contents: write
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Install gdown
+        run: python -m pip install --disable-pip-version-check gdown
+
+      - name: Download official Quaternius source folder
+        run: |
+          mkdir -p /tmp/quaternius
+          gdown --folder 'https://drive.google.com/drive/folders/1sNi1AfenfPRrvRt5yfaj5QMMd6KKcUJ5?usp=sharing' -O /tmp/quaternius --remaining-ok
+
+      - name: Import exact remaining glTF sources one asset per commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          dest_dir="assets/gamebox/quaternius/ultimate-animated-character"
+          mkdir -p "$dest_dir"
+
+          import_one() {
+            name="$1"
+            expected="$2"
+            src="$(find /tmp/quaternius -type f -name "$name" -print -quit)"
+            if [ -z "$src" ]; then
+              echo "Missing source file: $name"
+              exit 1
+            fi
+
+            actual="$(sha256sum "$src" | awk '{print $1}')"
+            if [ "$actual" != "$expected" ]; then
+              echo "Checksum mismatch for $name"
+              echo "expected=$expected"
+              echo "actual=$actual"
+              exit 1
+            fi
+
+            git fetch origin main
+            git checkout main
+            git reset --hard origin/main
+
+            dest="$dest_dir/$name"
+            if [ -f "$dest" ]; then
+              current="$(sha256sum "$dest" | awk '{print $1}')"
+              if [ "$current" = "$expected" ]; then
+                echo "$name already present with exact checksum; skipping."
+                return 0
+              fi
+              echo "$name already exists but checksum differs; refusing to overwrite."
+              exit 1
+            fi
+
+            cp "$src" "$dest"
+            verify="$(sha256sum "$dest" | awk '{print $1}')"
+            if [ "$verify" != "$expected" ]; then
+              echo "Post-copy checksum mismatch for $name"
+              exit 1
+            fi
+
+            git add "$dest"
+            git commit -m "Import Quaternius $name"
+            git push origin HEAD:main
+          }
+
+          import_one "VikingHelmet.gltf" "1d458ba5ea81fcf63c1443fd8c127b6491cc1e19019652e50de13e705a161328"
+          import_one "Viking_Male.gltf" "2b04e1f077813a8a6b4df951eb5c866ad17b20aec7db62f73e753d99e2d16d8e"
+          import_one "Witch.gltf" "32d5c49fa0a3d4215116fd9eb7d672cd34367a19b6abb88f1a63aba7de882511"
+          import_one "Wizard.gltf" "baa9cd2d9f1ab3452d6e47d6efc5d4c6c8381fe16a44fc710df46bf16bc7fce8"
+          import_one "Worker_Female.gltf" "a1cb51a7bde7758884e8e83f7e8569cb6fede8f95bf4cfaf55102f468921c0d9"
+          import_one "Worker_Male.gltf" "324e2c95c31d11b9b48171d78fe3a0715cb9e58cea77ebc7a5b0de4936bc7b9e"
+          import_one "Zombie_Female.gltf" "ec5e14a401c41e1c7babe3cbf83562f5ff9d00926cbd35b460a8d62b5a35a044"
+          import_one "Zombie_Male.gltf" "b29faf715aa2ee8180d0df3a314404ba1d3a7c3c7fe6e2a4c53733ad39912099"
