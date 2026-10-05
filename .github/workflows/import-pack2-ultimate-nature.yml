@@ -41,19 +41,22 @@ jobs:
           print("gdown folder module:", p)
           PY2
 
-      - name: Download official Quaternius Ultimate Nature source folder
+      - name: Download Pack 2 FBX byte-identical transfer copy
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p /tmp/quaternius/FBX
-          python - <<'PY2'
-          import gdown
-          url = "https://drive.google.com/drive/folders/1uoIaSvBzm8SrC7g-feRK6ewzHVUGApE0"
-          result = gdown.download_folder(url=url, output="/tmp/quaternius/FBX", quiet=False, use_cookies=False)
-          if not result:
-              raise SystemExit("No FBX files downloaded")
-          print("Downloaded", len(result), "FBX files")
-          PY2
+          rm -rf /tmp/pack2-transfer /tmp/quaternius
+          mkdir -p /tmp/quaternius
+          export GIT_LFS_SKIP_SMUDGE=1
+          git clone --depth 1 --filter=blob:none --sparse https://github.com/Maisha617/Maze-Runner-Game-.git /tmp/pack2-transfer
+          cd /tmp/pack2-transfer
+          git sparse-checkout set "Ultimate Nature Pack - Jun 2019/FBX"
+          git checkout main
+          git lfs install --local
+          git lfs pull --include="Ultimate Nature Pack - Jun 2019/FBX/*.fbx" --exclude=""
+          cp -a "Ultimate Nature Pack - Jun 2019/FBX" /tmp/quaternius/FBX
+          count="$(find /tmp/quaternius/FBX -maxdepth 1 -type f -name '*.fbx' | wc -l | tr -d ' ')"
+          echo "Transfer source supplied $count FBX files; authoritative ZIP manifest verification follows."
 
       - name: Verify all 150 FBX sources against uploaded ZIP manifest
         shell: bash
