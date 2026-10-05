@@ -11,7 +11,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: pack2-ultimate-nature-fast-import
+  group: pack2-ultimate-nature-import
   cancel-in-progress: false
 
 jobs:
@@ -24,24 +24,35 @@ jobs:
           ref: main
           fetch-depth: 0
 
-      - name: Import next Pack 2 assets one FBX per commit
+      - name: Fetch exact Pack 2 batch through Git LFS
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/pack2-transfer
+          export GIT_LFS_SKIP_SMUDGE=1
+          git clone --depth 1 --filter=blob:none --sparse https://github.com/Maisha617/Maze-Runner-Game-.git /tmp/pack2-transfer
+          cd /tmp/pack2-transfer
+          git sparse-checkout set "Ultimate Nature Pack - Jun 2019/FBX"
+          git checkout main
+          git lfs install --local
+          git lfs pull --include="Ultimate Nature Pack - Jun 2019/FBX/BushBerries_1.fbx,Ultimate Nature Pack - Jun 2019/FBX/BushBerries_2.fbx,Ultimate Nature Pack - Jun 2019/FBX/Bush_1.fbx,Ultimate Nature Pack - Jun 2019/FBX/Bush_2.fbx,Ultimate Nature Pack - Jun 2019/FBX/Bush_Snow_1.fbx,Ultimate Nature Pack - Jun 2019/FBX/Bush_Snow_2.fbx,Ultimate Nature Pack - Jun 2019/FBX/CactusFlower_1.fbx,Ultimate Nature Pack - Jun 2019/FBX/CactusFlowers_2.fbx,Ultimate Nature Pack - Jun 2019/FBX/CactusFlowers_3.fbx,Ultimate Nature Pack - Jun 2019/FBX/CactusFlowers_4.fbx" --exclude=""
+
+      - name: Import verified batch one FBX per commit
         shell: bash
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
+          src_dir="/tmp/pack2-transfer/Ultimate Nature Pack - Jun 2019/FBX"
           dest_dir="assets/gamebox/quaternius/ultimate-nature"
-          mkdir -p "$dest_dir"
-          base_url="https://raw.githubusercontent.com/Maisha617/Maze-Runner-Game-/main/Ultimate%20Nature%20Pack%20-%20Jun%202019/FBX"
 
           import_one() {
             name="$1"
             expected="$2"
-            tmp="/tmp/$name"
+            src="$src_dir/$name"
 
-            curl -L --fail --retry 3 "$base_url/$name" -o "$tmp"
-            actual="$(sha256sum "$tmp" | awk '{print $1}')"
+            [ -f "$src" ] || { echo "Missing source: $name"; exit 1; }
+            actual="$(sha256sum "$src" | awk '{print $1}')"
             if [ "$actual" != "$expected" ]; then
               echo "Checksum mismatch for $name"
               echo "expected=$expected"
@@ -49,11 +60,8 @@ jobs:
               exit 1
             fi
 
-            magic="$(head -c 18 "$tmp")"
-            if [ "$magic" != "Kaydara FBX Binary" ]; then
-              echo "Unexpected FBX header for $name"
-              exit 1
-            fi
+            magic="$(head -c 18 "$src")"
+            [ "$magic" = "Kaydara FBX Binary" ] || { echo "Unexpected FBX header for $name"; exit 1; }
 
             git fetch origin main
             git checkout main
@@ -67,11 +75,11 @@ jobs:
                 echo "$name already present with exact checksum; skipping."
                 return 0
               fi
-              echo "$name already exists but checksum differs; refusing to overwrite."
+              echo "$name exists with different bytes; refusing overwrite."
               exit 1
             fi
 
-            cp "$tmp" "$dest"
+            cp "$src" "$dest"
             verify="$(sha256sum "$dest" | awk '{print $1}')"
             [ "$verify" = "$expected" ] || { echo "Post-copy checksum mismatch for $name"; exit 1; }
 
@@ -80,6 +88,8 @@ jobs:
             git push origin HEAD:main
           }
 
+          import_one "BushBerries_1.fbx" "1e70f836ae535b5e8bc7096abfa5f7fe2517ea8baa6d06964eff5296e39d7edc"
+          import_one "BushBerries_2.fbx" "02c360d6c2738e3ef42610aee3b00604ff2c5722cb6b773e23fa78f6d38cece4"
           import_one "Bush_1.fbx" "ef4fd15c36fd95a19aa769a15b4acde2a22bbfea4ada7144ece5fd82c2e05a0f"
           import_one "Bush_2.fbx" "73a9aa512b2967ad333451ffb4b4e460f400a7a17a73a0b90fc1656404273388"
           import_one "Bush_Snow_1.fbx" "49b33c2b7379de7194af89c0262ef648ba99ea3c4de47e961c297e067ac7bd85"
@@ -88,15 +98,3 @@ jobs:
           import_one "CactusFlowers_2.fbx" "28e9efc16d2e9dd4720444cea6d583c10a3a97845ab8ac55282d36c2d28d62a9"
           import_one "CactusFlowers_3.fbx" "0dec00002d8e3b30ebb582e5bb15bef4496ddce5916ce175caceafc96d35609a"
           import_one "CactusFlowers_4.fbx" "fb014c097af2ae320790eb263577e08003a8a489aa3d43cb26521d5f5d239035"
-          import_one "CactusFlowers_5.fbx" "72ed23784ac6523427f0b2bed0958365d346a4e160bf284c41d16ae56c7d62ce"
-          import_one "Cactus_1.fbx" "1d759855d5a04c08ba37d1f1db60f58f32b4e4d6942cb01e91ad7383fb8511f2"
-          import_one "Cactus_2.fbx" "a6cbd5dd51ed796ef0e6ccb50a724161968683675086b4419d95f4e0dd82ee08"
-          import_one "Cactus_3.fbx" "4b360e286681f9bb6e92f4d6166df5dac8718e61b056fd5dc10bbf8beffadbbd"
-          import_one "Cactus_4.fbx" "2be9d320c1b7984ce18ce52a52c44fa3461defeb8c9fcb998bfc00f52d895b0a"
-          import_one "Cactus_5.fbx" "d8f0072b4e7b78d8f8c875f3dff13534fd41cbb3b8c4efc0a6e68176a5deb7ed"
-          import_one "CommonTree_1.fbx" "0b744c9092a09bfb7228d5ecce26c665363e0f22725d3d89e356dc13789498c3"
-          import_one "CommonTree_2.fbx" "b3ca339781adc90ca0714d5d3fb081e5432f4a0e47f2697b7865a907b39c93cc"
-          import_one "CommonTree_3.fbx" "c6c09a4d4797d2b0651cdf8e56ea7baecefd8eb4b4a79fc680ef17747c42b70e"
-          import_one "CommonTree_4.fbx" "611134a64de288ba485ba429478978b8572ff9d74e5d1798f7389b4bbacf43d7"
-          import_one "CommonTree_5.fbx" "65f4b9dd21c242d311199406afbd7e6e20785cc66c57ee4db76d5a7c38d3dd4a"
-          import_one "CommonTree_Autumn_1.fbx" "d8548c4e4cb72621628249e1f5025d515ca596034f9a95704ebd978f256fd714"
