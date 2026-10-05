@@ -26,7 +26,7 @@ jobs:
       - name: Download official Quaternius source folder
         run: |
           mkdir -p /tmp/quaternius
-          gdown --folder 'https://drive.google.com/drive/folders/1sNi1AfenfPRrvRt5yfaj5QMMd6KKcUJ5?usp=sharing' -O /tmp/quaternius
+          gdown --folder 'https://drive.google.com/drive/folders/1sNi1AfenfPRrvRt5yfaj5QMMd6KKcUJ5?usp=sharing' -O /tmp/quaternius || true
 
       - name: Import exact remaining glTF sources one asset per commit
         shell: bash
