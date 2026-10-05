@@ -45,10 +45,13 @@ jobs:
           python - <<'PY2'
           import gdown
           url = "https://drive.google.com/drive/folders/1-Kl0L_Jg8awbh0S5T-z3zxh4mVlnxTpa?usp=sharing"
-          result = gdown.download_folder(url=url, output="/tmp/quaternius", quiet=False, use_cookies=False)
-          if not result:
-              raise SystemExit("gdown returned no downloaded files")
-          print("Downloaded", len(result), "files")
+          try:
+              result = gdown.download_folder(url=url, output="/tmp/quaternius", quiet=False, use_cookies=False)
+              print("Downloaded", len(result or []), "files")
+          except Exception as exc:
+              # Google Drive may rate-limit unrelated Blend/OBJ/preview files.
+              # The next step independently requires all 150 FBX files and exact ZIP checksum.
+              print("Folder traversal completed with download errors:", exc)
           PY2
 
       - name: Verify all 150 FBX sources against uploaded ZIP manifest
