@@ -1,5 +1,6 @@
 name: Import Quaternius Pack 2 Ultimate Nature assets
 # Transfer copy is never trusted without the uploaded-ZIP manifest.
+# GitHub-side merge trigger for the repaired importer.
 
 on:
   push:
