@@ -35,6 +35,7 @@ jobs:
           git sparse-checkout set "Ultimate Nature Pack - Jun 2019/FBX"
           git checkout main
           git lfs install --local
+          unset GIT_LFS_SKIP_SMUDGE
           git lfs pull --include="Ultimate Nature Pack - Jun 2019/FBX/BushBerries_1.fbx,Ultimate Nature Pack - Jun 2019/FBX/BushBerries_2.fbx,Ultimate Nature Pack - Jun 2019/FBX/Bush_1.fbx,Ultimate Nature Pack - Jun 2019/FBX/Bush_2.fbx,Ultimate Nature Pack - Jun 2019/FBX/Bush_Snow_1.fbx,Ultimate Nature Pack - Jun 2019/FBX/Bush_Snow_2.fbx,Ultimate Nature Pack - Jun 2019/FBX/CactusFlower_1.fbx,Ultimate Nature Pack - Jun 2019/FBX/CactusFlowers_2.fbx,Ultimate Nature Pack - Jun 2019/FBX/CactusFlowers_3.fbx,Ultimate Nature Pack - Jun 2019/FBX/CactusFlowers_4.fbx" --exclude=""
 
       - name: Import verified batch one FBX per commit
