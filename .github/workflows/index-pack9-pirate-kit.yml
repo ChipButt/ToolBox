@@ -1,0 +1,35 @@
+name: Index Quaternius Pack 9 Pirate Kit FBX
+
+on:
+  push:
+    branches:
+      - pack9-import-helper
+    paths:
+      - .github/workflows/index-pack9-pirate-kit.yml
+
+jobs:
+  index:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Index official Drive folder
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check --quiet gdown
+          python - <<'PY'
+          import gdown
+          files = gdown.download_folder(
+              id="1KjMzhVsDcyvYMWeVjZcRfuu8auBLpNi2",
+              skip_download=True,
+              quiet=True,
+              use_cookies=False,
+          )
+          print("=== PACK9 FBX INDEX START ===")
+          count = 0
+          for f in files:
+              if f.path.lower().endswith(".fbx"):
+                  print(f"{f.id}\t{f.path}")
+                  count += 1
+          print("=== PACK9 FBX INDEX END ===")
+          print(f"FBX_COUNT={count}")
+          PY
