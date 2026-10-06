@@ -68,7 +68,7 @@ jobs:
             fi
 
             src="$tmp_dir/$name"
-            url="https://media.githubusercontent.com/media/Maisha617/Maze-Runner-Game-/main/Ultimate%20Nature%20Pack%20-%20Jun%202019/FBX/$name"
+            url="https://raw.githubusercontent.com/vicdotexe/3d-Editor/master/Eli/DefaultContent/Eli/Models/Trees/$name"
             rm -f "$src"
             curl -L --fail --retry 4 --retry-delay 2 "$url" -o "$src"
 
