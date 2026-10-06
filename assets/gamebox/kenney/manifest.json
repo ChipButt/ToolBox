@@ -7,13 +7,24 @@
     "2d": 35998,
     "ui": 4686,
     "icons": 7508,
-    "3d": 4902
+    "3d": 4914
   },
-  "totalRuntimeFiles": 53094,
-  "totalRuntimeBytes": 258895347,
+  "totalRuntimeFiles": 53106,
+  "totalRuntimeBytes": 261164442,
   "extensions": {
+    ".fbx": 4,
     ".glb": 4812,
-    ".png": 48281,
-    ".tsv": 1
-  }
+    ".png": 48286,
+    ".tsv": 1,
+    ".txt": 1,
+    ".url": 2
+  },
+  "additionalSources": [
+    {
+      "name": "Animated Characters 3",
+      "catalogue": "https://kenney-assets.itch.io/animated-characters-3",
+      "downloadMirror": "https://opengameart.org/content/animated-characters-3",
+      "license": "CC0-1.0"
+    }
+  ]
 }

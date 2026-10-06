@@ -23,3 +23,10 @@ It also omits FBX-only skinned-character kits; those can be imported separately 
 
 Kenney states its game assets are CC0 and may be used in personal, educational and commercial
 projects without attribution. Attribution is nevertheless appreciated.
+
+## Additional itch.io catalogue pack
+
+Kenney Animated Characters 3 is a CC0 rigged/animated pack shown on the requested
+Kenney itch.io catalogue. The bulk runtime mirror excludes FBX-only skinned-character
+kits, so this pack is imported separately from Kenney's original OpenGameArt upload:
+https://opengameart.org/content/animated-characters-3
