@@ -34,14 +34,31 @@ jobs:
           count="$(wc -l < /tmp/pack8-expected-fbx.txt | tr -d ' ')"
           [ "$count" = "13" ] || { echo "Expected 13 filename entries, found $count"; exit 1; }
 
-      - name: Download official Quaternius Simple Nature source
+      - name: Download official Quaternius Simple Nature FBX source
         shell: bash
         run: |
           set -euo pipefail
           rm -rf /tmp/pack8-source
           python -m pip install --disable-pip-version-check --quiet gdown
-          mkdir -p /tmp/pack8-source
-          gdown --folder "https://drive.google.com/drive/folders/18hb-5HGCLL9BS8jmxkE4h31wmHGeqfts?usp=sharing" -O /tmp/pack8-source || true
+          mkdir -p /tmp/pack8-source/FBX
+
+          while read -r id name; do
+            gdown "https://drive.google.com/uc?id=$id" -O "/tmp/pack8-source/FBX/$name"
+          done <<'EOF'
+          11sCaAJTDDr3Spe3IesdWewSZwSQkMfrA Bush1.fbx
+          1P-NjzKgY8K-XY5BUrkaLwV-od-8gT8fG Bush2.fbx
+          16dQmG7EKmXnMT_Gjr1xvbeSKEP7OIWow Bush3.fbx
+          181GImQb6jio3F7J_CcvJA9tq9KtDeGfr Grass1.fbx
+          1QJmFcYaZ5jIF9i-jGi6vulX5Ypcpu20A Grass2.fbx
+          1s-9ZyU4fEdxebY481KahfcJNpnVG-8zX Grass3.fbx
+          1Aj5tpiEmc3cy4PN9onqtpPEBFGKNgLJ5 Rock1.fbx
+          1sFyjqc94npVu9a3qjqdYAQCbPiQ0FBQV Rock2.fbx
+          1y6bbqFebh90UYvOgsqV4c2gxn-Y-ey8S Rock3.fbx
+          1ZuckOXPZR6OPbCDOSp5cThq1_OqpbJQb Tree1.fbx
+          1TLVamSSwuQpZh-R8-KU0JQaUkIjBfLwt Tree2.fbx
+          1CvuktEM9QWPZzazyK5y7V75WzjMQmaLg Tree3.fbx
+          1GvV5w2SrA5VSTrRkjDTBKc0t3wlDf-_o Tree4.fbx
+          EOF
 
       - name: Verify Pack 8 FBX set
         shell: bash
