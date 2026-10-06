@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - pack2-import-helper
+      - pack2-import-run2
     paths:
       - .github/workflows/import-pack2-ultimate-nature.yml
       - .github/pack2-authoritative.sha256
