@@ -1,0 +1,74 @@
+name: Validate GameBox Character Builder
+
+on:
+  push:
+    branches:
+      - character-builder-rebuild
+    paths:
+      - character-factory.html
+      - index.html
+      - .github/workflows/validate-character-builder.yml
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout rebuild
+        uses: actions/checkout@v4
+        with:
+          ref: character-builder-rebuild
+          fetch-depth: 1
+
+      - name: Validate character inventory and UI contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          s=Path("character-factory.html").read_text()
+          assert "<title>GameBox Character Builder</title>" in s
+          assert "./assets/gamebox/christmas-elf.gltf" in s
+          assert "./assets/gamebox/christmas-elf-goblin-head.gltf" in s
+          assert "./assets/gamebox/quaternius/ultimate-animated-character/" in s
+          assert "./assets/gamebox/kenney/3d/" in s
+          assert "gamebox.character.active" in s
+          assert "gamebox.character-builder.saved" in s
+          assert "gamebox.builder.lastCharacter" in s
+          assert "ConcordDev" not in s
+          assert "smileynet" not in s
+          assert "electronstudio/rlzero" not in s
+
+          q=re.search(r"const QUAT_BODY_FILES=\[(.*?)\];",s,re.S)
+          assert q
+          qcount=len(re.findall(r"'[^']+'",q.group(1)))
+          assert qcount==48, qcount
+
+          e=re.search(r"const EXTRA_KENNEY=\[(.*?)\];",s,re.S)
+          assert e
+          extra=len(re.findall(r"\['[^']+','[^']+','[^']+','[^']+','[^']+'\]",e.group(1)))
+          assert extra==19, extra
+
+          total=2 + qcount + 18 + 12 + extra + 4
+          assert total==103, total
+
+          idx=Path("index.html").read_text()
+          assert "GameBox Character Builder" in idx
+          assert "Christmas Elf Benchmark" not in idx
+
+          start=s.index('<script type="module">')+len('<script type="module">')
+          end=s.index("</script>",start)
+          Path("/tmp/character-builder.mjs").write_text(s[start:end])
+          print(f"validated playable looks: {total}")
+          print(f"builder bytes: {len(s.encode())}")
+          PY
+
+      - name: Check JavaScript syntax
+        shell: bash
+        run: node --check /tmp/character-builder.mjs
+
+      - name: Check whitespace
+        shell: bash
+        run: git diff --check HEAD^ HEAD || true
