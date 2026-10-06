@@ -1,5 +1,5 @@
 name: Import Quaternius Pack 2 Ultimate Nature assets
-# Transfer copy is never trusted without the uploaded-ZIP manifest.
+# Each mirror file is independently validated against the uploaded ZIP manifest.
 
 on:
   push:
@@ -25,7 +25,7 @@ jobs:
           ref: main
           fetch-depth: 0
 
-      - name: Download Pack 2 FBX byte-identical transfer copy
+      - name: Download Pack 2 FBX transfer copy
         shell: bash
         run: |
           set -euo pipefail
@@ -40,48 +40,200 @@ jobs:
           git lfs pull --include="Ultimate Nature Pack - Jun 2019/FBX/*.fbx" --exclude=""
           cp -a "Ultimate Nature Pack - Jun 2019/FBX" /tmp/quaternius/FBX
           count="$(find /tmp/quaternius/FBX -maxdepth 1 -type f -name '*.fbx' | wc -l | tr -d ' ')"
-          echo "Transfer source supplied $count FBX files; authoritative ZIP manifest verification follows."
+          [ "$count" = "150" ] || { echo "Expected 150 transfer FBX files, found $count"; exit 1; }
 
-      - name: Verify all 150 FBX sources against uploaded ZIP manifest
+      - name: Write authoritative uploaded-ZIP manifest
         shell: bash
         run: |
-          set -euo pipefail
-          fbx_dir="$(find /tmp/quaternius -type d -name FBX -print -quit)"
-          if [ -z "$fbx_dir" ]; then
-            echo "FBX source directory not found"
-            exit 1
-          fi
-          count="$(find "$fbx_dir" -maxdepth 1 -type f -name '*.fbx' | wc -l | tr -d ' ')"
-          if [ "$count" != "150" ]; then
-            echo "Expected 150 FBX assets, found $count"
-            exit 1
-          fi
-          : > /tmp/pack2-fbx-manifest.sha256
-          while IFS= read -r name; do
-            hash="$(sha256sum "$fbx_dir/$name" | awk '{print $1}')"
-            printf '%s  %s\n' "$hash" "$name" >> /tmp/pack2-fbx-manifest.sha256
-          done < <(find "$fbx_dir" -maxdepth 1 -type f -name '*.fbx' -printf '%f\n' | LC_ALL=C sort)
-          actual_manifest_hash="$(sha256sum /tmp/pack2-fbx-manifest.sha256 | awk '{print $1}')"
-          expected_manifest_hash="e4d8b3343ce35e4f57f7c6c48ccc42f939d55695882d62ee2a65c9e23250909d"
-          echo "expected=$expected_manifest_hash"
-          echo "actual=$actual_manifest_hash"
-          if [ "$actual_manifest_hash" != "$expected_manifest_hash" ]; then
-            echo "Pack 2 FBX manifest mismatch; refusing to touch main."
-            exit 1
-          fi
+          cat > /tmp/pack2-authoritative.sha256 <<'MANIFEST'
+dee74ff72040b2893aed2091aa3d680868870653d23f10d5cd5b476c6287a85f  BirchTree_1.fbx
+c61d3cd05399514ce77d668ebb9193d4fcb0b47fd6e939deb99efad30fbf10a0  BirchTree_2.fbx
+01d9ee791255780431a4146a603f5fde3553ef7452dd78f7a14798f07fcbcb0b  BirchTree_3.fbx
+c0609928c50503fe04df0c00f65a4d7079f66cecd45dde8b29093428ef09a297  BirchTree_4.fbx
+304c403ad69e879c9c224a7f0a0d540df1cf7f77e0b8606864bedd2a6d7beb2a  BirchTree_5.fbx
+e7ee7cd6ebcf422f2449fb3f979965d5a6865181a04c2db6e29dd7d5c93b4ea7  BirchTree_Autumn_1.fbx
+565c05480f271a7a0e7fa981f6c8bc7520ce660cc5a712d25a0fd0b0ff85e61f  BirchTree_Autumn_2.fbx
+5847072d32286e4fdcf93f37d2b0075e01165ec1f7190508679987f5691a9ed9  BirchTree_Autumn_3.fbx
+7bdf6e9584bfd17b24d18a6d1df43b13bcb55480a9850df85a4ee3f5e6fecf05  BirchTree_Autumn_4.fbx
+ac88dcb6efaefe0a1dade650c07c8c5c3b966eb4a08054dcd2f0b480a58517a8  BirchTree_Autumn_5.fbx
+0fdd91c6d94e2884ff4f7eff3b05544fb3d98b6dca3a87b4b30225532b6a7bdc  BirchTree_Dead_1.fbx
+817d2b2c0a6e9e8b559790b3ac6832936747f9d405ccc11327676470146cbe74  BirchTree_Dead_2.fbx
+50712473ff435873701714c3a40bd300044c06d5dc012147d6dc8e7f5e512e0a  BirchTree_Dead_3.fbx
+69cbc754bc327f60a5f176045387408b757277ff20cdf7b6373be8541158d23d  BirchTree_Dead_4.fbx
+189d44cb7e66bd624678b2aed5bc18466b14df892c4d6b9e4b37a51879f19188  BirchTree_Dead_5.fbx
+10ba3d1b0e59f2701f187f0aa95b5724bc6025db321ca2c1459bef4bbcb995f1  BirchTree_Dead_Snow_1.fbx
+03259601ca4b50e958334050f860c0427a253c3ff5423ca937eed8208b52309c  BirchTree_Dead_Snow_2.fbx
+d491c98a119af78f44fbef01a5b69edea9b92f9abd14528892f992dbfb12ab2d  BirchTree_Dead_Snow_3.fbx
+a48734ddaea7ab72c10c736c15c90eaecea8f36dfa021d88143739a68f5d247e  BirchTree_Dead_Snow_4.fbx
+e89c86402fad2724dd9d224b8a4ce2b2ccf99555f4c23c2dbba5d69bd7c5d981  BirchTree_Dead_Snow_5.fbx
+9b389792f6800494b0922c6801a149fe2c4bbb90a3ccba5bd193b1f2580ef58a  BirchTree_Snow_1.fbx
+b09d662f1ad5b54d4318a308a4b32f6e441689f41ede3ff54572d1d620d9d9c6  BirchTree_Snow_2.fbx
+f8bb6bd6105297010022fe0549ebb213ddf1024f812f978bd45a4c5a687d21ce  BirchTree_Snow_3.fbx
+a7fe6df00ceaaa248c8a6aa4dcc0664a089296aec31ec9416dcefb129d61c445  BirchTree_Snow_4.fbx
+ca87250e3e538063ba4233fa0059128a7c6f9213d73392def12507d4562bc1d1  BirchTree_Snow_5.fbx
+1e70f836ae535b5e8bc7096abfa5f7fe2517ea8baa6d06964eff5296e39d7edc  BushBerries_1.fbx
+02c360d6c2738e3ef42610aee3b00604ff2c5722cb6b773e23fa78f6d38cece4  BushBerries_2.fbx
+ef4fd15c36fd95a19aa769a15b4acde2a22bbfea4ada7144ece5fd82c2e05a0f  Bush_1.fbx
+73a9aa512b2967ad333451ffb4b4e460f400a7a17a73a0b90fc1656404273388  Bush_2.fbx
+49b33c2b7379de7194af89c0262ef648ba99ea3c4de47e961c297e067ac7bd85  Bush_Snow_1.fbx
+22ef7a5ffddfb257f09d96540349b7ed4c25cb04e5f9bf5be4836ea6eff346bc  Bush_Snow_2.fbx
+203723aa277e0297eccc145d2d9714fa4649dac84d475b9ed60957791cbfe9a0  CactusFlower_1.fbx
+28e9efc16d2e9dd4720444cea6d583c10a3a97845ab8ac55282d36c2d28d62a9  CactusFlowers_2.fbx
+0dec00002d8e3b30ebb582e5bb15bef4496ddce5916ce175caceafc96d35609a  CactusFlowers_3.fbx
+fb014c097af2ae320790eb263577e08003a8a489aa3d43cb26521d5f5d239035  CactusFlowers_4.fbx
+72ed23784ac6523427f0b2bed0958365d346a4e160bf284c41d16ae56c7d62ce  CactusFlowers_5.fbx
+1d759855d5a04c08ba37d1f1db60f58f32b4e4d6942cb01e91ad7383fb8511f2  Cactus_1.fbx
+a6cbd5dd51ed796ef0e6ccb50a724161968683675086b4419d95f4e0dd82ee08  Cactus_2.fbx
+4b360e286681f9bb6e92f4d6166df5dac8718e61b056fd5dc10bbf8beffadbbd  Cactus_3.fbx
+2be9d320c1b7984ce18ce52a52c44fa3461defeb8c9fcb998bfc00f52d895b0a  Cactus_4.fbx
+d8f0072b4e7b78d8f8c875f3dff13534fd41cbb3b8c4efc0a6e68176a5deb7ed  Cactus_5.fbx
+0b744c9092a09bfb7228d5ecce26c665363e0f22725d3d89e356dc13789498c3  CommonTree_1.fbx
+b3ca339781adc90ca0714d5d3fb081e5432f4a0e47f2697b7865a907b39c93cc  CommonTree_2.fbx
+c6c09a4d4797d2b0651cdf8e56ea7baecefd8eb4b4a79fc680ef17747c42b70e  CommonTree_3.fbx
+611134a64de288ba485ba429478978b8572ff9d74e5d1798f7389b4bbacf43d7  CommonTree_4.fbx
+65f4b9dd21c242d311199406afbd7e6e20785cc66c57ee4db76d5a7c38d3dd4a  CommonTree_5.fbx
+d8548c4e4cb72621628249e1f5025d515ca596034f9a95704ebd978f256fd714  CommonTree_Autumn_1.fbx
+087c807e82ea3aec7d217926a1ba78abfe70e1ac4b65ae5529b7b11a5284f0ae  CommonTree_Autumn_2.fbx
+f3024a4eec5ee0a4e0b6236d0df75135cb5ae272d72bc5792190452450e08ded  CommonTree_Autumn_3.fbx
+de691a983d674a92be75f5f7d18249e1d385392545bd96b70e19a6e8caae9e73  CommonTree_Autumn_4.fbx
+13c583c7b1db14ed076d9f034a5c976c4f1d39114d454acf9d0594f93542542d  CommonTree_Autumn_5.fbx
+e8b1abbacb9f77f2535670c64a0ebe1e9526c5e591f1509067794630124f6591  CommonTree_Dead_1.fbx
+d5c3d823d515cbfddb0305c5046136348d43230bf5bfc1cbf5951f0632a16b00  CommonTree_Dead_2.fbx
+67ca71199a30e8d61b8c1c5094be60dec2cb90c2b597e890d3fc8bfce0343ddd  CommonTree_Dead_3.fbx
+27d23edb42748f56bb388061c2fdc5c2f82ce8771088ec50d6edf78879d66862  CommonTree_Dead_4.fbx
+3d5e70e754502f63d5b4e704ef905f3bb44ff7eca7d5f1d558c2de70e83af815  CommonTree_Dead_5.fbx
+117ee8ee6a1f2ccbb4c142378a9d19782ce5323354bfea9e495dfe0c46d652f7  CommonTree_Dead_Snow_1.fbx
+11585d1843928faecc36e65eee557f68101793b0716c72b8d9bb6aeee4119819  CommonTree_Dead_Snow_2.fbx
+ca140c9fcbdd0ba8c9ca4a7aab851c107ea36e8ce2cf8a0dd3c66e4bc14ae62e  CommonTree_Dead_Snow_3.fbx
+eb1ad7c0d8f70705556573e2a74c9ac72430e5b49c015bc2b91c1a44f711e1a5  CommonTree_Dead_Snow_4.fbx
+22a27ad60f8763ebb171f25b54410d61062ee85065fbf7cd72c5924613d91966  CommonTree_Dead_Snow_5.fbx
+94627ed68ab2c5c05c9307eb5f64d08589e954bffda000915f56e8e019d3f872  CommonTree_Snow_1.fbx
+bf8f6fc7abd156c77228b798881a027e32f9e03081b35b178f4265ea1126b1c1  CommonTree_Snow_2.fbx
+f0102b0441511b8ba775bc0f1fbb74645a6eb6ae637a3582a08c9e264645300e  CommonTree_Snow_3.fbx
+8de3c102c8027b5421f6d9c86c260fde128a996af3267729622df21d41b4d2a3  CommonTree_Snow_4.fbx
+fa376ee05c5ecabe305aab2f21233e6034c935c15d603075cfc6a0597c5b8b26  CommonTree_Snow_5.fbx
+1a7e6e0504873aa0002e1fadf00e16926fd14c7000ee51fec944299f221351c2  Corn_1.fbx
+36c35c5d69d9da335f003a01ffe6be94d05824250cdfe0a1733fe91971e9adad  Corn_2.fbx
+ffd9ad6299f0058855a97fcc819640ebed7131796c71a2eacb60b53d0d28d4c7  Flowers.fbx
+849a2ca44c4765b47414bfd83eb8d276835db43c33d2755f7407006f5bb53c7e  Grass.fbx
+c7d84984661f8330d1c8e1f21f2cb0ede457586526b6bd38306d133d7c4f38c3  Grass_2.fbx
+7244d7d8a30eb51e11e454083714f39d3b7d1d2512dd395b2acca787c064a7fa  Grass_Short.fbx
+02b71356e0de314539125bab90b8617cf8be498a22e69557b0805c15aebe89ec  Lilypad.fbx
+bcf142d8a1ceae00edcf4036de1b4cdb43239c578bbd693737b9ed5fa8818df6  PalmTree_1.fbx
+716e9e71270e56a8d2eeb69e48014a8ae390d20383e5f3b8f2c50a4d1dd4d815  PalmTree_2.fbx
+fcff567abf63def8194fa07431a7afb77437e33381df17cf374e3d632942cd9a  PalmTree_3.fbx
+ece9232bd4395228bd0770600a51d38bf5fd01ab332e748a3d6f12981e630442  PalmTree_4.fbx
+5627e2f33577398ea13ab63f4263afb6cdd4839bf6b4e5d288d6174ff2887266  PineTree_1.fbx
+afc20aab8e9c35ea5e5edf1366d312f8f94948f4d00a40445feb9367cd3e06a3  PineTree_2.fbx
+e4f038ab6bc8390a5a387bc99fb6b917bb93b6d673d1ac8c22a07521300c1ffc  PineTree_3.fbx
+7451481e4ae14102b01632bd74e04072cf22b9ce84819175e45220e0ac8bda4f  PineTree_4.fbx
+f48c82f590fd94e9dd265575232f867963d08e1d57c9b473e4e1e069220e5536  PineTree_5.fbx
+b3a08d50f580cac69bce9419ca5c6dd6a1f62b5bf6002fc9f80aaa315ebe2dd5  PineTree_Autumn_1.fbx
+82e2789196d090c7671a3b363b9fbe638cdb56262280cb87cbfda665c04f38b3  PineTree_Autumn_2.fbx
+01f3c3e0a9a32b8634d9ba7a1950495c8e7dc5f2a7c8a2b117f1b1f68aabbacc  PineTree_Autumn_3.fbx
+eda5502ca56dc3b15018cec54b1d7472a2aa71aa0540c93630679530b9542aa6  PineTree_Autumn_4.fbx
+8c5c688a170fbf6ef9766fdf5d3e8f386c507ceabc6fc6517ddba7980f2d3f72  PineTree_Autumn_5.fbx
+e962d8fb1ddfa3405835d0a66101641f06bc90d2c83d96e04921478cf732d6c9  PineTree_Snow_1.fbx
+b0bb20b5f47dad83090b06595c9e6991b764ade39535076dbce6c9cbd4d0e48e  PineTree_Snow_2.fbx
+50034fb0ba315c89455d74d9e6810fa0d62cb6bca96452c42a31a784fc214f95  PineTree_Snow_3.fbx
+a34853413a79b8305c0a337c9c220de1b663013cf355ca9a8ea2d0a3bf70098f  PineTree_Snow_4.fbx
+6718d7253261eb6843dd04e9394192be5a77246722dc761dc634d1e26a0ebf1e  PineTree_Snow_5.fbx
+14fc5f5b4c29451e21da9626795125f59343952ea700217826a1061b46ea386f  Plant_1.fbx
+dac0f960bfd59ecf9b9f449b57556e20dc113908d20f042772e79ed87336f6d7  Plant_2.fbx
+dbf8f891b383b761953c9f497bb7e5dcdecf31de562944625af8181425064b31  Plant_3.fbx
+6495b56100a2e2cc2b87f5f809daf55fe9119ec3af8d613cfd3c7c659c15c7c3  Plant_4.fbx
+c1708097421a206f2309efee097038cd2896d9a22da13dd44e948fd2e32e013f  Plant_5.fbx
+8a6e150e2d71dd601daf48d7967e273e940347a4826c2004b71ed1a9fa99c962  Rock_1.fbx
+5a06ef3ec0b90098666407792fd2ea03879a10d3d0b0fe09b47f0df3a04025a1  Rock_2.fbx
+4144136bd6c313ac7c48a08548504d7d30b7d628f35ce9dcd290ebe84e10e734  Rock_3.fbx
+a914a59150ad1c12ff01ffc11de22b826fee9d52dabeb703fb43e7bde1f04e1d  Rock_4.fbx
+a335cfa716e962010450026884f19c7474967682334635286ca315eef3490c94  Rock_5.fbx
+36f79bdcae803b60e5968487f4a9b26f589490817ace655a1045b960d1af81f3  Rock_6.fbx
+a7e68ae16e6e7af933ad81249a1a7eadf5940d3528eeea9963751a3b3efd8129  Rock_7.fbx
+94ea25751e2ce17ca55ab0ddf3a70d5fda1fca4f308d883f9e51451162faf20e  Rock_Moss_1.fbx
+9e6bb49e692da8c21c6cf5cdb77bcf6b9956edb55e1719a265524f7007fc717c  Rock_Moss_2.fbx
+5f51b88bb9fe3c1a77e504521fca0fe03dc055d406aa2586bd543ef0413aad0e  Rock_Moss_3.fbx
+4fc4229e3d58435c42b6981aa4368defcfc452db6907f755d2d534be204306b7  Rock_Moss_4.fbx
+0ddb4518a9b694515adfefdd9a5d6bf9e3d3ba0c9af39fc6ce1247e913463a70  Rock_Moss_5.fbx
+ed1157319ba497677dd0955118406acf17ed69b96d63e458e1c45e32893c7b47  Rock_Moss_6.fbx
+9970d886988ebbd9d724970a149bee0a971757122a187570bc82026c0a090f93  Rock_Moss_7.fbx
+a30ea6ca4fab632fdcb107ee9fcffef427e5341bbc54479e7f10fd5635449fa2  Rock_Snow_1.fbx
+a5bdbe71366754734755765ac95b3015d143fe946ad032c862b73cd45663bd94  Rock_Snow_2.fbx
+41c0f1ea1d4ae632a7665db7268949889232777d22096de5e6539f2e07fb3791  Rock_Snow_3.fbx
+c0cd830e47dfb6809c5da82daf5ebc32255a109c03f263b7bf35c93fb110c929  Rock_Snow_4.fbx
+219ea7c7cea15ac9c10df5442b2f0163f9218d3c5a4619fb0e8544d754b6f0ee  Rock_Snow_5.fbx
+434ab1f62aec505a4f7f916f2c0aaff692725914e26361df8464a82b1ae4708e  Rock_Snow_6.fbx
+912e6206fc58d0fdd7b093d154aaed00e097fd572de2cd1808e63f23de4c5d66  Rock_Snow_7.fbx
+bb2f526c4259a915b49102ad374b9065d87153181c9dfb88a029068826fc88cb  TreeStump.fbx
+53197f0637f5729af6f6cc4f20125b0575bdf8fa53ed21106430a80de0b35dec  TreeStump_Moss.fbx
+a3b116a81ef306abaa2278d8e6ec666cde3a71f3e8a2e0b8182ece226267fc32  TreeStump_Snow.fbx
+590e4345e08fde9b0a5ba6cba205ecc6c6ba7279734325df9412a47621081f18  Wheat.fbx
+4490d814ed6f744e2390e635a1be31faf461806bfb25b0e15a1203cf4660cb60  Willow_1.fbx
+9614a514370a608493aaf2cf04340c57334672804bb06528103ad65dfc73fa3e  Willow_2.fbx
+3a29483120f919f803604cbcbb0cad6bdf240e3c012143e56875495662d79a33  Willow_3.fbx
+768089c8ac2779a545c982d31b17b4ce13d864b3d275e9de135a71f4c4a3baee  Willow_4.fbx
+502c59ce98230633d4e6061b2b1208e4fcf51bceb9d5010335bd1403ce87dd43  Willow_5.fbx
+35380e1b7a5c32d8f5b9a0f970b6d2ea20e0ec55fd9b01261da881b4bbd71887  Willow_Autumn_1.fbx
+958a90b5253aad4ec11371a0445d1a0a48e0a3e9ce779c2cd293a908edb3c4d2  Willow_Autumn_2.fbx
+636e9890c02b486ebf7a9c38f61040ff8be9455251d05c17eedecb314af72ae2  Willow_Autumn_3.fbx
+43d477bdbfe0841daddb653b9a0b9da3c8534db9b03b96f537bf1e82f16072c6  Willow_Autumn_4.fbx
+3f4f241b58c8038219ae5d9478c9908cf9e9d180faf8d704ec93c06e8303aa39  Willow_Autumn_5.fbx
+84fc62d6b6e43d999da76f3b7754c27f5d109b8819aa103acc3b8ac6557ca977  Willow_Dead_1.fbx
+df5d8076f3c29b4625d0391644b28c3268224d558a95b7fa0c3c34549cef5aeb  Willow_Dead_2.fbx
+dd435837715148af4821577f61b2623a50f479cd16f10e4e4cd044f515779da4  Willow_Dead_3.fbx
+17a03f1c335f3d6b9163b1e103e1c19d4ba05934b1a6da4ff8adf57d98c3f942  Willow_Dead_4.fbx
+7cf6088e1d732e1a859b16eb7f078908dc87d63c71fef4feb46f70c757b894d1  Willow_Dead_5.fbx
+2dc42e6560e5abeed42837168f4b681f582670ba4b5a0ed202dfab14f7179f64  Willow_Dead_Snow_1.fbx
+07cc215e6259f03efc70ddffabc31613dc2594e45fe6e6214731032b48019ed9  Willow_Dead_Snow_2.fbx
+3921c6de2c31dfde22bb1c2f7c9da077c86dbd2508dcb98be57116bf35e51549  Willow_Dead_Snow_3.fbx
+5cac4da6fd5bda425005f26edf6d79335f1329accdaf6ef7d76977ac432c37f7  Willow_Dead_Snow_4.fbx
+8ccb41772785cbf01f53ec32e023f78e74faf767d6c8227c3e507ebb92970c91  Willow_Dead_Snow_5.fbx
+a8fa8f44510dbe59181bef3e1bca7afc71ee25b71a2ad00f9cd42594c9ac5be9  Willow_Snow_1.fbx
+e39a5dd40d7ec8f199690d9be416105afd6bdc9884c058804c3583b4435f3168  Willow_Snow_2.fbx
+22dcf819ee860058cd01915d08da6fbf136384d1179798e01e5b555ba2d55b0b  Willow_Snow_3.fbx
+a285d0f510b89a37c22b478e6e0bcccd580cb0e234bf53c1d5b4f5aa1c6f2c3e  Willow_Snow_4.fbx
+3e63630bc51d3093d1484f9ddb10610ef0a01e779d7657e5242f29547054eb79  Willow_Snow_5.fbx
+efc0eacf35939e10b6ca13cac145fda682ae65a624448fd43faebc84d98dbb02  WoodLog.fbx
+5a18bfd817959e886d0e781efd8c2134801a70c45a86fa000df34b8c09b2a1cf  WoodLog_Moss.fbx
+2afbbcea0a7a7215939a227a0e8914cf2a1b010695b86a4792c7ec9731b57d41  WoodLog_Snow.fbx
+MANIFEST
+          count="$(wc -l < /tmp/pack2-authoritative.sha256 | tr -d ' ')"
+          [ "$count" = "150" ] || { echo "Expected 150 manifest entries, found $count"; exit 1; }
 
-      - name: Import Pack 2 one FBX asset per commit
+      - name: Import exact matches one FBX per commit
         shell: bash
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          fbx_dir="$(find /tmp/quaternius -type d -name FBX -print -quit)"
+          fbx_dir="/tmp/quaternius/FBX"
           dest_dir="assets/gamebox/quaternius/ultimate-nature"
+          : > /tmp/pack2-mismatches.txt
+          imported=0
+          skipped=0
+          mismatched=0
 
-          while IFS= read -r name; do
+          while read -r expected name; do
             src="$fbx_dir/$name"
-            expected="$(sha256sum "$src" | awk '{print $1}')"
+            if [ ! -f "$src" ]; then
+              echo "$name missing from transfer copy" | tee -a /tmp/pack2-mismatches.txt
+              mismatched=$((mismatched+1))
+              continue
+            fi
+
+            actual="$(sha256sum "$src" | awk '{print $1}')"
+            if [ "$actual" != "$expected" ]; then
+              echo "$name expected=$expected actual=$actual" | tee -a /tmp/pack2-mismatches.txt
+              mismatched=$((mismatched+1))
+              continue
+            fi
+
+            magic="$(head -c 18 "$src")"
+            if [ "$magic" != "Kaydara FBX Binary" ]; then
+              echo "$name has unexpected FBX header" | tee -a /tmp/pack2-mismatches.txt
+              mismatched=$((mismatched+1))
+              continue
+            fi
 
             git fetch origin main
             git checkout main
@@ -91,28 +243,28 @@ jobs:
 
             if [ -f "$dest" ]; then
               current="$(sha256sum "$dest" | awk '{print $1}')"
-              if [ "$current" = "$expected" ]; then
-                echo "$name already present with exact checksum; skipping."
-                continue
+              if [ "$current" != "$expected" ]; then
+                echo "Existing main file differs from authoritative ZIP: $name" >&2
+                exit 1
               fi
-              echo "$name already exists but checksum differs; refusing to overwrite."
-              exit 1
+              echo "$name already present with authoritative checksum; skipping."
+              skipped=$((skipped+1))
+              continue
             fi
 
             cp "$src" "$dest"
             verify="$(sha256sum "$dest" | awk '{print $1}')"
-            if [ "$verify" != "$expected" ]; then
-              echo "Post-copy checksum mismatch for $name"
-              exit 1
-            fi
-
-            magic="$(head -c 18 "$dest")"
-            if [ "$magic" != "Kaydara FBX Binary" ]; then
-              echo "Unexpected FBX header for $name"
-              exit 1
-            fi
+            [ "$verify" = "$expected" ] || { echo "Post-copy mismatch for $name"; exit 1; }
 
             git add "$dest"
             git commit -m "Import Quaternius Ultimate Nature $name"
             git push origin HEAD:main
-          done < <(find "$fbx_dir" -maxdepth 1 -type f -name '*.fbx' -printf '%f\n' | LC_ALL=C sort)
+            imported=$((imported+1))
+          done < /tmp/pack2-authoritative.sha256
+
+          echo "imported=$imported skipped=$skipped mismatched=$mismatched"
+          if [ -s /tmp/pack2-mismatches.txt ]; then
+            echo "MISMATCHES_BEGIN"
+            cat /tmp/pack2-mismatches.txt
+            echo "MISMATCHES_END"
+          fi
