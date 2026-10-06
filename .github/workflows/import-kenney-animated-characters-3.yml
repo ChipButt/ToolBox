@@ -1,0 +1,92 @@
+name: Import Kenney Animated Characters 3
+
+on:
+  push:
+    paths:
+      - '.github/workflows/import-kenney-animated-characters-3.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out ToolBox
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Import original Kenney CC0 animated character pack
+        shell: bash
+        run: |
+          set -euo pipefail
+          DEST='assets/gamebox/kenney/3d/Animated Characters 3'
+          rm -rf "$DEST"
+          mkdir -p "$DEST"
+          curl --retry 3 -LfsS             'https://opengameart.org/sites/default/files/kenney_animated-characters-3.zip'             -o /tmp/kenney_animated-characters-3.zip
+          unzip -q /tmp/kenney_animated-characters-3.zip -d "$DEST"
+
+          cat >> assets/gamebox/kenney/SOURCE.md <<'EOF'
+
+          ## Additional itch.io catalogue pack
+
+          Kenney Animated Characters 3 is a CC0 rigged/animated pack shown on the requested
+          Kenney itch.io catalogue. The bulk runtime mirror excludes FBX-only skinned-character
+          kits, so this pack is imported separately from Kenney's original OpenGameArt upload:
+          https://opengameart.org/content/animated-characters-3
+          EOF
+
+          python - <<'PY'
+          from pathlib import Path
+          import json
+
+          root = Path('assets/gamebox/kenney')
+          counts = {}
+          total_files = 0
+          total_bytes = 0
+          extensions = {}
+          for top in ('2d','ui','icons','3d'):
+              files = [p for p in (root/top).rglob('*') if p.is_file()]
+              counts[top] = len(files)
+              total_files += len(files)
+              total_bytes += sum(p.stat().st_size for p in files)
+              for p in files:
+                  ext = p.suffix.lower() or '(none)'
+                  extensions[ext] = extensions.get(ext, 0) + 1
+
+          manifest_path = root/'manifest.json'
+          old = json.loads(manifest_path.read_text(encoding='utf-8'))
+          old.update({
+              'paths': counts,
+              'totalRuntimeFiles': total_files,
+              'totalRuntimeBytes': total_bytes,
+              'extensions': dict(sorted(extensions.items())),
+              'additionalSources': [
+                  {
+                      'name': 'Animated Characters 3',
+                      'catalogue': 'https://kenney-assets.itch.io/animated-characters-3',
+                      'downloadMirror': 'https://opengameart.org/content/animated-characters-3',
+                      'license': 'CC0-1.0'
+                  }
+              ]
+          })
+          manifest_path.write_text(json.dumps(old, indent=2) + '\n', encoding='utf-8')
+          print(json.dumps(old, indent=2))
+          PY
+
+      - name: Commit animated pack
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add 'assets/gamebox/kenney/3d/Animated Characters 3' assets/gamebox/kenney/SOURCE.md assets/gamebox/kenney/manifest.json
+          if git diff --cached --quiet; then
+            echo 'Animated Characters 3 already imported.'
+            exit 0
+          fi
+          git commit -m 'Add Kenney Animated Characters 3 to GameBox assets'
+          git push origin HEAD:main
