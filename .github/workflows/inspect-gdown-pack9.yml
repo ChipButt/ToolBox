@@ -1,0 +1,23 @@
+name: Inspect gdown folder index helpers
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - pack9-import-helper
+    paths:
+      - .github/workflows/inspect-gdown-pack9.yml
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inspect gdown
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check --quiet gdown
+          python - <<'PY'
+          import inspect, gdown.download_folder as df
+          print(inspect.getsource(df))
+          PY
