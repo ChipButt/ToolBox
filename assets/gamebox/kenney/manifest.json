@@ -1,0 +1,19 @@
+{
+  "provider": "Kenney",
+  "license": "CC0-1.0",
+  "sourceRepository": "https://github.com/shorepine/kenney",
+  "sourceCommit": "3694c6879e487c108f55677be7dd2ca75b07cc3b",
+  "paths": {
+    "2d": 35998,
+    "ui": 4686,
+    "icons": 7508,
+    "3d": 4902
+  },
+  "totalRuntimeFiles": 53094,
+  "totalRuntimeBytes": 258895347,
+  "extensions": {
+    ".glb": 4812,
+    ".png": 48281,
+    ".tsv": 1
+  }
+}
