@@ -1,0 +1,153 @@
+name: Import Quaternius Pack 7 Easy Animated Enemy Pack
+
+on:
+  push:
+    branches:
+      - pack7-import-helper
+    paths:
+      - .github/workflows/import-pack7-easy-animated-enemy.yml
+      - .github/pack7-expected-fbx.txt
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pack7-easy-animated-enemy-import
+  cancel-in-progress: false
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Fetch expected Pack 7 filenames
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin pack7-import-helper
+          git show origin/pack7-import-helper:.github/pack7-expected-fbx.txt > /tmp/pack7-expected-fbx.txt
+          count="$(wc -l < /tmp/pack7-expected-fbx.txt | tr -d ' ')"
+          [ "$count" = "5" ] || { echo "Expected 5 filename entries, found $count"; exit 1; }
+
+      - name: Download exact Pack 7 archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/pack7-source /tmp/pack7.zip
+          curl -fL --retry 4 --retry-delay 2             "https://opengameart.org/sites/default/files/easyenemypack.zip"             -o /tmp/pack7.zip
+
+          expected="a97f38b981fec2f42b263fe92828a7bf73f9da1228d5aac906fe354cd2b21004"
+          actual="$(sha256sum /tmp/pack7.zip | awk '{print $1}')"
+          [ "$actual" = "$expected" ] || {
+            echo "Archive checksum mismatch"
+            echo "expected=$expected"
+            echo "actual=$actual"
+            exit 1
+          }
+
+          mkdir -p /tmp/pack7-source
+          unzip -q /tmp/pack7.zip -d /tmp/pack7-source
+
+      - name: Verify Pack 7 FBX set
+        shell: bash
+        run: |
+          set -euo pipefail
+          fbx_dir="/tmp/pack7-source/Easy Animated Enemy Pack - Jan 2019/FBX"
+          [ -d "$fbx_dir" ] || {
+            echo "Expected FBX directory not found"
+            find /tmp/pack7-source -maxdepth 3 -type d -print
+            exit 1
+          }
+
+          find "$fbx_dir" -maxdepth 1 -type f -name '*.fbx' -printf '%f\n' | LC_ALL=C sort > /tmp/pack7-actual-fbx.txt
+
+          count="$(wc -l < /tmp/pack7-actual-fbx.txt | tr -d ' ')"
+          [ "$count" = "5" ] || {
+            echo "Expected 5 FBX source models, found $count"
+            cat /tmp/pack7-actual-fbx.txt
+            exit 1
+          }
+
+          if ! diff -u /tmp/pack7-expected-fbx.txt /tmp/pack7-actual-fbx.txt; then
+            echo "Pack 7 FBX filename set does not match the expected official 5-model pack"
+            exit 1
+          fi
+
+          while IFS= read -r name; do
+            src="$fbx_dir/$name"
+            [ -f "$src" ] || { echo "Missing source file: $name"; exit 1; }
+            magic="$(head -c 18 "$src")"
+            [ "$magic" = "Kaydara FBX Binary" ] || {
+              echo "Unexpected FBX header: $name"
+              exit 1
+            }
+          done < /tmp/pack7-actual-fbx.txt
+
+      - name: Import Pack 7 one FBX asset per commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          fbx_dir="/tmp/pack7-source/Easy Animated Enemy Pack - Jan 2019/FBX"
+          dest_dir="assets/gamebox/quaternius/easy-animated-enemy"
+          imported=0
+          skipped=0
+
+          while IFS= read -r name; do
+            src="$fbx_dir/$name"
+            expected="$(sha256sum "$src" | awk '{print $1}')"
+            dest="$dest_dir/$name"
+            done_this_asset=0
+
+            for attempt in $(seq 1 25); do
+              git fetch origin main
+              git checkout main
+              git reset --hard origin/main
+              mkdir -p "$dest_dir"
+
+              if [ -f "$dest" ]; then
+                current="$(sha256sum "$dest" | awk '{print $1}')"
+                if [ "$current" = "$expected" ]; then
+                  echo "$name already present with exact checksum; skipping."
+                  skipped=$((skipped+1))
+                  done_this_asset=1
+                  break
+                fi
+                echo "$name already exists on main with different bytes; refusing overwrite." >&2
+                exit 1
+              fi
+
+              cp "$src" "$dest"
+              verify="$(sha256sum "$dest" | awk '{print $1}')"
+              [ "$verify" = "$expected" ] || {
+                echo "Post-copy checksum mismatch for $name"
+                exit 1
+              }
+
+              git add "$dest"
+              git commit -m "Import Quaternius Easy Animated Enemy $name"
+
+              if git push origin HEAD:main; then
+                imported=$((imported+1))
+                done_this_asset=1
+                break
+              fi
+
+              echo "Concurrent main update while pushing $name (attempt $attempt); retrying on latest main."
+              git reset --hard
+            done
+
+            [ "$done_this_asset" = "1" ] || {
+              echo "Could not safely commit $name after retries"
+              exit 1
+            }
+          done < /tmp/pack7-actual-fbx.txt
+
+          echo "imported=$imported skipped=$skipped"
