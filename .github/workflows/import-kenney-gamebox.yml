@@ -1,0 +1,116 @@
+name: Import Kenney assets into GameBox
+
+on:
+  push:
+    paths:
+      - '.github/workflows/import-kenney-gamebox.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: import-kenney-gamebox
+  cancel-in-progress: false
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out ToolBox
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Fetch pinned Kenney CC0 runtime library
+        shell: bash
+        run: |
+          set -euo pipefail
+          KENNEY_SHA='3694c6879e487c108f55677be7dd2ca75b07cc3b'
+          git clone --filter=blob:none --no-checkout https://github.com/shorepine/kenney.git /tmp/kenney
+          git -C /tmp/kenney checkout "$KENNEY_SHA"
+
+          rm -rf assets/gamebox/kenney
+          mkdir -p assets/gamebox/kenney
+
+          cp -a /tmp/kenney/2d assets/gamebox/kenney/
+          cp -a /tmp/kenney/3d assets/gamebox/kenney/
+          cp -a /tmp/kenney/ui assets/gamebox/kenney/
+          cp -a /tmp/kenney/icons assets/gamebox/kenney/
+          cp -a /tmp/kenney/index.tsv assets/gamebox/kenney/index.tsv
+          cp -a /tmp/kenney/LICENSE.txt assets/gamebox/kenney/LICENSE.txt
+
+          cat > assets/gamebox/kenney/SOURCE.md <<'EOF'
+          # Kenney GameBox Asset Library
+
+          This directory vendors the actual Kenney runtime game assets for reuse by GameBox projects.
+
+          - Original creator: Kenney — https://kenney.nl/
+          - Licence: Creative Commons Zero (CC0 1.0)
+          - Runtime library source: https://github.com/shorepine/kenney
+          - Pinned source commit: 3694c6879e487c108f55677be7dd2ca75b07cc3b
+          - Source repository states it was built from a Kenney all-in-one asset dump.
+
+          Imported runtime content:
+
+          - 2d/ — individual 2D sprite PNGs
+          - ui/ — individual UI element PNGs
+          - icons/ — individual icon PNGs
+          - 3d/ — glTF-binary models plus required textures
+          - index.tsv — searchable image index supplied by the source library
+          - 3d/kits.tsv — 3D kit index supplied by the source library
+
+          The source runtime library intentionally omits duplicate packaging/source formats such as
+          spritesheets, tilemaps and vectors where the individual runtime sprites are already present.
+          It also omits FBX-only skinned-character kits; those can be imported separately when needed.
+
+          Kenney states its game assets are CC0 and may be used in personal, educational and commercial
+          projects without attribution. Attribution is nevertheless appreciated.
+          EOF
+
+          python - <<'PY'
+          from pathlib import Path
+          import json
+
+          root = Path('assets/gamebox/kenney')
+          counts = {}
+          total_files = 0
+          total_bytes = 0
+          extensions = {}
+          for top in ('2d','ui','icons','3d'):
+              files = [p for p in (root/top).rglob('*') if p.is_file()]
+              counts[top] = len(files)
+              total_files += len(files)
+              total_bytes += sum(p.stat().st_size for p in files)
+              for p in files:
+                  ext = p.suffix.lower() or '(none)'
+                  extensions[ext] = extensions.get(ext, 0) + 1
+
+          manifest = {
+              'provider': 'Kenney',
+              'license': 'CC0-1.0',
+              'sourceRepository': 'https://github.com/shorepine/kenney',
+              'sourceCommit': '3694c6879e487c108f55677be7dd2ca75b07cc3b',
+              'paths': counts,
+              'totalRuntimeFiles': total_files,
+              'totalRuntimeBytes': total_bytes,
+              'extensions': dict(sorted(extensions.items())),
+          }
+          (root/'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n', encoding='utf-8')
+          print(json.dumps(manifest, indent=2))
+          PY
+
+      - name: Commit imported assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add assets/gamebox/kenney
+          if git diff --cached --quiet; then
+            echo 'Kenney asset library already matches the pinned source.'
+            exit 0
+          fi
+          git commit -m 'Import full Kenney CC0 runtime asset library for GameBox'
+          git push origin HEAD:main
