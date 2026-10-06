@@ -7,6 +7,7 @@ on:
     paths:
       - .github/workflows/import-pack6-ultimate-animated-animals.yml
       - .github/pack6-expected-fbx.txt
+      - .github/pack6-expected-git-blobs.txt
 
 permissions:
   contents: write
@@ -25,35 +26,57 @@ jobs:
           ref: main
           fetch-depth: 0
 
-      - name: Fetch expected Pack 6 filenames
+      - name: Fetch expected Pack 6 manifests
         shell: bash
         run: |
           set -euo pipefail
           git fetch origin pack6-import-helper
           git show origin/pack6-import-helper:.github/pack6-expected-fbx.txt > /tmp/pack6-expected-fbx.txt
+          git show origin/pack6-import-helper:.github/pack6-expected-git-blobs.txt > /tmp/pack6-expected-git-blobs.txt
+
           count="$(wc -l < /tmp/pack6-expected-fbx.txt | tr -d ' ')"
           [ "$count" = "12" ] || { echo "Expected 12 filename entries, found $count"; exit 1; }
 
-      - name: Download official Quaternius Ultimate Animated Animals source
+          blob_count="$(wc -l < /tmp/pack6-expected-git-blobs.txt | tr -d ' ')"
+          [ "$blob_count" = "12" ] || { echo "Expected 12 validated blob entries, found $blob_count"; exit 1; }
+
+      - name: Fetch validated Ultimate Animated Animals transfer copy
         shell: bash
         run: |
           set -euo pipefail
-          rm -rf /tmp/pack6-source
-          python -m pip install --disable-pip-version-check --quiet gdown
-          mkdir -p /tmp/pack6-source
-          gdown --folder "https://drive.google.com/drive/folders/1uJ3N5HfB7jKTseJUNQr3N4YaN0UuEtHk?usp=sharing" -O /tmp/pack6-source || true
+          rm -rf /tmp/pack6-transfer /tmp/pack6-source
+
+          git clone --depth 1 --filter=blob:none --sparse \
+            https://github.com/xxfrigorizxx/The-Legacy-Of-Seroka.git \
+            /tmp/pack6-transfer
+
+          cd /tmp/pack6-transfer
+
+          pinned="a3aaca61260eee91a1ffb05904b90b03094d829d"
+          actual="$(git rev-parse HEAD)"
+          [ "$actual" = "$pinned" ] || {
+            echo "Validated transfer source moved: expected $pinned, got $actual"
+            exit 1
+          }
+
+          git sparse-checkout set "_tmp_quaternius_animals/FBX"
+
+          mkdir -p /tmp/pack6-source/FBX
+          cp -a "_tmp_quaternius_animals/FBX/"*.fbx /tmp/pack6-source/FBX/
 
       - name: Verify Pack 6 FBX set
         shell: bash
         run: |
           set -euo pipefail
 
-          find /tmp/pack6-source -type f -iname '*.fbx' -printf '%f\n' | LC_ALL=C sort > /tmp/pack6-actual-fbx.txt
+          fbx_dir="/tmp/pack6-source/FBX"
+          [ -d "$fbx_dir" ] || { echo "FBX directory not found"; exit 1; }
+
+          find "$fbx_dir" -maxdepth 1 -type f -name '*.fbx' -printf '%f\n' | LC_ALL=C sort > /tmp/pack6-actual-fbx.txt
 
           count="$(wc -l < /tmp/pack6-actual-fbx.txt | tr -d ' ')"
           [ "$count" = "12" ] || {
             echo "Expected 12 FBX source models, found $count"
-            echo "Downloaded FBX files:"
             cat /tmp/pack6-actual-fbx.txt
             exit 1
           }
@@ -64,14 +87,29 @@ jobs:
           fi
 
           while IFS= read -r name; do
-            matches="$(find /tmp/pack6-source -type f -name "$name" -print)"
-            match_count="$(printf '%s\n' "$matches" | sed '/^$/d' | wc -l | tr -d ' ')"
-            [ "$match_count" = "1" ] || { echo "Expected exactly one source file for $name, found $match_count"; exit 1; }
+            src="$fbx_dir/$name"
+            [ -f "$src" ] || { echo "Missing source file: $name"; exit 1; }
 
-            src="$(printf '%s\n' "$matches" | head -n 1)"
             magic="$(head -c 18 "$src")"
             [ "$magic" = "Kaydara FBX Binary" ] || { echo "Unexpected FBX header: $name"; exit 1; }
+
+            expected_blob="$(awk -v name="$name" '$2 == name { print $1 }' /tmp/pack6-expected-git-blobs.txt)"
+            [ -n "$expected_blob" ] || { echo "No validated blob SHA for $name"; exit 1; }
+
+            actual_blob="$(git hash-object "$src")"
+            [ "$actual_blob" = "$expected_blob" ] || {
+              echo "Validated blob mismatch for $name"
+              echo "expected=$expected_blob actual=$actual_blob"
+              exit 1
+            }
           done < /tmp/pack6-actual-fbx.txt
+
+          fox_sha="$(sha256sum "$fbx_dir/Fox.fbx" | awk '{print $1}')"
+          [ "$fox_sha" = "24da24dbd2800be0b268ade50429fb7d815423a92a9a39178a4fc460d7b832de" ] || {
+            echo "Fox.fbx does not match the independently recorded official Quaternius source checksum"
+            echo "actual=$fox_sha"
+            exit 1
+          }
 
       - name: Import Pack 6 one FBX asset per commit
         shell: bash
@@ -80,14 +118,13 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
+          fbx_dir="/tmp/pack6-source/FBX"
           dest_dir="assets/gamebox/quaternius/ultimate-animated-animals"
           imported=0
           skipped=0
 
           while IFS= read -r name; do
-            src="$(find /tmp/pack6-source -type f -name "$name" -print -quit)"
-            [ -n "$src" ] || { echo "Source file disappeared: $name"; exit 1; }
-
+            src="$fbx_dir/$name"
             expected="$(sha256sum "$src" | awk '{print $1}')"
             dest="$dest_dir/$name"
             done_this_asset=0
