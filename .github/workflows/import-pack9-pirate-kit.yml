@@ -1,0 +1,184 @@
+name: Import Quaternius Pack 9 Pirate Kit Non-Character Assets
+
+on:
+  push:
+    branches:
+      - pack9-import-helper
+    paths:
+      - .github/workflows/import-pack9-pirate-kit.yml
+      - .github/pack9-expected-fbx.txt
+      - .github/pack9-source-drive-ids.txt
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pack9-pirate-kit-import
+  cancel-in-progress: false
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Fetch Pack 9 manifests
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin pack9-import-helper
+          git show origin/pack9-import-helper:.github/pack9-expected-fbx.txt > /tmp/pack9-expected-fbx.txt
+          git show origin/pack9-import-helper:.github/pack9-source-drive-ids.txt > /tmp/pack9-source-drive-ids.txt
+
+          expected_count="$(wc -l < /tmp/pack9-expected-fbx.txt | tr -d ' ')"
+          source_count="$(wc -l < /tmp/pack9-source-drive-ids.txt | tr -d ' ')"
+          [ "$expected_count" = "62" ] || { echo "Expected 62 Pack 9 filenames, found $expected_count"; exit 1; }
+          [ "$source_count" = "62" ] || { echo "Expected 62 Pack 9 source IDs, found $source_count"; exit 1; }
+
+          awk '{print $2}' /tmp/pack9-source-drive-ids.txt | LC_ALL=C sort > /tmp/pack9-source-names.txt
+          LC_ALL=C sort /tmp/pack9-expected-fbx.txt > /tmp/pack9-expected-sorted.txt
+          diff -u /tmp/pack9-expected-sorted.txt /tmp/pack9-source-names.txt
+
+          if grep -E '^(Characters_|Enemy_)' /tmp/pack9-expected-fbx.txt; then
+            echo "Character/enemy asset leaked into approved Pack 9 manifest"
+            exit 1
+          fi
+
+      - name: Download official Pack 9 FBX files
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check --quiet gdown
+          rm -rf /tmp/pack9-source
+          mkdir -p /tmp/pack9-source/FBX
+
+          python - <<'PY'
+          import pathlib
+          import time
+          import gdown
+
+          source_map = pathlib.Path("/tmp/pack9-source-drive-ids.txt")
+          out_dir = pathlib.Path("/tmp/pack9-source/FBX")
+
+          for line in source_map.read_text().splitlines():
+              file_id, name = line.split(" ", 1)
+              dest = out_dir / name
+              last_error = None
+              for attempt in range(1, 6):
+                  try:
+                      result = gdown.download(
+                          url=f"https://drive.google.com/uc?id={file_id}",
+                          output=str(dest),
+                          quiet=True,
+                          use_cookies=False,
+                          timeout=60,
+                          retries=2,
+                      )
+                      if result and dest.is_file() and dest.stat().st_size > 0:
+                          print(f"downloaded {name} ({dest.stat().st_size} bytes)")
+                          break
+                      raise RuntimeError(f"download returned {result!r}")
+                  except Exception as exc:
+                      last_error = exc
+                      if dest.exists():
+                          dest.unlink()
+                      print(f"retry {attempt}/5 for {name}: {exc}")
+                      time.sleep(attempt * 2)
+              else:
+                  raise SystemExit(f"Failed to download {name}: {last_error}")
+          PY
+
+      - name: Verify Pack 9 FBX set
+        shell: bash
+        run: |
+          set -euo pipefail
+          fbx_dir="/tmp/pack9-source/FBX"
+
+          find "$fbx_dir" -maxdepth 1 -type f -name '*.fbx' -printf '%f\n' | LC_ALL=C sort > /tmp/pack9-actual-fbx.txt
+          count="$(wc -l < /tmp/pack9-actual-fbx.txt | tr -d ' ')"
+          [ "$count" = "62" ] || {
+            echo "Expected 62 approved FBX assets, found $count"
+            cat /tmp/pack9-actual-fbx.txt
+            exit 1
+          }
+
+          diff -u /tmp/pack9-expected-sorted.txt /tmp/pack9-actual-fbx.txt
+
+          while IFS= read -r name; do
+            src="$fbx_dir/$name"
+            [ -f "$src" ] || { echo "Missing source file: $name"; exit 1; }
+            magic="$(head -c 18 "$src")"
+            [ "$magic" = "Kaydara FBX Binary" ] || {
+              echo "Unexpected FBX header: $name"
+              exit 1
+            }
+          done < /tmp/pack9-actual-fbx.txt
+
+      - name: Import Pack 9 one FBX asset per commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          fbx_dir="/tmp/pack9-source/FBX"
+          dest_dir="assets/gamebox/quaternius/pirate-kit"
+          imported=0
+          skipped=0
+
+          while IFS= read -r name; do
+            src="$fbx_dir/$name"
+            expected="$(sha256sum "$src" | awk '{print $1}')"
+            dest="$dest_dir/$name"
+            done_this_asset=0
+
+            for attempt in $(seq 1 25); do
+              git fetch origin main
+              git checkout main
+              git reset --hard origin/main
+              mkdir -p "$dest_dir"
+
+              if [ -f "$dest" ]; then
+                current="$(sha256sum "$dest" | awk '{print $1}')"
+                if [ "$current" = "$expected" ]; then
+                  echo "$name already present with exact checksum; skipping."
+                  skipped=$((skipped+1))
+                  done_this_asset=1
+                  break
+                fi
+                echo "$name already exists on main with different bytes; refusing overwrite." >&2
+                exit 1
+              fi
+
+              cp "$src" "$dest"
+              verify="$(sha256sum "$dest" | awk '{print $1}')"
+              [ "$verify" = "$expected" ] || {
+                echo "Post-copy checksum mismatch for $name"
+                exit 1
+              }
+
+              git add "$dest"
+              git commit -m "Import Quaternius Pirate Kit $name"
+
+              if git push origin HEAD:main; then
+                imported=$((imported+1))
+                done_this_asset=1
+                break
+              fi
+
+              echo "Concurrent main update while pushing $name (attempt $attempt); retrying on latest main."
+              git reset --hard
+            done
+
+            [ "$done_this_asset" = "1" ] || {
+              echo "Could not safely commit $name after retries"
+              exit 1
+            }
+          done < /tmp/pack9-actual-fbx.txt
+
+          echo "imported=$imported skipped=$skipped"
