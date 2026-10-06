@@ -1,0 +1,113 @@
+name: Import Quaternius Pack 5 Ultimate House Interior assets
+
+on:
+  push:
+    branches:
+      - pack5-import-helper
+    paths:
+      - .github/workflows/import-pack5-ultimate-house-interior.yml
+      - .github/pack5-expected-fbx.txt
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pack5-ultimate-house-interior-import
+  cancel-in-progress: false
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Fetch expected Pack 5 filenames
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin pack5-import-helper
+          git show origin/pack5-import-helper:.github/pack5-expected-fbx.txt > /tmp/pack5-expected-fbx.txt
+          count="$(wc -l < /tmp/pack5-expected-fbx.txt | tr -d ' ')"
+          [ "$count" = "123" ] || { echo "Expected 123 filename entries, found $count"; exit 1; }
+
+      - name: Fetch complete Ultimate House Interior FBX transfer copy
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/pack5-transfer /tmp/ultimate-house-interior
+          git clone --depth 1 --filter=blob:none --sparse https://github.com/al406608/Amelia.Online.Com.git /tmp/pack5-transfer
+          cd /tmp/pack5-transfer
+          git sparse-checkout set "Assets/3D/Rooms/Ultimate House Interior Pack - June 2020/FBX"
+          git checkout main
+          mkdir -p /tmp/ultimate-house-interior
+          cp -a "Assets/3D/Rooms/Ultimate House Interior Pack - June 2020/FBX" /tmp/ultimate-house-interior/FBX
+
+      - name: Verify Pack 5 FBX set
+        shell: bash
+        run: |
+          set -euo pipefail
+          fbx_dir="/tmp/ultimate-house-interior/FBX"
+          [ -d "$fbx_dir" ] || { echo "FBX directory not found"; exit 1; }
+
+          find "$fbx_dir" -maxdepth 1 -type f -name '*.fbx' -printf '%f\n' | LC_ALL=C sort > /tmp/pack5-actual-fbx.txt
+          count="$(wc -l < /tmp/pack5-actual-fbx.txt | tr -d ' ')"
+          [ "$count" = "123" ] || { echo "Expected 123 FBX files, found $count"; exit 1; }
+
+          if ! diff -u /tmp/pack5-expected-fbx.txt /tmp/pack5-actual-fbx.txt; then
+            echo "Pack 5 FBX filename set does not match the expected 123-model pack"
+            exit 1
+          fi
+
+          while IFS= read -r name; do
+            magic="$(head -c 18 "$fbx_dir/$name")"
+            [ "$magic" = "Kaydara FBX Binary" ] || { echo "Unexpected FBX header: $name"; exit 1; }
+          done < /tmp/pack5-actual-fbx.txt
+
+      - name: Import Pack 5 one FBX asset per commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          fbx_dir="/tmp/ultimate-house-interior/FBX"
+          dest_dir="assets/gamebox/quaternius/ultimate-house-interior"
+          imported=0
+          skipped=0
+
+          while IFS= read -r name; do
+            src="$fbx_dir/$name"
+            expected="$(sha256sum "$src" | awk '{print $1}')"
+
+            git fetch origin main
+            git checkout main
+            git reset --hard origin/main
+            mkdir -p "$dest_dir"
+            dest="$dest_dir/$name"
+
+            if [ -f "$dest" ]; then
+              current="$(sha256sum "$dest" | awk '{print $1}')"
+              if [ "$current" = "$expected" ]; then
+                echo "$name already present with exact checksum; skipping."
+                skipped=$((skipped+1))
+                continue
+              fi
+              echo "$name already exists on main with different bytes; refusing overwrite." >&2
+              exit 1
+            fi
+
+            cp "$src" "$dest"
+            verify="$(sha256sum "$dest" | awk '{print $1}')"
+            [ "$verify" = "$expected" ] || { echo "Post-copy checksum mismatch for $name"; exit 1; }
+
+            git add "$dest"
+            git commit -m "Import Quaternius Ultimate House Interior $name"
+            git push origin HEAD:main
+            imported=$((imported+1))
+          done < /tmp/pack5-actual-fbx.txt
+
+          echo "imported=$imported skipped=$skipped"
