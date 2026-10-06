@@ -41,7 +41,7 @@ jobs:
           rm -rf /tmp/pack6-source
           python -m pip install --disable-pip-version-check --quiet gdown
           mkdir -p /tmp/pack6-source
-          gdown --folder "https://drive.google.com/drive/folders/1uJ3N5HfB7jKTseJUNQr3N4YaN0UuEtHk?usp=sharing" -O /tmp/pack6-source
+          gdown --folder "https://drive.google.com/drive/folders/1uJ3N5HfB7jKTseJUNQr3N4YaN0UuEtHk?usp=sharing" -O /tmp/pack6-source || true
 
       - name: Verify Pack 6 FBX set
         shell: bash
