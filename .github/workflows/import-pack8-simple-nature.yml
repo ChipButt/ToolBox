@@ -12,12 +12,13 @@ permissions:
   contents: write
 
 concurrency:
-  group: pack8-simple-nature-import
+  group: pack8-simple-nature-direct-import
   cancel-in-progress: false
 
 jobs:
   import:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout main
         uses: actions/checkout@v4
