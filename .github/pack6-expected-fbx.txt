@@ -1,0 +1,12 @@
+Alpaca.fbx
+Bull.fbx
+Cow.fbx
+Deer.fbx
+Donkey.fbx
+Fox.fbx
+Horse.fbx
+Horse_White.fbx
+Husky.fbx
+ShibaInu.fbx
+Stag.fbx
+Wolf.fbx
