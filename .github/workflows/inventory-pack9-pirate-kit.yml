@@ -7,9 +7,6 @@ on:
     paths:
       - .github/workflows/inventory-pack9-pirate-kit.yml
 
-permissions:
-  contents: read
-
 concurrency:
   group: pack9-pirate-kit-inventory
   cancel-in-progress: true
@@ -17,29 +14,5 @@ concurrency:
 jobs:
   inventory:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
     steps:
-      - name: Checkout helper
-        uses: actions/checkout@v4
-        with:
-          ref: pack9-import-helper
-          fetch-depth: 1
-
-      - name: Download official Pirate Kit source
-        shell: bash
-        run: |
-          set -euo pipefail
-          python -m pip install --disable-pip-version-check --quiet gdown
-          rm -rf /tmp/pack9-source
-          mkdir -p /tmp/pack9-source
-          gdown --folder "https://drive.google.com/drive/folders/1KjMzhVsDcyvYMWeVjZcRfuu8auBLpNi2?usp=sharing" -O /tmp/pack9-source || true
-
-      - name: Print FBX inventory
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo "=== FBX INVENTORY START ==="
-          find /tmp/pack9-source -type f -iname '*.fbx' -printf '%P\n' | LC_ALL=C sort
-          echo "=== FBX INVENTORY END ==="
-          count="$(find /tmp/pack9-source -type f -iname '*.fbx' | wc -l | tr -d ' ')"
-          echo "FBX_COUNT=$count"
+      - run: echo "Superseded by skip-download FBX index workflow."
