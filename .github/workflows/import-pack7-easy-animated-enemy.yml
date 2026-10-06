@@ -7,6 +7,7 @@ on:
     paths:
       - .github/workflows/import-pack7-easy-animated-enemy.yml
       - .github/pack7-expected-fbx.txt
+      - .github/pack7-expected-git-blobs.txt
 
 permissions:
   contents: write
@@ -25,68 +26,113 @@ jobs:
           ref: main
           fetch-depth: 0
 
-      - name: Fetch expected Pack 7 filenames
+      - name: Fetch expected Pack 7 manifests
         shell: bash
         run: |
           set -euo pipefail
           git fetch origin pack7-import-helper
           git show origin/pack7-import-helper:.github/pack7-expected-fbx.txt > /tmp/pack7-expected-fbx.txt
+          git show origin/pack7-import-helper:.github/pack7-expected-git-blobs.txt > /tmp/pack7-expected-git-blobs.txt
+
           count="$(wc -l < /tmp/pack7-expected-fbx.txt | tr -d ' ')"
-          [ "$count" = "5" ] || { echo "Expected 5 filename entries, found $count"; exit 1; }
+          [ "$count" = "6" ] || { echo "Expected 6 filename entries, found $count"; exit 1; }
 
-      - name: Download exact Pack 7 archive
+          blob_count="$(wc -l < /tmp/pack7-expected-git-blobs.txt | tr -d ' ')"
+          [ "$blob_count" = "6" ] || { echo "Expected 6 validated blob entries, found $blob_count"; exit 1; }
+
+      - name: Acquire validated Pack 7 source
         shell: bash
         run: |
           set -euo pipefail
-          rm -rf /tmp/pack7-source /tmp/pack7.zip
-          curl -fL --retry 4 --retry-delay 2             "https://opengameart.org/sites/default/files/easyenemypack.zip"             -o /tmp/pack7.zip
+          rm -rf /tmp/pack7-drive /tmp/pack7-source
+          mkdir -p /tmp/pack7-drive /tmp/pack7-source/FBX
 
-          expected="a97f38b981fec2f42b263fe92828a7bf73f9da1228d5aac906fe354cd2b21004"
-          actual="$(sha256sum /tmp/pack7.zip | awk '{print $1}')"
-          [ "$actual" = "$expected" ] || {
-            echo "Archive checksum mismatch"
-            echo "expected=$expected"
-            echo "actual=$actual"
-            exit 1
+          verify_set() {
+            local root="$1"
+            local listing="/tmp/pack7-listing.txt"
+            find "$root" -type f -name '*.fbx' -printf '%f\n' | LC_ALL=C sort > "$listing"
+
+            [ "$(wc -l < "$listing" | tr -d ' ')" = "6" ] || return 1
+            diff -q /tmp/pack7-expected-fbx.txt "$listing" >/dev/null || return 1
+
+            while IFS= read -r name; do
+              local matches
+              matches="$(find "$root" -type f -name "$name" -print)"
+              [ "$(printf '%s\n' "$matches" | sed '/^$/d' | wc -l | tr -d ' ')" = "1" ] || return 1
+              local src
+              src="$(printf '%s\n' "$matches" | head -n 1)"
+
+              [ "$(head -c 18 "$src")" = "Kaydara FBX Binary" ] || return 1
+
+              local expected_blob actual_blob
+              expected_blob="$(awk -v name="$name" '$2 == name { print $1 }' /tmp/pack7-expected-git-blobs.txt)"
+              [ -n "$expected_blob" ] || return 1
+              actual_blob="$(git hash-object "$src")"
+              [ "$actual_blob" = "$expected_blob" ] || return 1
+            done < /tmp/pack7-expected-fbx.txt
           }
 
-          mkdir -p /tmp/pack7-source
-          unzip -q /tmp/pack7.zip -d /tmp/pack7-source
+          echo "Trying creator-hosted Quaternius Drive source first"
+          python -m pip install --disable-pip-version-check --quiet gdown
+          gdown --folder "https://drive.google.com/drive/folders/1VbJIslXPWK-1KybQN6yezZrfJcw608qe?usp=sharing" -O /tmp/pack7-drive || true
 
-      - name: Verify Pack 7 FBX set
-        shell: bash
-        run: |
-          set -euo pipefail
-          fbx_dir="/tmp/pack7-source/Easy Animated Enemy Pack - Jan 2019/FBX"
-          [ -d "$fbx_dir" ] || {
-            echo "Expected FBX directory not found"
-            find /tmp/pack7-source -maxdepth 3 -type d -print
-            exit 1
-          }
+          if verify_set /tmp/pack7-drive; then
+            echo "Creator-hosted Drive source validated"
+            while IFS= read -r name; do
+              src="$(find /tmp/pack7-drive -type f -name "$name" -print -quit)"
+              cp "$src" "/tmp/pack7-source/FBX/$name"
+            done < /tmp/pack7-expected-fbx.txt
+          else
+            echo "Creator Drive unavailable/throttled or incomplete; using pinned cross-validated transfer copy"
+            rm -rf /tmp/pack7-source
+            mkdir -p /tmp/pack7-source/FBX
 
-          find "$fbx_dir" -maxdepth 1 -type f -name '*.fbx' -printf '%f\n' | LC_ALL=C sort > /tmp/pack7-actual-fbx.txt
+            pinned="3f511a60fa9822a7de280a8da95a863525998237"
+            base="https://raw.githubusercontent.com/DevHuang1/embervale-godot/$pinned/assets/models/enemies/quaternius"
 
-          count="$(wc -l < /tmp/pack7-actual-fbx.txt | tr -d ' ')"
-          [ "$count" = "5" ] || {
-            echo "Expected 5 FBX source models, found $count"
-            cat /tmp/pack7-actual-fbx.txt
-            exit 1
-          }
+            while IFS= read -r name; do
+              curl -fL --retry 4 --retry-delay 2 "$base/$name" -o "/tmp/pack7-source/FBX/$name"
+            done < /tmp/pack7-expected-fbx.txt
 
-          if ! diff -u /tmp/pack7-expected-fbx.txt /tmp/pack7-actual-fbx.txt; then
-            echo "Pack 7 FBX filename set does not match the expected official 5-model pack"
-            exit 1
+            verify_set /tmp/pack7-source || {
+              echo "Pinned transfer copy failed Pack 7 integrity validation"
+              exit 1
+            }
           fi
+
+      - name: Verify final Pack 7 FBX set
+        shell: bash
+        run: |
+          set -euo pipefail
+          fbx_dir="/tmp/pack7-source/FBX"
+
+          find "$fbx_dir" -maxdepth 1 -type f -name '*.fbx' -printf '%f\n' | LC_ALL=C sort > /tmp/pack7-final-fbx.txt
+
+          count="$(wc -l < /tmp/pack7-final-fbx.txt | tr -d ' ')"
+          [ "$count" = "6" ] || {
+            echo "Expected 6 FBX source assets, found $count"
+            cat /tmp/pack7-final-fbx.txt
+            exit 1
+          }
+
+          diff -u /tmp/pack7-expected-fbx.txt /tmp/pack7-final-fbx.txt
 
           while IFS= read -r name; do
             src="$fbx_dir/$name"
             [ -f "$src" ] || { echo "Missing source file: $name"; exit 1; }
-            magic="$(head -c 18 "$src")"
-            [ "$magic" = "Kaydara FBX Binary" ] || {
+            [ "$(head -c 18 "$src")" = "Kaydara FBX Binary" ] || {
               echo "Unexpected FBX header: $name"
               exit 1
             }
-          done < /tmp/pack7-actual-fbx.txt
+
+            expected_blob="$(awk -v name="$name" '$2 == name { print $1 }' /tmp/pack7-expected-git-blobs.txt)"
+            actual_blob="$(git hash-object "$src")"
+            [ "$actual_blob" = "$expected_blob" ] || {
+              echo "Blob mismatch for $name"
+              echo "expected=$expected_blob actual=$actual_blob"
+              exit 1
+            }
+          done < /tmp/pack7-final-fbx.txt
 
       - name: Import Pack 7 one FBX asset per commit
         shell: bash
@@ -95,7 +141,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          fbx_dir="/tmp/pack7-source/Easy Animated Enemy Pack - Jan 2019/FBX"
+          fbx_dir="/tmp/pack7-source/FBX"
           dest_dir="assets/gamebox/quaternius/easy-animated-enemy"
           imported=0
           skipped=0
@@ -126,10 +172,7 @@ jobs:
 
               cp "$src" "$dest"
               verify="$(sha256sum "$dest" | awk '{print $1}')"
-              [ "$verify" = "$expected" ] || {
-                echo "Post-copy checksum mismatch for $name"
-                exit 1
-              }
+              [ "$verify" = "$expected" ] || { echo "Post-copy checksum mismatch for $name"; exit 1; }
 
               git add "$dest"
               git commit -m "Import Quaternius Easy Animated Enemy $name"
@@ -144,10 +187,7 @@ jobs:
               git reset --hard
             done
 
-            [ "$done_this_asset" = "1" ] || {
-              echo "Could not safely commit $name after retries"
-              exit 1
-            }
-          done < /tmp/pack7-actual-fbx.txt
+            [ "$done_this_asset" = "1" ] || { echo "Could not safely commit $name after retries"; exit 1; }
+          done < /tmp/pack7-final-fbx.txt
 
           echo "imported=$imported skipped=$skipped"
