@@ -49,6 +49,7 @@ jobs:
           git checkout main
           git lfs install --local
           git lfs pull --include="Ultimate Nature Pack - Jun 2019/FBX/*.fbx" --exclude=""
+          git lfs checkout "Ultimate Nature Pack - Jun 2019/FBX"
           cp -a "Ultimate Nature Pack - Jun 2019/FBX" /tmp/quaternius/FBX
           count="$(find /tmp/quaternius/FBX -maxdepth 1 -type f -name '*.fbx' | wc -l | tr -d ' ')"
           [ "$count" = "150" ] || { echo "Expected 150 transfer FBX files, found $count"; exit 1; }
