@@ -1,5 +1,5 @@
 name: Import Quaternius Pack 2 Ultimate Nature assets
-# clean trigger
+# Every imported file is validated against the uploaded ZIP manifest.
 
 on:
   push:
@@ -36,59 +36,20 @@ jobs:
           count="$(wc -l < /tmp/pack2-authoritative.sha256 | tr -d ' ')"
           [ "$count" = "150" ] || { echo "Expected 150 manifest entries, found $count"; exit 1; }
 
-      - name: Download Pack 2 FBX transfer copy
-        shell: bash
-        run: |
-          set -euo pipefail
-          rm -rf /tmp/pack2-transfer /tmp/quaternius
-          mkdir -p /tmp/quaternius
-          export GIT_LFS_SKIP_SMUDGE=1
-          git clone --depth 1 --filter=blob:none --sparse https://github.com/Maisha617/Maze-Runner-Game-.git /tmp/pack2-transfer
-          cd /tmp/pack2-transfer
-          git sparse-checkout set "Ultimate Nature Pack - Jun 2019/FBX"
-          git checkout main
-          git lfs install --local
-          git lfs pull --include="Ultimate Nature Pack - Jun 2019/FBX/*.fbx" --exclude=""
-          git lfs checkout "Ultimate Nature Pack - Jun 2019/FBX"
-          cp -a "Ultimate Nature Pack - Jun 2019/FBX" /tmp/quaternius/FBX
-          count="$(find /tmp/quaternius/FBX -maxdepth 1 -type f -name '*.fbx' | wc -l | tr -d ' ')"
-          [ "$count" = "150" ] || { echo "Expected 150 transfer FBX files, found $count"; exit 1; }
-
-      - name: Import exact matches one FBX per commit
+      - name: Import exact Pack 2 assets one FBX per commit
         shell: bash
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          fbx_dir="/tmp/quaternius/FBX"
+
           dest_dir="assets/gamebox/quaternius/ultimate-nature"
-          : > /tmp/pack2-mismatches.txt
+          tmp_dir="/tmp/pack2-fbx"
+          mkdir -p "$tmp_dir"
           imported=0
           skipped=0
-          mismatched=0
 
           while read -r expected name; do
-            src="$fbx_dir/$name"
-            if [ ! -f "$src" ]; then
-              echo "$name missing from transfer copy" | tee -a /tmp/pack2-mismatches.txt
-              mismatched=$((mismatched+1))
-              continue
-            fi
-
-            actual="$(sha256sum "$src" | awk '{print $1}')"
-            if [ "$actual" != "$expected" ]; then
-              echo "$name expected=$expected actual=$actual" | tee -a /tmp/pack2-mismatches.txt
-              mismatched=$((mismatched+1))
-              continue
-            fi
-
-            magic="$(head -c 18 "$src")"
-            if [ "$magic" != "Kaydara FBX Binary" ]; then
-              echo "$name has unexpected FBX header" | tee -a /tmp/pack2-mismatches.txt
-              mismatched=$((mismatched+1))
-              continue
-            fi
-
             git fetch origin main
             git checkout main
             git reset --hard origin/main
@@ -106,6 +67,25 @@ jobs:
               continue
             fi
 
+            src="$tmp_dir/$name"
+            url="https://media.githubusercontent.com/media/Maisha617/Maze-Runner-Game-/main/Ultimate%20Nature%20Pack%20-%20Jun%202019/FBX/$name"
+            rm -f "$src"
+            curl -L --fail --retry 4 --retry-delay 2 "$url" -o "$src"
+
+            actual="$(sha256sum "$src" | awk '{print $1}')"
+            if [ "$actual" != "$expected" ]; then
+              echo "Checksum mismatch for $name" >&2
+              echo "expected=$expected" >&2
+              echo "actual=$actual" >&2
+              exit 1
+            fi
+
+            magic="$(head -c 18 "$src")"
+            if [ "$magic" != "Kaydara FBX Binary" ]; then
+              echo "Unexpected FBX header for $name" >&2
+              exit 1
+            fi
+
             cp "$src" "$dest"
             verify="$(sha256sum "$dest" | awk '{print $1}')"
             [ "$verify" = "$expected" ] || { echo "Post-copy mismatch for $name"; exit 1; }
@@ -116,9 +96,4 @@ jobs:
             imported=$((imported+1))
           done < /tmp/pack2-authoritative.sha256
 
-          echo "imported=$imported skipped=$skipped mismatched=$mismatched"
-          if [ -s /tmp/pack2-mismatches.txt ]; then
-            echo "MISMATCHES_BEGIN"
-            cat /tmp/pack2-mismatches.txt
-            echo "MISMATCHES_END"
-          fi
+          echo "imported=$imported skipped=$skipped"
