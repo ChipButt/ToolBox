@@ -82,32 +82,45 @@ jobs:
           while IFS= read -r name; do
             src="$fbx_dir/$name"
             expected="$(sha256sum "$src" | awk '{print $1}')"
-
-            git fetch origin main
-            git checkout main
-            git reset --hard origin/main
-            mkdir -p "$dest_dir"
             dest="$dest_dir/$name"
+            done_this_asset=0
 
-            if [ -f "$dest" ]; then
-              current="$(sha256sum "$dest" | awk '{print $1}')"
-              if [ "$current" = "$expected" ]; then
-                echo "$name already present with exact checksum; skipping."
-                skipped=$((skipped+1))
-                continue
+            for attempt in $(seq 1 25); do
+              git fetch origin main
+              git checkout main
+              git reset --hard origin/main
+              mkdir -p "$dest_dir"
+
+              if [ -f "$dest" ]; then
+                current="$(sha256sum "$dest" | awk '{print $1}')"
+                if [ "$current" = "$expected" ]; then
+                  echo "$name already present with exact checksum; skipping."
+                  skipped=$((skipped+1))
+                  done_this_asset=1
+                  break
+                fi
+                echo "$name already exists on main with different bytes; refusing overwrite." >&2
+                exit 1
               fi
-              echo "$name already exists on main with different bytes; refusing overwrite." >&2
-              exit 1
-            fi
 
-            cp "$src" "$dest"
-            verify="$(sha256sum "$dest" | awk '{print $1}')"
-            [ "$verify" = "$expected" ] || { echo "Post-copy checksum mismatch for $name"; exit 1; }
+              cp "$src" "$dest"
+              verify="$(sha256sum "$dest" | awk '{print $1}')"
+              [ "$verify" = "$expected" ] || { echo "Post-copy checksum mismatch for $name"; exit 1; }
 
-            git add "$dest"
-            git commit -m "Import Quaternius Ultimate House Interior $name"
-            git push origin HEAD:main
-            imported=$((imported+1))
+              git add "$dest"
+              git commit -m "Import Quaternius Ultimate House Interior $name"
+
+              if git push origin HEAD:main; then
+                imported=$((imported+1))
+                done_this_asset=1
+                break
+              fi
+
+              echo "Concurrent main update while pushing $name (attempt $attempt); retrying on latest main."
+              git reset --hard
+            done
+
+            [ "$done_this_asset" = "1" ] || { echo "Could not safely commit $name after retries"; exit 1; }
           done < /tmp/pack5-actual-fbx.txt
 
           echo "imported=$imported skipped=$skipped"
