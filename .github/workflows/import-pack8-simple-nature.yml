@@ -1,0 +1,133 @@
+name: Import Quaternius Pack 8 Simple Nature Pack
+
+on:
+  push:
+    branches:
+      - pack8-import-helper
+    paths:
+      - .github/workflows/import-pack8-simple-nature.yml
+      - .github/pack8-expected-fbx.txt
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pack8-simple-nature-import
+  cancel-in-progress: false
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Fetch expected Pack 8 filenames
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin pack8-import-helper
+          git show origin/pack8-import-helper:.github/pack8-expected-fbx.txt > /tmp/pack8-expected-fbx.txt
+          count="$(wc -l < /tmp/pack8-expected-fbx.txt | tr -d ' ')"
+          [ "$count" = "13" ] || { echo "Expected 13 filename entries, found $count"; exit 1; }
+
+      - name: Download official Quaternius Simple Nature source
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/pack8-source
+          python -m pip install --disable-pip-version-check --quiet gdown
+          mkdir -p /tmp/pack8-source
+          gdown --folder "https://drive.google.com/drive/folders/18hb-5HGCLL9BS8jmxkE4h31wmHGeqfts?usp=sharing" -O /tmp/pack8-source || true
+
+      - name: Verify Pack 8 FBX set
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          find /tmp/pack8-source -type f -iname '*.fbx' -printf '%f\n' | LC_ALL=C sort > /tmp/pack8-actual-fbx.txt
+
+          count="$(wc -l < /tmp/pack8-actual-fbx.txt | tr -d ' ')"
+          [ "$count" = "13" ] || {
+            echo "Expected 13 FBX source models, found $count"
+            echo "Downloaded FBX files:"
+            cat /tmp/pack8-actual-fbx.txt
+            exit 1
+          }
+
+          if ! diff -u /tmp/pack8-expected-fbx.txt /tmp/pack8-actual-fbx.txt; then
+            echo "Pack 8 FBX filename set does not match the expected official 13-model pack"
+            exit 1
+          fi
+
+          while IFS= read -r name; do
+            matches="$(find /tmp/pack8-source -type f -name "$name" -print)"
+            match_count="$(printf '%s\n' "$matches" | sed '/^$/d' | wc -l | tr -d ' ')"
+            [ "$match_count" = "1" ] || { echo "Expected exactly one source file for $name, found $match_count"; exit 1; }
+
+            src="$(printf '%s\n' "$matches" | head -n 1)"
+            magic="$(head -c 18 "$src")"
+            [ "$magic" = "Kaydara FBX Binary" ] || { echo "Unexpected FBX header: $name"; exit 1; }
+          done < /tmp/pack8-actual-fbx.txt
+
+      - name: Import Pack 8 one FBX asset per commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          dest_dir="assets/gamebox/quaternius/simple-nature"
+          imported=0
+          skipped=0
+
+          while IFS= read -r name; do
+            src="$(find /tmp/pack8-source -type f -name "$name" -print -quit)"
+            [ -n "$src" ] || { echo "Source file disappeared: $name"; exit 1; }
+
+            expected="$(sha256sum "$src" | awk '{print $1}')"
+            dest="$dest_dir/$name"
+            done_this_asset=0
+
+            for attempt in $(seq 1 25); do
+              git fetch origin main
+              git checkout main
+              git reset --hard origin/main
+              mkdir -p "$dest_dir"
+
+              if [ -f "$dest" ]; then
+                current="$(sha256sum "$dest" | awk '{print $1}')"
+                if [ "$current" = "$expected" ]; then
+                  echo "$name already present with exact checksum; skipping."
+                  skipped=$((skipped+1))
+                  done_this_asset=1
+                  break
+                fi
+                echo "$name already exists on main with different bytes; refusing overwrite." >&2
+                exit 1
+              fi
+
+              cp "$src" "$dest"
+              verify="$(sha256sum "$dest" | awk '{print $1}')"
+              [ "$verify" = "$expected" ] || { echo "Post-copy checksum mismatch for $name"; exit 1; }
+
+              git add "$dest"
+              git commit -m "Import Quaternius Simple Nature $name"
+
+              if git push origin HEAD:main; then
+                imported=$((imported+1))
+                done_this_asset=1
+                break
+              fi
+
+              echo "Concurrent main update while pushing $name (attempt $attempt); retrying on latest main."
+              git reset --hard
+            done
+
+            [ "$done_this_asset" = "1" ] || { echo "Could not safely commit $name after retries"; exit 1; }
+          done < /tmp/pack8-actual-fbx.txt
+
+          echo "imported=$imported skipped=$skipped"
