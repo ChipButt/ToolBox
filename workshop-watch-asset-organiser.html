@@ -1,0 +1,501 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#102c48">
+<title>Workshop Watch Asset Organiser · ToolBox</title>
+<style>
+:root{
+  --navy:#082f68;--navy2:#123f78;--ink:#17314d;--muted:#6f8190;--gold:#f7bd18;
+  --bg:#edf5f8;--panel:#fff;--line:#cbd9df;--green:#26835f;--red:#b84b52;--slot:#dfeaf0;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--ink);background:var(--bg)}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer}
+.app{min-height:100vh;display:grid;grid-template-rows:auto auto minmax(0,1fr)}
+.topbar{display:flex;align-items:center;gap:12px;padding:10px 14px;background:#0c3157;color:#fff;box-shadow:0 3px 10px rgba(0,0,0,.16);z-index:5}
+.back{color:#fff;text-decoration:none;font-weight:800;padding:8px 10px;border-radius:9px;background:rgba(255,255,255,.1)}
+.title{min-width:0;flex:1}.title strong{display:block;font-size:16px}.title small{display:block;font-size:11px;opacity:.72;margin-top:2px}
+.saved{font-size:11px;opacity:.75;white-space:nowrap}
+.toolbar{display:flex;gap:7px;flex-wrap:wrap;align-items:center;padding:8px 10px;background:#fff;border-bottom:1px solid var(--line)}
+.btn{border:0;border-radius:8px;padding:8px 11px;background:var(--navy);color:#fff;font-weight:800;font-size:12px}
+.btn.secondary{background:#dce9ef;color:var(--ink)}
+.btn.good{background:var(--green)}
+.btn.warn{background:#8e6530}
+.btn:disabled{opacity:.45}
+.layout{display:grid;grid-template-columns:minmax(260px,320px) minmax(360px,1fr) minmax(340px,440px);gap:8px;padding:8px;min-height:0;overflow:hidden}
+.panel{min-height:0;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 2px 8px rgba(13,52,77,.07)}
+.panelHead{padding:10px 12px;border-bottom:1px solid var(--line);background:#f8fbfc}
+.panelHead strong{display:block;font-size:13px}.panelHead small{display:block;margin-top:3px;color:var(--muted);font-size:10px;line-height:1.35}
+.panelBody{min-height:0;overflow:auto;padding:9px}
+.filters{display:grid;grid-template-columns:1fr auto;gap:6px;margin-bottom:8px}
+.search{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 9px;background:#fff;font-size:12px}
+.segment{display:flex;gap:3px}.segment button{border:1px solid var(--line);background:#fff;border-radius:7px;padding:5px 7px;font-size:10px;font-weight:800;color:var(--ink)}.segment button.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+.palette{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
+.assetCard{border:1px solid #bfced6;background:#f8fbfc;border-radius:8px;padding:4px;min-width:0;text-align:center;cursor:grab;user-select:none}
+.assetCard:active{cursor:grabbing}
+.assetCard.selected{outline:3px solid var(--gold);outline-offset:0}
+.assetCard.used{background:#eef8f2;border-color:#9bcab6}
+.sprite{width:48px;height:48px;margin:0 auto 3px;background-repeat:no-repeat;image-rendering:pixelated;background-color:#d4e2e8;border-radius:4px}
+.assetCard b{display:block;font:700 8px ui-monospace,SFMono-Regular,Menlo,monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.assetCard em{display:block;font-style:normal;font-size:7px;color:var(--muted)}
+.slotTools{display:grid;grid-template-columns:1fr 130px auto;gap:6px;margin-bottom:8px}
+.slotGroups{display:grid;gap:10px}
+.group{border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.groupTitle{padding:7px 9px;background:#edf4f7;font-size:11px;font-weight:900;letter-spacing:.03em;text-transform:uppercase}
+.slotList{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;padding:6px}
+.slot{position:relative;min-height:92px;border:2px dashed #aebfc8;border-radius:9px;background:#f9fcfd;padding:6px;display:grid;grid-template-columns:58px 1fr;gap:6px;align-items:center}
+.slot.over,.gridCell.over{border-color:var(--gold);background:#fff8dd}
+.slotPreview{width:56px;height:56px;background:#d8e5ea;border-radius:6px;display:grid;place-items:center;overflow:hidden}
+.slotPreview .sprite{width:56px;height:56px;margin:0}
+.slotFields{min-width:0}.slotName{width:100%;border:1px solid var(--line);border-radius:6px;padding:5px 6px;font-size:10px;font-weight:800}.slotMeta{font-size:8px;color:var(--muted);margin-top:4px;line-height:1.3;word-break:break-all}
+.slotActions{display:flex;gap:3px;margin-top:4px}.mini{border:0;border-radius:5px;padding:4px 6px;font-size:8px;font-weight:900;background:#dfe9ee;color:var(--ink)}.mini.danger{background:#f0d9db;color:#842f36}
+.emptySlot{font-size:9px;color:#80929d;text-align:center;padding:6px}
+.workspaceTop{display:grid;grid-template-columns:1fr 90px 90px;gap:6px;margin-bottom:7px}
+.workspaceTop input,.workspaceTop select{width:100%;border:1px solid var(--line);border-radius:7px;padding:7px;font-size:11px}
+.gridWrap{overflow:auto;border:1px solid var(--line);border-radius:9px;background:#dce7ec;padding:8px;min-height:260px}
+.compositeGrid{display:grid;gap:1px;width:max-content;background:#8fa5b2;padding:1px}
+.gridCell{width:52px;height:52px;background:#eef5f7;border:1px dashed #bdccd3;position:relative;display:grid;place-items:center}
+.gridCell .sprite{width:50px;height:50px;margin:0}
+.gridCell .cellPos{position:absolute;right:2px;bottom:1px;font:700 7px ui-monospace,SFMono-Regular,Menlo,monospace;background:rgba(255,255,255,.82);padding:1px 2px;border-radius:3px;color:#485d68}
+.gridCell.filled{border-style:solid}
+.compositeActions{display:flex;gap:5px;flex-wrap:wrap;margin-top:7px}
+.savedComposites{display:grid;gap:6px;margin-top:9px}
+.compositeCard{border:1px solid var(--line);border-radius:8px;padding:7px;background:#fafcfd}
+.compositeCard strong{font-size:10px}.compositeCard small{display:block;color:var(--muted);font-size:8px;margin-top:2px}
+.output{display:none;position:fixed;inset:0;background:rgba(4,28,47,.56);z-index:30;align-items:center;justify-content:center;padding:15px}
+.output.show{display:flex}.outputCard{width:min(900px,100%);max-height:90vh;background:#fff;border-radius:12px;display:flex;flex-direction:column;overflow:hidden}
+.outputHead{display:flex;align-items:center;gap:8px;padding:10px;border-bottom:1px solid var(--line)}.outputHead strong{flex:1}
+.output textarea{width:100%;min-height:460px;resize:vertical;border:0;padding:12px;font:11px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;outline:0}
+.help{font-size:9px;color:var(--muted);line-height:1.4;margin-top:7px}
+.toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%) translateY(20px);opacity:0;pointer-events:none;background:#17394e;color:#fff;border-radius:9px;padding:9px 13px;font-size:11px;font-weight:800;transition:.15s;z-index:50}.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+@media(max-width:1050px){.layout{grid-template-columns:280px 1fr}.panel.compositePanel{grid-column:1/-1;max-height:none}.app{min-height:auto}.layout{overflow:visible}.panel{min-height:520px}}
+@media(max-width:700px){.layout{grid-template-columns:1fr;overflow:visible}.panel{min-height:520px}.palette{grid-template-columns:repeat(5,minmax(0,1fr))}.slotList{grid-template-columns:1fr}.slotTools{grid-template-columns:1fr 1fr}.slotTools .btn{grid-column:1/-1}.topbar{align-items:flex-start}.saved{display:none}}
+@media(max-width:470px){.palette{grid-template-columns:repeat(4,minmax(0,1fr))}.workspaceTop{grid-template-columns:1fr 76px 76px}.gridCell{width:44px;height:44px}.gridCell .sprite{width:42px;height:42px}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <a class="back" href="./">← ToolBox</a>
+    <div class="title"><strong>Workshop Watch Asset Organiser</strong><small>Rename atlas tiles and build labelled multi-tile assets without guessing coordinates.</small></div>
+    <div class="saved" id="saveStatus">Saved locally</div>
+  </header>
+
+  <div class="toolbar">
+    <button class="btn good" id="copyCode">COPY MAPPING CODE</button>
+    <button class="btn secondary" id="showCode">VIEW CODE</button>
+    <button class="btn secondary" id="copyJson">COPY JSON</button>
+    <button class="btn secondary" id="downloadJson">DOWNLOAD JSON</button>
+    <button class="btn secondary" id="importJson">IMPORT JSON</button>
+    <button class="btn warn" id="resetAll">RESET ORGANISER</button>
+  </div>
+
+  <main class="layout">
+    <section class="panel">
+      <div class="panelHead"><strong>1. Source tiles</strong><small>Exact visible 16×16 cells from the Gherwit Winter atlas. Drag one, or click it then click a destination.</small></div>
+      <div class="panelBody">
+        <div class="filters">
+          <input class="search" id="tileSearch" placeholder="Search T_c00_r00…">
+          <div class="segment" id="usageFilter">
+            <button class="active" data-filter="all">ALL</button>
+            <button data-filter="unused">UNUSED</button>
+            <button data-filter="used">USED</button>
+          </div>
+        </div>
+        <div class="palette" id="palette"></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panelHead"><strong>2. Semantic slots</strong><small>Drop tiles into roles that make sense to you. Rename anything. These names become the code names I can use later.</small></div>
+      <div class="panelBody">
+        <div class="slotTools">
+          <input class="search" id="newSlotName" placeholder="new_asset_name">
+          <select class="search" id="newSlotCategory">
+            <option>Ground</option><option>Path</option><option>Path edges</option><option>Trees</option><option>Props</option><option>Workshop</option><option>Other</option>
+          </select>
+          <button class="btn" id="addSlot">ADD SLOT</button>
+        </div>
+        <div class="slotGroups" id="slotGroups"></div>
+      </div>
+    </section>
+
+    <section class="panel compositePanel">
+      <div class="panelHead"><strong>3. Composite / sprite layout</strong><small>For trees, path corners, gates or anything made from several atlas cells. Place tiles exactly where they belong and save the result under one name.</small></div>
+      <div class="panelBody">
+        <div class="workspaceTop">
+          <input id="compositeName" placeholder="e.g. pine_tree_large">
+          <select id="gridW" aria-label="Composite width"></select>
+          <select id="gridH" aria-label="Composite height"></select>
+        </div>
+        <div class="gridWrap"><div class="compositeGrid" id="compositeGrid"></div></div>
+        <div class="compositeActions">
+          <button class="btn good" id="saveComposite">SAVE COMPOSITE</button>
+          <button class="btn secondary" id="clearComposite">CLEAR GRID</button>
+          <button class="btn secondary" id="trimComposite">TRIM EMPTY EDGES</button>
+        </div>
+        <div class="help">Tip: click a filled composite cell to clear it. A source tile can be reused in more than one semantic asset.</div>
+        <div class="savedComposites" id="savedComposites"></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div class="output" id="outputModal" aria-hidden="true">
+  <div class="outputCard">
+    <div class="outputHead"><strong id="outputTitle">Mapping code</strong><button class="btn secondary" id="closeOutput">CLOSE</button><button class="btn good" id="copyOutput">COPY</button></div>
+    <textarea id="outputText" spellcheck="false"></textarea>
+  </div>
+</div>
+<div class="toast" id="toast">Copied</div>
+<input type="file" id="fileInput" accept=".json,application/json" hidden>
+
+<script>
+(function(){
+'use strict';
+
+var ATLAS_URL='https://chipbutt.github.io/GameBox/workshop-watch/assets/vendor/gherwit/winter/Winter-Download/Winter-tiles.png';
+var TILE_SIZE=16;
+var ATLAS_W=224,ATLAS_H=192;
+var PREVIEW_SCALE=4;
+var STORE_KEY='toolbox.workshopWatchAssetOrganiser.v1';
+
+var VISIBLE_CELLS=[[0,0],[1,0],[2,0],[3,0],[5,0],[6,0],[7,0],[8,0],[9,0],[10,0],[11,0],[12,0],[13,0],[0,1],[1,1],[2,1],[5,1],[6,1],[7,1],[8,1],[9,1],[10,1],[11,1],[12,1],[13,1],[0,2],[6,2],[7,2],[8,2],[9,2],[10,2],[11,2],[12,2],[13,2],[0,3],[1,3],[2,3],[6,3],[7,3],[8,3],[9,3],[10,3],[11,3],[12,3],[13,3],[0,4],[1,4],[2,4],[3,4],[4,4],[5,4],[6,4],[7,4],[8,4],[9,4],[10,4],[11,4],[12,4],[13,4],[0,5],[1,5],[2,5],[3,5],[4,5],[5,5],[6,5],[7,5],[8,5],[9,5],[10,5],[11,5],[12,5],[13,5],[0,6],[1,6],[2,6],[3,6],[4,6],[5,6],[6,6],[7,6],[8,6],[9,6],[10,6],[11,6],[0,7],[1,7],[2,7],[3,7],[4,7],[5,7],[6,7],[7,7],[8,7],[9,7],[10,7],[11,7],[0,8],[1,8],[2,8],[3,8],[4,8],[5,8],[6,8],[7,8],[8,8],[9,8],[10,8],[11,8],[0,9],[1,9],[2,9],[3,9],[4,9],[5,9]];
+
+var DEFAULT_SLOTS=[
+  ['Ground','snow_ground'],['Ground','snow_detail_small'],['Ground','snow_detail_large'],
+  ['Path','path_center'],['Path','path_straight_horizontal'],['Path','path_straight_vertical'],
+  ['Path edges','path_edge_top'],['Path edges','path_edge_bottom'],['Path edges','path_edge_left'],['Path edges','path_edge_right'],
+  ['Path edges','path_corner_top_left'],['Path edges','path_corner_top_right'],['Path edges','path_corner_bottom_left'],['Path edges','path_corner_bottom_right'],
+  ['Trees','pine_tree_small'],['Trees','pine_tree_large'],['Trees','pine_tree_variant'],
+  ['Props','rock'],['Props','snowman_scenery'],['Props','sign'],['Props','fence'],
+  ['Workshop','workshop_sign'],['Workshop','workshop_gate_detail']
+];
+
+var state={
+  slots:DEFAULT_SLOTS.map(function(x,i){return{id:'slot_'+i,category:x[0],name:x[1],tile:null};}),
+  composites:[],
+  draft:{name:'',w:4,h:4,cells:{}}
+};
+var selectedTile=null;
+var usageMode='all';
+var saveTimer=0;
+
+var palette=document.getElementById('palette');
+var slotGroups=document.getElementById('slotGroups');
+var compositeGrid=document.getElementById('compositeGrid');
+var compositeName=document.getElementById('compositeName');
+var gridW=document.getElementById('gridW');
+var gridH=document.getElementById('gridH');
+var savedComposites=document.getElementById('savedComposites');
+var toast=document.getElementById('toast');
+var outputModal=document.getElementById('outputModal');
+var outputText=document.getElementById('outputText');
+var outputTitle=document.getElementById('outputTitle');
+var fileInput=document.getElementById('fileInput');
+
+function tileId(c,r){return 'T_c'+String(c).padStart(2,'0')+'_r'+String(r).padStart(2,'0');}
+function parseTile(id){
+  var m=/T_c(\\d+)_r(\\d+)/.exec(id||'');
+  return m?{id:id,col:Number(m[1]),row:Number(m[2])}:null;
+}
+function codeName(value){
+  var s=String(value||'').trim().toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
+  return s||'unnamed_asset';
+}
+function tileSprite(tile,size){
+  if(!tile)return '<div class="emptySlot">DROP TILE HERE</div>';
+  var t=typeof tile==='string'?parseTile(tile):tile;
+  var scale=size/TILE_SIZE;
+  var bgW=ATLAS_W*scale,bgH=ATLAS_H*scale;
+  return '<div class="sprite" style="width:'+size+'px;height:'+size+'px;background-image:url(&quot;'+ATLAS_URL+'&quot;);background-size:'+bgW+'px '+bgH+'px;background-position:-'+(t.col*size)+'px -'+(t.row*size)+'px"></div>';
+}
+function allUsage(){
+  var used={};
+  state.slots.forEach(function(s){if(s.tile)used[s.tile]=(used[s.tile]||0)+1;});
+  state.composites.forEach(function(comp){Object.values(comp.cells||{}).forEach(function(id){if(id)used[id]=(used[id]||0)+1;});});
+  Object.values(state.draft.cells||{}).forEach(function(id){if(id)used[id]=(used[id]||0)+1;});
+  return used;
+}
+function flash(msg){
+  toast.textContent=msg;toast.classList.add('show');
+  clearTimeout(toast._t);toast._t=setTimeout(function(){toast.classList.remove('show');},1300);
+}
+function markSaved(){
+  document.getElementById('saveStatus').textContent='Saving…';
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(function(){
+    localStorage.setItem(STORE_KEY,JSON.stringify(state));
+    document.getElementById('saveStatus').textContent='Saved locally';
+  },120);
+}
+function saveNow(){localStorage.setItem(STORE_KEY,JSON.stringify(state));document.getElementById('saveStatus').textContent='Saved locally';}
+function load(){
+  try{
+    var saved=JSON.parse(localStorage.getItem(STORE_KEY)||'null');
+    if(saved&&Array.isArray(saved.slots)&&Array.isArray(saved.composites)){
+      state=saved;
+      if(!state.draft)state.draft={name:'',w:4,h:4,cells:{}};
+    }
+  }catch(e){}
+}
+function dragStart(e,id){
+  selectedTile=id;
+  e.dataTransfer.effectAllowed='copy';
+  e.dataTransfer.setData('application/x-workshop-watch-tile',id);
+  e.dataTransfer.setData('text/plain',id);
+  renderPalette();
+}
+function getDropTile(e){
+  return e.dataTransfer.getData('application/x-workshop-watch-tile')||e.dataTransfer.getData('text/plain')||selectedTile;
+}
+function dropEvents(el,onDrop){
+  el.addEventListener('dragover',function(e){e.preventDefault();el.classList.add('over');});
+  el.addEventListener('dragleave',function(){el.classList.remove('over');});
+  el.addEventListener('drop',function(e){e.preventDefault();el.classList.remove('over');var id=getDropTile(e);if(parseTile(id))onDrop(id);});
+}
+
+function renderPalette(){
+  var query=document.getElementById('tileSearch').value.trim().toLowerCase();
+  var usage=allUsage();
+  palette.innerHTML='';
+  VISIBLE_CELLS.forEach(function(pos){
+    var id=tileId(pos[0],pos[1]);
+    var used=!!usage[id];
+    if(query&&id.toLowerCase().indexOf(query)<0)return;
+    if(usageMode==='used'&&!used)return;
+    if(usageMode==='unused'&&used)return;
+    var card=document.createElement('div');
+    card.className='assetCard'+(id===selectedTile?' selected':'')+(used?' used':'');
+    card.draggable=true;card.dataset.tile=id;
+    card.innerHTML=tileSprite({col:pos[0],row:pos[1]},48)+'<b>'+id+'</b><em>('+pos[0]+','+pos[1]+')'+(used?' · used':'')+'</em>';
+    card.addEventListener('dragstart',function(e){dragStart(e,id);});
+    card.addEventListener('click',function(){selectedTile=selectedTile===id?null:id;renderPalette();});
+    palette.appendChild(card);
+  });
+}
+
+function groupSlots(){
+  var groups={};
+  state.slots.forEach(function(s){(groups[s.category]||(groups[s.category]=[])).push(s);});
+  return groups;
+}
+function renderSlots(){
+  slotGroups.innerHTML='';
+  var groups=groupSlots();
+  Object.keys(groups).forEach(function(category){
+    var wrap=document.createElement('section');wrap.className='group';
+    var title=document.createElement('div');title.className='groupTitle';title.textContent=category;
+    var list=document.createElement('div');list.className='slotList';
+    groups[category].forEach(function(slot){
+      var el=document.createElement('div');el.className='slot';el.dataset.slot=slot.id;
+      el.innerHTML='<div class="slotPreview">'+tileSprite(slot.tile,56)+'</div>'+
+        '<div class="slotFields"><input class="slotName" value="'+escapeHtml(slot.name)+'" aria-label="Asset name">'+
+        '<div class="slotMeta">'+(slot.tile?slot.tile+' · '+coordsText(slot.tile):'No source tile assigned')+'</div>'+
+        '<div class="slotActions"><button class="mini clear">CLEAR</button><button class="mini danger delete">DELETE SLOT</button></div></div>';
+      dropEvents(el,function(id){slot.tile=id;selectedTile=null;markSaved();renderAll();});
+      el.querySelector('.slotPreview').addEventListener('click',function(){
+        if(selectedTile){slot.tile=selectedTile;selectedTile=null;markSaved();renderAll();}
+      });
+      el.querySelector('.slotName').addEventListener('input',function(e){slot.name=e.target.value;markSaved();});
+      el.querySelector('.clear').addEventListener('click',function(){slot.tile=null;markSaved();renderAll();});
+      el.querySelector('.delete').addEventListener('click',function(){state.slots=state.slots.filter(function(s){return s.id!==slot.id;});markSaved();renderAll();});
+      list.appendChild(el);
+    });
+    wrap.appendChild(title);wrap.appendChild(list);slotGroups.appendChild(wrap);
+  });
+}
+function coordsText(id){var t=parseTile(id);return t?'col '+t.col+', row '+t.row:'';}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,function(ch){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[ch];});}
+
+function fillGridSelects(){
+  [gridW,gridH].forEach(function(sel){
+    sel.innerHTML='';
+    for(var i=1;i<=12;i++){var o=document.createElement('option');o.value=i;o.textContent=i+(sel===gridW?' wide':' high');sel.appendChild(o);}
+  });
+}
+function cellKey(x,y){return x+','+y;}
+function renderComposite(){
+  compositeName.value=state.draft.name||'';
+  gridW.value=state.draft.w||4;gridH.value=state.draft.h||4;
+  compositeGrid.style.gridTemplateColumns='repeat('+state.draft.w+',52px)';
+  compositeGrid.innerHTML='';
+  for(var y=0;y<state.draft.h;y++){
+    for(var x=0;x<state.draft.w;x++){
+      (function(x,y){
+        var key=cellKey(x,y),id=state.draft.cells[key]||null;
+        var cell=document.createElement('div');cell.className='gridCell'+(id?' filled':'');
+        cell.innerHTML=(id?tileSprite(id,50):'')+'<span class="cellPos">'+x+','+y+'</span>';
+        dropEvents(cell,function(tile){state.draft.cells[key]=tile;selectedTile=null;markSaved();renderAll();});
+        cell.addEventListener('click',function(){
+          if(id){delete state.draft.cells[key];markSaved();renderAll();}
+          else if(selectedTile){state.draft.cells[key]=selectedTile;selectedTile=null;markSaved();renderAll();}
+        });
+        compositeGrid.appendChild(cell);
+      })(x,y);
+    }
+  }
+}
+function renderComposites(){
+  savedComposites.innerHTML='';
+  if(!state.composites.length){
+    savedComposites.innerHTML='<div class="help">No saved composites yet.</div>';return;
+  }
+  state.composites.forEach(function(comp){
+    var count=Object.keys(comp.cells||{}).length;
+    var card=document.createElement('div');card.className='compositeCard';
+    card.innerHTML='<strong>'+escapeHtml(comp.name)+'</strong><small>'+comp.w+'×'+comp.h+' tiles · '+count+' occupied cells</small>'+
+      '<div class="slotActions"><button class="mini edit">LOAD</button><button class="mini danger remove">DELETE</button></div>';
+    card.querySelector('.edit').addEventListener('click',function(){state.draft=JSON.parse(JSON.stringify(comp));markSaved();renderComposite();});
+    card.querySelector('.remove').addEventListener('click',function(){state.composites=state.composites.filter(function(x){return x.id!==comp.id;});markSaved();renderAll();});
+    savedComposites.appendChild(card);
+  });
+}
+function trimDraft(){
+  var keys=Object.keys(state.draft.cells);
+  if(!keys.length)return;
+  var pts=keys.map(function(k){var p=k.split(',').map(Number);return{x:p[0],y:p[1],id:state.draft.cells[k]};});
+  var minX=Math.min.apply(null,pts.map(function(p){return p.x;})),maxX=Math.max.apply(null,pts.map(function(p){return p.x;}));
+  var minY=Math.min.apply(null,pts.map(function(p){return p.y;})),maxY=Math.max.apply(null,pts.map(function(p){return p.y;}));
+  var next={};
+  pts.forEach(function(p){next[cellKey(p.x-minX,p.y-minY)]=p.id;});
+  state.draft.w=maxX-minX+1;state.draft.h=maxY-minY+1;state.draft.cells=next;markSaved();renderComposite();
+}
+function saveComposite(){
+  var name=codeName(compositeName.value);
+  if(!Object.keys(state.draft.cells).length){flash('Add at least one tile');return;}
+  var comp={id:state.draft.id||('comp_'+Date.now()),name:name,w:Number(state.draft.w),h:Number(state.draft.h),cells:Object.assign({},state.draft.cells)};
+  var idx=state.composites.findIndex(function(x){return x.id===comp.id;});
+  if(idx>=0)state.composites[idx]=comp;else state.composites.push(comp);
+  state.draft={name:'',w:4,h:4,cells:{}};
+  markSaved();renderAll();flash('Composite saved');
+}
+
+function exportObject(){
+  var tiles={};
+  state.slots.forEach(function(s){
+    if(!s.tile)return;
+    var t=parseTile(s.tile);if(!t)return;
+    tiles[codeName(s.name)]={id:s.tile,col:t.col,row:t.row,x:t.col*TILE_SIZE,y:t.row*TILE_SIZE,w:TILE_SIZE,h:TILE_SIZE,category:s.category};
+  });
+  var composites={};
+  state.composites.forEach(function(comp){
+    var entries=[];
+    Object.keys(comp.cells||{}).sort().forEach(function(k){
+      var xy=k.split(',').map(Number),t=parseTile(comp.cells[k]);if(!t)return;
+      entries.push({tileId:t.id,col:t.col,row:t.row,sourceX:t.col*TILE_SIZE,sourceY:t.row*TILE_SIZE,x:xy[0],y:xy[1]});
+    });
+    composites[codeName(comp.name)]={widthTiles:comp.w,heightTiles:comp.h,widthPx:comp.w*TILE_SIZE,heightPx:comp.h*TILE_SIZE,tiles:entries};
+  });
+  return{
+    format:'workshop-watch-gherwit-asset-map-v1',
+    sourceAtlas:'workshop-watch/assets/vendor/gherwit/winter/Winter-Download/Winter-tiles.png',
+    sourceAtlasUrl:ATLAS_URL,
+    tileSize:TILE_SIZE,
+    atlasSize:{width:ATLAS_W,height:ATLAS_H,columns:ATLAS_W/TILE_SIZE,rows:ATLAS_H/TILE_SIZE},
+    namedTiles:tiles,
+    composites:composites
+  };
+}
+function exportCode(){
+  var obj=exportObject();
+  return '/* Workshop Watch — user-labelled Gherwit asset map\\n'+
+    '   Generated by ToolBox/workshop-watch-asset-organiser.html\\n'+
+    '   Source atlas cells are 16×16 pixels. */\\n\\n'+
+    'const WORKSHOP_WATCH_GHERWIT_ASSETS = '+JSON.stringify(obj,null,2)+';\\n\\n'+
+    'function drawWorkshopAsset(ctx, image, name, x, y, scale) {\\n'+
+    '  scale = scale || 1;\\n'+
+    '  const a = WORKSHOP_WATCH_GHERWIT_ASSETS.namedTiles[name];\\n'+
+    '  if (!a) throw new Error("Unknown Workshop Watch asset: " + name);\\n'+
+    '  ctx.imageSmoothingEnabled = false;\\n'+
+    '  ctx.drawImage(image, a.x, a.y, a.w, a.h, x, y, a.w * scale, a.h * scale);\\n'+
+    '}\\n\\n'+
+    'function drawWorkshopComposite(ctx, image, name, x, y, scale) {\\n'+
+    '  scale = scale || 1;\\n'+
+    '  const a = WORKSHOP_WATCH_GHERWIT_ASSETS.composites[name];\\n'+
+    '  if (!a) throw new Error("Unknown Workshop Watch composite: " + name);\\n'+
+    '  const s = WORKSHOP_WATCH_GHERWIT_ASSETS.tileSize;\\n'+
+    '  ctx.imageSmoothingEnabled = false;\\n'+
+    '  a.tiles.forEach(function(t) {\\n'+
+    '    ctx.drawImage(image, t.sourceX, t.sourceY, s, s, x + t.x*s*scale, y + t.y*s*scale, s*scale, s*scale);\\n'+
+    '  });\\n'+
+    '}\\n';
+}
+function copyText(text){
+  if(navigator.clipboard&&window.isSecureContext){return navigator.clipboard.writeText(text);}
+  var ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();return Promise.resolve();
+}
+function openOutput(title,text){
+  outputTitle.textContent=title;outputText.value=text;outputModal.classList.add('show');outputModal.setAttribute('aria-hidden','false');
+}
+function closeOutput(){outputModal.classList.remove('show');outputModal.setAttribute('aria-hidden','true');}
+function downloadJson(){
+  var blob=new Blob([JSON.stringify(exportObject(),null,2)],{type:'application/json'});
+  var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='workshop-watch-gherwit-asset-map.json';a.click();setTimeout(function(){URL.revokeObjectURL(a.href);},500);
+}
+function importObject(obj){
+  if(!obj||obj.format!=='workshop-watch-gherwit-asset-map-v1')throw new Error('Not a Workshop Watch asset map');
+  var slots=[];
+  Object.keys(obj.namedTiles||{}).forEach(function(name,i){
+    var a=obj.namedTiles[name];slots.push({id:'slot_import_'+i+'_'+Date.now(),category:a.category||'Other',name:name,tile:a.id||tileId(a.col,a.row)});
+  });
+  var comps=[];
+  Object.keys(obj.composites||{}).forEach(function(name,i){
+    var a=obj.composites[name],cells={};
+    (a.tiles||[]).forEach(function(t){cells[cellKey(t.x,t.y)]=t.tileId||tileId(t.col,t.row);});
+    comps.push({id:'comp_import_'+i+'_'+Date.now(),name:name,w:a.widthTiles||1,h:a.heightTiles||1,cells:cells});
+  });
+  state={slots:slots,composites:comps,draft:{name:'',w:4,h:4,cells:{}}};saveNow();renderAll();
+}
+
+function renderAll(){renderPalette();renderSlots();renderComposite();renderComposites();}
+
+document.getElementById('tileSearch').addEventListener('input',renderPalette);
+document.getElementById('usageFilter').addEventListener('click',function(e){
+  if(!e.target.dataset.filter)return;
+  usageMode=e.target.dataset.filter;
+  Array.from(e.currentTarget.children).forEach(function(b){b.classList.toggle('active',b===e.target);});
+  renderPalette();
+});
+document.getElementById('addSlot').addEventListener('click',function(){
+  var name=codeName(document.getElementById('newSlotName').value);
+  var category=document.getElementById('newSlotCategory').value;
+  state.slots.push({id:'slot_'+Date.now(),category:category,name:name,tile:null});
+  document.getElementById('newSlotName').value='';markSaved();renderAll();
+});
+compositeName.addEventListener('input',function(){state.draft.name=compositeName.value;markSaved();});
+gridW.addEventListener('change',function(){state.draft.w=Number(gridW.value);markSaved();renderComposite();});
+gridH.addEventListener('change',function(){state.draft.h=Number(gridH.value);markSaved();renderComposite();});
+document.getElementById('saveComposite').addEventListener('click',saveComposite);
+document.getElementById('clearComposite').addEventListener('click',function(){state.draft.cells={};markSaved();renderComposite();});
+document.getElementById('trimComposite').addEventListener('click',trimDraft);
+document.getElementById('copyCode').addEventListener('click',function(){copyText(exportCode()).then(function(){flash('Mapping code copied');});});
+document.getElementById('showCode').addEventListener('click',function(){openOutput('Mapping code',exportCode());});
+document.getElementById('copyJson').addEventListener('click',function(){copyText(JSON.stringify(exportObject(),null,2)).then(function(){flash('JSON copied');});});
+document.getElementById('downloadJson').addEventListener('click',downloadJson);
+document.getElementById('importJson').addEventListener('click',function(){fileInput.click();});
+fileInput.addEventListener('change',function(){
+  var file=fileInput.files&&fileInput.files[0];if(!file)return;
+  var reader=new FileReader();reader.onload=function(){
+    try{importObject(JSON.parse(reader.result));flash('Mapping imported');}catch(e){alert(e.message||e);}
+  };reader.readAsText(file);fileInput.value='';
+});
+document.getElementById('resetAll').addEventListener('click',function(){
+  if(!confirm('Reset all names, assignments and composites in this organiser?'))return;
+  localStorage.removeItem(STORE_KEY);
+  state={slots:DEFAULT_SLOTS.map(function(x,i){return{id:'slot_'+i,category:x[0],name:x[1],tile:null};}),composites:[],draft:{name:'',w:4,h:4,cells:{}}};
+  selectedTile=null;saveNow();renderAll();
+});
+document.getElementById('closeOutput').addEventListener('click',closeOutput);
+document.getElementById('copyOutput').addEventListener('click',function(){copyText(outputText.value).then(function(){flash('Copied');});});
+outputModal.addEventListener('click',function(e){if(e.target===outputModal)closeOutput();});
+document.addEventListener('keydown',function(e){if(e.key==='Escape')closeOutput();});
+
+fillGridSelects();load();renderAll();
+})();
+</script>
+</body>
+</html>
