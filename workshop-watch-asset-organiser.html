@@ -145,7 +145,8 @@ button{cursor:pointer}
         <div class="presetNote" id="presetNote"><strong>Floor 3×3:</strong> drag the matching atlas tile into each labelled position exactly as it should appear in a floor sprite sheet.</div>
         <div class="gridWrap"><div class="compositeGrid floorPreset" id="compositeGrid"></div></div>
         <div class="compositeActions">
-          <button class="btn good" id="saveComposite">SAVE COMPOSITE</button>
+          <button class="btn good" id="saveComposite">SAVE NEW ASSET</button>
+          <button class="btn secondary" id="updateComposite" disabled>UPDATE LOADED ASSET</button>
           <button class="btn secondary" id="clearComposite">CLEAR GRID</button>
           <button class="btn secondary" id="trimComposite">TRIM EMPTY EDGES</button>
         </div>
@@ -199,6 +200,7 @@ var state={
   draft:{name:'snow_floor_tiles',preset:'floor3x3',w:3,h:3,cells:{}}
 };
 var selectedTile=null;
+var editingCompositeId=null;
 var usageMode='all';
 var saveTimer=0;
 
@@ -363,6 +365,9 @@ function renderComposite(){
   compositeName.value=state.draft.name||'';
   gridW.value=state.draft.w||4;gridH.value=state.draft.h||4;
   gridW.disabled=isFloor;gridH.disabled=isFloor;
+  document.getElementById('updateComposite').disabled=!editingCompositeId;
+  document.getElementById('saveComposite').textContent='SAVE NEW ASSET';
+  document.getElementById('updateComposite').textContent=editingCompositeId?'UPDATE LOADED ASSET':'UPDATE LOADED ASSET';
   presetNote.style.display=isFloor?'block':'none';
   compositeGrid.classList.toggle('floorPreset',isFloor);
   compositeGrid.style.gridTemplateColumns='repeat('+state.draft.w+','+(isFloor?'88px':'52px')+')';
@@ -398,9 +403,24 @@ function renderComposites(){
     var card=document.createElement('div');card.className='compositeCard';
     var presetLabel=comp.preset==='floor3x3'?'Floor 3×3 · ':'';
     card.innerHTML='<strong>'+escapeHtml(comp.name)+'</strong><small>'+presetLabel+comp.w+'×'+comp.h+' tiles · '+count+' occupied cells</small>'+
-      '<div class="slotActions"><button class="mini edit">LOAD</button><button class="mini danger remove">DELETE</button></div>';
-    card.querySelector('.edit').addEventListener('click',function(){state.draft=JSON.parse(JSON.stringify(comp));markSaved();renderComposite();});
-    card.querySelector('.remove').addEventListener('click',function(){state.composites=state.composites.filter(function(x){return x.id!==comp.id;});markSaved();renderAll();});
+      '<div class="slotActions"><button class="mini edit">EDIT</button><button class="mini copy">DUPLICATE</button><button class="mini danger remove">DELETE</button></div>';
+    card.querySelector('.edit').addEventListener('click',function(){
+      state.draft=JSON.parse(JSON.stringify(comp));
+      editingCompositeId=comp.id;
+      markSaved();renderAll();
+    });
+    card.querySelector('.copy').addEventListener('click',function(){
+      state.draft=JSON.parse(JSON.stringify(comp));
+      delete state.draft.id;
+      state.draft.name=uniqueCompositeName(comp.name+'_copy');
+      editingCompositeId=null;
+      markSaved();renderAll();
+    });
+    card.querySelector('.remove').addEventListener('click',function(){
+      state.composites=state.composites.filter(function(x){return x.id!==comp.id;});
+      if(editingCompositeId===comp.id)editingCompositeId=null;
+      markSaved();renderAll();
+    });
     savedComposites.appendChild(card);
   });
 }
@@ -415,16 +435,66 @@ function trimDraft(){
   pts.forEach(function(p){next[cellKey(p.x-minX,p.y-minY)]=p.id;});
   state.draft.w=maxX-minX+1;state.draft.h=maxY-minY+1;state.draft.cells=next;markSaved();renderComposite();
 }
-function saveComposite(){
-  var name=codeName(compositeName.value);
-  if(!Object.keys(state.draft.cells).length){flash('Add at least one tile');return;}
-  var comp={id:state.draft.id||('comp_'+Date.now()),name:name,preset:state.draft.preset||'custom',w:Number(state.draft.w),h:Number(state.draft.h),cells:Object.assign({},state.draft.cells)};
-  var idx=state.composites.findIndex(function(x){return x.id===comp.id;});
-  if(idx>=0)state.composites[idx]=comp;else state.composites.push(comp);
+function uniqueCompositeName(base,excludeId){
+  var root=codeName(base);
+  var name=root;
+  var i=2;
+  var used=function(candidate){
+    return state.composites.some(function(comp){
+      return comp.id!==excludeId && codeName(comp.name)===candidate;
+    });
+  };
+  while(used(name)){name=root+'_'+i;i++;}
+  return name;
+}
+function resetDraft(){
+  editingCompositeId=null;
   state.draft={name:'snow_floor_tiles',preset:'floor3x3',w:3,h:3,cells:{}};
-  markSaved();renderAll();flash('Composite saved');
+}
+function saveComposite(){
+  if(!Object.keys(state.draft.cells).length){flash('Add at least one tile');return;}
+  var requested=codeName(compositeName.value);
+  var name=uniqueCompositeName(requested,null);
+  if(name!==requested)flash('Saved as '+name+' because that name already exists');
+  var comp={
+    id:'comp_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
+    name:name,
+    preset:state.draft.preset||'custom',
+    w:Number(state.draft.w),
+    h:Number(state.draft.h),
+    cells:Object.assign({},state.draft.cells)
+  };
+  state.composites.push(comp);
+  resetDraft();
+  markSaved();renderAll();
+  flash('New asset saved');
+}
+function updateComposite(){
+  if(!editingCompositeId){flash('Load an asset with EDIT first');return;}
+  if(!Object.keys(state.draft.cells).length){flash('Add at least one tile');return;}
+  var idx=state.composites.findIndex(function(x){return x.id===editingCompositeId;});
+  if(idx<0){editingCompositeId=null;flash('Loaded asset no longer exists');renderAll();return;}
+  var requested=codeName(compositeName.value);
+  var name=uniqueCompositeName(requested,editingCompositeId);
+  if(name!==requested)flash('Updated as '+name+' because that name already exists');
+  state.composites[idx]={
+    id:editingCompositeId,
+    name:name,
+    preset:state.draft.preset||'custom',
+    w:Number(state.draft.w),
+    h:Number(state.draft.h),
+    cells:Object.assign({},state.draft.cells)
+  };
+  resetDraft();
+  markSaved();renderAll();
+  flash('Asset updated');
 }
 
+function uniqueExportName(base,target){
+  var name=base,i=2;
+  while(Object.prototype.hasOwnProperty.call(target,name)){name=base+'_'+i;i++;}
+  return name;
+}
 function exportObject(){
   var tiles={};
   state.slots.forEach(function(s){
@@ -434,13 +504,14 @@ function exportObject(){
   });
   var composites={};
   state.composites.forEach(function(comp){
+    var exportName=uniqueExportName(codeName(comp.name),composites);
     var entries=[];
     Object.keys(comp.cells||{}).sort().forEach(function(k){
       var xy=k.split(',').map(Number),t=parseTile(comp.cells[k]);if(!t)return;
       var role=comp.preset==='floor3x3'?floorRole(xy[0],xy[1]):null;
       entries.push({tileId:t.id,col:t.col,row:t.row,sourceX:t.col*TILE_SIZE,sourceY:t.row*TILE_SIZE,x:xy[0],y:xy[1],role:role?role[0]:null,label:role?role[1]:null});
     });
-    composites[codeName(comp.name)]={layoutPreset:comp.preset||'custom',widthTiles:comp.w,heightTiles:comp.h,widthPx:comp.w*TILE_SIZE,heightPx:comp.h*TILE_SIZE,tiles:entries};
+    composites[exportName]={layoutPreset:comp.preset||'custom',widthTiles:comp.w,heightTiles:comp.h,widthPx:comp.w*TILE_SIZE,heightPx:comp.h*TILE_SIZE,tiles:entries};
   });
   return{
     format:'workshop-watch-gherwit-asset-map-v1',
@@ -500,6 +571,7 @@ function importObject(obj){
     (a.tiles||[]).forEach(function(t){cells[cellKey(t.x,t.y)]=t.tileId||tileId(t.col,t.row);});
     comps.push({id:'comp_import_'+i+'_'+Date.now(),name:name,preset:a.layoutPreset||'custom',w:a.widthTiles||1,h:a.heightTiles||1,cells:cells});
   });
+  editingCompositeId=null;
   state={slots:slots,composites:comps,draft:{name:'snow_floor_tiles',preset:'floor3x3',w:3,h:3,cells:{}}};saveNow();renderAll();
 }
 
@@ -523,6 +595,7 @@ compositeName.addEventListener('input',function(){state.draft.name=compositeName
 gridW.addEventListener('change',function(){state.draft.w=Number(gridW.value);markSaved();renderComposite();});
 gridH.addEventListener('change',function(){state.draft.h=Number(gridH.value);markSaved();renderComposite();});
 document.getElementById('saveComposite').addEventListener('click',saveComposite);
+document.getElementById('updateComposite').addEventListener('click',updateComposite);
 document.getElementById('clearComposite').addEventListener('click',function(){state.draft.cells={};markSaved();renderComposite();});
 document.getElementById('trimComposite').addEventListener('click',trimDraft);
 document.getElementById('copyCode').addEventListener('click',function(){copyText(exportCode()).then(function(){flash('Mapping code copied');});});
@@ -540,7 +613,7 @@ document.getElementById('resetAll').addEventListener('click',function(){
   if(!confirm('Reset all names, assignments and composites in this organiser?'))return;
   localStorage.removeItem(STORE_KEY);
   state={slots:DEFAULT_SLOTS.map(function(x,i){return{id:'slot_'+i,category:x[0],name:x[1],tile:null};}),composites:[],draft:{name:'snow_floor_tiles',preset:'floor3x3',w:3,h:3,cells:{}}};
-  selectedTile=null;saveNow();renderAll();
+  selectedTile=null;editingCompositeId=null;saveNow();renderAll();
 });
 document.getElementById('closeOutput').addEventListener('click',closeOutput);
 document.getElementById('copyOutput').addEventListener('click',function(){copyText(outputText.value).then(function(){flash('Copied');});});
