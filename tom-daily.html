@@ -3,401 +3,116 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#0d2748">
-<meta name="description" content="Tom's simple daily checklist: tick off your routine, start fresh every morning and review your progress.">
-<title>Tom's Daily Checklist · ToolBox</title>
-<style>
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Fredoka:wght@500;600;700&display=swap');
-:root{color-scheme:light;--navy:#0d2748;--navy2:#15375f;--text:#18334c;--muted:#61748a;--gold:#f3bc39;--green:#1e866b;--soft:#eaf7f0;--line:#d9e6e7;--white:#fff}
-*{box-sizing:border-box}
-html{scroll-behavior:smooth}
-body{margin:0;min-height:100vh;font-family:"DM Sans",system-ui,-apple-system,sans-serif;color:var(--text);background:radial-gradient(circle at 5% 0%,#fff7df,transparent 26rem),linear-gradient(155deg,#f5fbfa,#e9f4f1)}
-button,input{font:inherit}
-button{cursor:pointer}
-button:focus-visible,input:focus-visible,summary:focus-visible,a:focus-visible{outline:3px solid #d48a09;outline-offset:3px}
-.shell{width:min(680px,calc(100% - 28px));margin:auto;padding:20px 0 max(35px,env(safe-area-inset-bottom))}
-.topline{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 24px}
-.back{display:inline-flex;align-items:center;gap:8px;text-decoration:none;color:var(--navy);font-weight:800;font-size:.9rem}
-.mini-brand{color:#728498;text-transform:uppercase;font-size:.72rem;letter-spacing:.13em;font-weight:800}
-.head{position:relative;overflow:hidden;border-radius:24px;background:linear-gradient(125deg,#15395f,#0c2344);color:#fff;padding:28px;box-shadow:0 14px 34px rgba(13,39,72,.16)}
-.head:after{content:"";position:absolute;right:-95px;top:-105px;width:280px;height:280px;border-radius:50%;border:58px solid rgba(255,255,255,.035);pointer-events:none}
-.eyebrow{font-size:.72rem;text-transform:uppercase;letter-spacing:.16em;color:#f3bc39;font-weight:800;margin:0 0 7px}
-h1{font-family:Fredoka,"DM Sans",sans-serif;font-size:clamp(2.05rem,7vw,2.85rem);line-height:1.04;letter-spacing:-.02em;margin:0 0 10px}
-.subtitle{margin:0;color:#d3e3f0;font-size:.93rem}
-.date{display:inline-flex;align-items:center;gap:8px;margin-top:21px;padding:8px 13px;border:1px solid #476282;border-radius:999px;background:#183d63;font-weight:700;font-size:.81rem;color:#fff}
-.status{display:flex;align-items:center;gap:22px;margin-top:24px}
-.ring{--p:0;flex:0 0 112px;width:112px;height:112px;display:grid;place-items:center;border-radius:50%;background:conic-gradient(var(--gold) calc(var(--p)*1%),#365171 0)}
-.ring-inner{width:90px;height:90px;display:flex;align-items:center;justify-content:center;flex-direction:column;border-radius:50%;background:#123154}
-.ring strong{font-size:1.8rem;line-height:1;font-weight:800}
-.ring small{color:#bdd1e2;font-size:.65rem;font-weight:800;letter-spacing:.07em;text-transform:uppercase;margin-top:5px}
-.status-info{flex:1;min-width:0}
-.status-info strong{display:block;font-family:Fredoka,sans-serif;font-size:1.28rem;line-height:1.2}
-.status-info p{color:#d3e3f0;font-size:.86rem;line-height:1.55;margin:6px 0 0}
-.week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;margin-top:22px}
-.week-day{text-align:center;min-width:0}
-.week-day small{display:block;color:#c0d4e5;font-size:.68rem;font-weight:800;margin:0 0 6px}
-.week-dot{display:grid;place-items:center;width:100%;max-width:43px;aspect-ratio:1;margin:auto;border:1px solid #4b6684;border-radius:12px;background:#254467;color:#e4eef7;font-size:.77rem;font-weight:800}
-.week-dot.full{background:#f3bc39;border-color:#f3bc39;color:#17344f}
-.week-dot.partial{background:#2f9476;border-color:#2f9476;color:#fff}
-.week-dot.empty{color:#9eb6cc}
-.week-dot.today{outline:2px solid #fff;outline-offset:3px}
-.panel{background:#fff;border:1px solid var(--line);border-radius:21px;margin-top:17px;padding:23px;box-shadow:0 8px 28px rgba(23,66,77,.045)}
-.section-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 15px}
-.section-heading h2{font-family:Fredoka,sans-serif;color:var(--navy);font-size:1.4rem;line-height:1.25;margin:0}
-.count{font-weight:800;font-size:.78rem;color:var(--muted)}
-.tasks{display:grid;gap:11px}
-.task{display:flex;align-items:center;width:100%;gap:14px;min-height:67px;padding:14px;border:2px solid #e2ebe9;border-radius:15px;background:#f9fcfb;color:var(--text);text-align:left;transition:background .15s,border-color .15s,transform .15s}
-.task:active{transform:scale(.99)}
-.task.checked{background:var(--soft);border-color:#91d0bc}
-.tick{flex:0 0 31px;height:31px;width:31px;border:2px solid #9caeb4;border-radius:10px;background:#fff;display:grid;place-items:center;font-size:1.25rem;color:#fff;font-weight:800}
-.task.checked .tick{background:var(--green);border-color:var(--green)}
-.task-name{flex:1;font-weight:800;font-size:1rem;overflow-wrap:anywhere}
-.task.checked .task-name{color:#52796d;text-decoration:line-through;text-decoration-thickness:1.5px}
-.task-note{display:block;color:var(--muted);font-weight:600;font-size:.75rem;margin-top:4px}
-.empty-list{border:2px dashed var(--line);padding:28px 18px;border-radius:14px;color:var(--muted);text-align:center;line-height:1.5}
-.done-message{margin:16px 0 0;color:var(--green);font-weight:800;text-align:center;font-size:.9rem}
-.actions{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0 0}
-.action{border:1px solid #cfdfe0;background:#fff;color:var(--navy);border-radius:11px;padding:11px 14px;font-weight:800;font-size:.85rem;min-height:43px}
-.action.primary{background:var(--navy);color:#fff;border-color:var(--navy)}
-.action.danger{color:#9c2839;border-color:#e3b9c0}
-.manage{margin-top:16px;padding-top:17px;border-top:1px solid var(--line)}
-.manage p{color:var(--muted);font-size:.85rem;line-height:1.5}
-.add-row{display:flex;gap:9px;margin:14px 0 17px}
-.add-row input,.edit-label{flex:1;min-width:0;border:1.5px solid #bfcfd3;border-radius:11px;padding:11px 13px;outline:none;background:#fff;color:var(--navy);font-size:1rem}
-.add-row input:focus,.edit-label:focus{border-color:#2b8c75}
-.manage-item{display:flex;gap:8px;align-items:center;padding:10px 0;border-bottom:1px solid #e9eeee}
-.manage-item:last-child{border-bottom:0}
-.manage-item .edit-label{font-size:.9rem}
-.manage-item .action{flex:0 0 auto;padding:10px 11px}
-.hidden{display:none!important}
-.accordion{padding:0}
-.accordion>summary{padding:22px;cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:10px;color:var(--navy);font:700 1.3rem Fredoka,sans-serif}
-.accordion>summary::-webkit-details-marker{display:none}
-.accordion>summary:after{content:"⌄";font-size:1.4rem;line-height:1;transition:transform .18s}
-.accordion[open]>summary:after{transform:rotate(180deg)}
-.accordion-body{padding:0 22px 22px}
-.helper{color:var(--muted);font-size:.82rem;line-height:1.55;margin:0 0 12px}
-.history-list{display:grid;gap:9px}
-.history-day{border:1px solid var(--line);border-radius:11px;overflow:hidden}
-.history-day>summary{cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 14px;list-style:none;font-size:.85rem}
-.history-day>summary::-webkit-details-marker{display:none}
-.history-day>summary strong{color:var(--navy)}
-.history-day>summary span{font-weight:800;color:var(--green);font-variant-numeric:tabular-nums}
-.history-day>summary .not-logged{color:#718197}
-.history-detail{margin:0;padding:2px 14px 13px;list-style:none;font-size:.8rem;color:var(--muted)}
-.history-detail li{padding:3px 0}
-.history-detail .hit{color:var(--green)}
-.backup{display:flex;flex-wrap:wrap;gap:10px}
-.foot{text-align:center;color:#78889a;font-size:.76rem;line-height:1.55;margin:19px 10px 0}
-.notice{margin-top:13px;border:1px solid #d7a9b3;border-radius:10px;color:#9c2839;background:#fff4f4;padding:12px;font-size:.85rem;line-height:1.45}
-@media(max-width:480px){
-.shell{width:min(100% - 20px,680px);padding-top:15px}
-.head{padding:22px 20px}
-.panel{padding:19px 15px}
-.status{gap:16px}
-.ring{flex-basis:97px;height:97px;width:97px}
-.ring-inner{width:77px;height:77px}
-.ring strong{font-size:1.53rem}
-.week{gap:5px}
-.week-dot{border-radius:10px}
-.accordion>summary{padding:19px 16px}
-.accordion-body{padding:0 16px 18px}
-.manage-item{flex-wrap:wrap}
-.manage-item .edit-label{flex-basis:100%}
-}
-@media(prefers-reduced-motion:reduce){*,*:before,*:after{transition:none!important;scroll-behavior:auto!important}}
-</style>
+<meta name="theme-color" content="#0e2946">
+<meta name="description" content="Tom's Daily: a simple daily routine tracker with goals, schedules, streaks and history.">
+<link rel="manifest" href="tom-daily.webmanifest">
+<link rel="icon" type="image/svg+xml" href="tom-daily-icon.svg">
+<link rel="stylesheet" href="tom-daily-v2.css">
+<script defer src="tom-daily-v2.js"></script>
+<title>Tom's Daily · ToolBox</title>
 </head>
 <body>
 <main class="shell">
-  <div class="topline">
-    <a class="back" href="index.html" aria-label="Back to ToolBox">← ToolBox</a>
-    <span class="mini-brand">A little progress every day</span>
-  </div>
-
-  <header class="head">
-    <p class="eyebrow">Your day, your goals</p>
-    <h1>Tom's Daily Checklist</h1>
-    <p class="subtitle">Small wins. One day at a time.</p>
-    <div class="date" id="todayLabel">Today</div>
-    <div class="status">
-      <div class="ring" id="progressRing" role="progressbar" aria-label="Daily completion" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
-        <div class="ring-inner"><strong id="progressNumber">0%</strong><small>Today</small></div>
-      </div>
-      <div class="status-info">
-        <strong id="progressTitle">Ready to start?</strong>
-        <p id="progressDetail">Tick things off as you complete them.</p>
-      </div>
-    </div>
-    <div class="week" id="weekStrip" aria-label="Your last seven days"></div>
+  <header class="top">
+    <a class="back" href="index.html">← ToolBox</a>
+    <span class="brand">Chip In · Daily Tracker</span>
   </header>
-
-  <section class="panel" aria-labelledby="tasksTitle">
-    <div class="section-heading"><h2 id="tasksTitle">Today's checklist</h2><span class="count" id="doneCount">0 / 3</span></div>
-    <div class="tasks" id="tasks"></div>
-    <p class="done-message hidden" id="doneMessage" role="status">All done for today. Nicely done, Tom!</p>
-    <div class="actions"><button type="button" class="action primary" id="editToggle" aria-expanded="false" aria-controls="manage">Edit my routine</button></div>
-    <section class="manage hidden" id="manage" aria-label="Edit your routine">
-      <p>Add whatever matters to you. Your routine stays the same tomorrow; only the ticks reset.</p>
-      <form class="add-row" id="addForm">
-        <input id="newTask" type="text" maxlength="80" autocomplete="off" placeholder="Add a daily goal…" aria-label="New daily goal" required>
-        <button type="submit" class="action primary">Add</button>
-      </form>
-      <div id="manageList"></div>
-    </section>
-    <div id="storageNotice" class="notice hidden" role="alert"></div>
-  </section>
-
-  <details class="panel accordion" id="historyAccordion">
-    <summary>Your history</summary>
-    <div class="accordion-body">
-      <p class="helper">A snapshot of each day is kept here. Missed days show as “Not logged” rather than pretending you completed nothing.</p>
-      <div id="historyList" class="history-list"></div>
-    </div>
-  </details>
-
-  <details class="panel accordion">
-    <summary>Back up or move your data</summary>
-    <div class="accordion-body">
-      <p class="helper">Your checklist is saved in this browser on this device. It isn't synced between phones or computers. Download a backup if you want to keep a copy or move to another device.</p>
-      <div class="backup">
-        <button type="button" id="exportBtn" class="action">Download backup</button>
-        <button type="button" id="importBtn" class="action">Restore backup</button>
-        <input id="importFile" class="hidden" type="file" accept=".json,application/json" aria-label="Select a checklist backup">
+  <section class="hero" aria-label="Today's progress">
+    <p class="eyebrow" id="dateLabel">Today</p>
+    <h1 id="appHeading">Tom's Daily</h1>
+    <p class="hero-sub">Small wins. One day at a time.</p>
+    <div class="hero-bottom">
+      <div class="ring" id="ring" role="progressbar" aria-label="Today's progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <div class="ring-inner"><strong id="percent">0%</strong><small>Complete</small></div>
+      </div>
+      <div class="hero-copy">
+        <strong id="statusHeading">Ready to start?</strong>
+        <p id="statusDetail">Tick goals off as you go.</p>
+        <span class="streak-chip" id="streakLabel">0-day streak</span>
       </div>
     </div>
-  </details>
-  <p class="foot">Fresh unchecked list each calendar day in your local time. Previous days are kept. Clearing your browser's site data will remove locally saved progress unless you've made a backup.</p>
+  </section>
+  <nav class="tabs" aria-label="App sections">
+    <button type="button" class="tab active" data-tab="today" aria-current="page">Today</button>
+    <button type="button" class="tab" data-tab="history">History</button>
+    <button type="button" class="tab" data-tab="routine">Routine</button>
+  </nav>
+  <section id="view-today" aria-label="Today's goals">
+    <div class="panel">
+      <div class="hrow"><h2>Today's goals</h2><span class="pill" id="doneCount">0 / 0</span></div>
+      <div id="taskList" class="task-list"></div>
+      <p class="success-note" id="allDone" hidden>All done for today. Brilliant work!</p>
+      <div id="reminderMessage" class="notice" hidden></div>
+    </div>
+  </section>
+  <section id="view-history" hidden aria-label="Goal history">
+    <div class="panel">
+      <div class="hrow"><h2>This week</h2><span class="pill" id="weekRange"></span></div>
+      <div class="stat-grid">
+        <div class="stat"><strong id="weekDone">0</strong><span>Goals achieved</span></div>
+        <div class="stat"><strong id="weekRate">0%</strong><span>Completion</span></div>
+        <div class="stat"><strong id="weekLogged">0</strong><span>Days logged</span></div>
+      </div>
+      <p class="muted small">Only logged days count towards the weekly completion rate. Rest days don't count as missed goals.</p>
+    </div>
+    <div class="panel">
+      <h2>Daily history</h2>
+      <div class="calendar-nav">
+        <button type="button" class="btn" id="prevMonth" aria-label="Previous month">←</button>
+        <span class="month-title" id="monthHeading"></span>
+        <button type="button" class="btn" id="nextMonth" aria-label="Next month">→</button>
+      </div>
+      <div class="calendar" id="calendar"></div>
+      <div id="historyDetail" class="history-detail" aria-live="polite"></div>
+    </div>
+  </section>
+  <section id="view-routine" hidden aria-label="Edit routine">
+    <div class="panel">
+      <h2>Your routine</h2>
+      <p class="muted">Choose which days each goal appears. Changing a goal affects today and future days; earlier history remains intact.</p>
+      <div id="routineList"></div>
+    </div>
+    <div class="panel">
+      <h2>Add a goal</h2>
+      <form id="addForm">
+        <div class="field"><label for="newName">Goal name</label><input id="newName" maxlength="80" required placeholder="e.g. Read for 20 minutes"></div>
+        <div class="edit-row">
+          <div class="field"><label for="newType">Track as</label><select id="newType"><option value="check">Tick once completed</option><option value="number">Number / target</option></select></div>
+          <div class="field" id="newTargetWrap" hidden><label for="newTarget">Daily target</label><input type="number" min="0.01" step="any" id="newTarget" value="1"></div>
+        </div>
+        <div class="field" id="newUnitWrap" hidden><label for="newUnit">Unit (optional)</label><input id="newUnit" maxlength="18" placeholder="e.g. kcal, litres"></div>
+        <p class="muted small">Scheduled days</p>
+        <div id="newDays" class="day-select" aria-label="Scheduled weekdays"></div>
+        <button type="submit" class="btn primary">Add to routine</button>
+      </form>
+    </div>
+  </section>
+  <section class="panel" aria-label="Settings">
+    <details id="settingsPanel">
+      <summary style="cursor:pointer;font-weight:850;color:var(--navy);font-size:1.08rem">Settings & backup</summary>
+      <div class="field"><label for="personName">Name on your dashboard</label><input id="personName" maxlength="30" value="Tom"></div>
+      <p class="muted small">Accent colour</p>
+      <div class="color-options" id="accentChoices">
+        <button type="button" class="color-choice" data-accent="green">Green</button>
+        <button type="button" class="color-choice" data-accent="blue">Blue</button>
+        <button type="button" class="color-choice" data-accent="coral">Coral</button>
+      </div>
+      <h3 style="margin-top:22px">Optional reminder</h3>
+      <label class="checkbox-line"><input id="remindersEnabled" type="checkbox">Remind me about unfinished goals</label>
+      <div class="field"><label for="reminderTime">Reminder time</label><input type="time" id="reminderTime" value="20:00"></div>
+      <p class="muted small">Reminders appear inside the app when it is open. Browser notifications can also appear while the app is running if permitted. This is not a background push service.</p>
+      <button type="button" class="btn" id="notificationPermission">Enable browser notifications</button>
+      <h3 style="margin-top:22px">Your data</h3>
+      <p class="muted small">Saved on this device only, not shared between devices. Export a backup before clearing browser data or moving to a new phone.</p>
+      <div class="actions"><button type="button" class="btn primary" id="exportBtn">Download backup</button><button type="button" class="btn" id="importBtn">Restore backup</button></div>
+      <input type="file" id="importFile" accept=".json,application/json" hidden>
+      <p class="muted small" id="installHint">On iPhone, use Share → Add to Home Screen. On Android, use your browser's Install option.</p>
+      <button type="button" class="btn soft" id="installBtn" hidden>Install app</button>
+    </details>
+  </section>
+  <div class="notice" role="alert" id="errorNotice" hidden></div>
+  <footer class="footer">ToolBox · Private to this browser · Fresh checklist every local calendar day</footer>
 </main>
-<script>
-(function(){
-  "use strict";
-  var KEY="toolbox.tom-daily-checklist.v1";
-  var DEFAULT_ITEMS=[
-    {id:"gym",label:"Gym"},
-    {id:"calories",label:"3,000 calories"},
-    {id:"creatine",label:"Creatine"}
-  ];
-  var state;
-  var activeDay="";
-  var managing=false;
-  var byId=function(id){return document.getElementById(id)};
-  function localKey(date){
-    return date.getFullYear()+"-"+String(date.getMonth()+1).padStart(2,"0")+"-"+String(date.getDate()).padStart(2,"0");
-  }
-  function isDayKey(value){return typeof value==="string" && /^\d{4}-\d\d-\d\d$/.test(value)}
-  function makeInitial(){
-    return {version:1,created:localKey(new Date()),items:DEFAULT_ITEMS.map(function(item){return {id:item.id,label:item.label}}),days:{}};
-  }
-  function tidyData(raw){
-    if(!raw || typeof raw!=="object" || !Array.isArray(raw.items) || typeof raw.days!=="object" || raw.days===null || Array.isArray(raw.days)) throw new Error("Not a checklist backup.");
-    if(raw.items.length>250 || Object.keys(raw.days).length>20000)throw new Error("This backup is too large.");
-    var seen=new Set();
-    var items=raw.items.map(function(item){
-      if(!item || typeof item.id!=="string" || !/^[a-zA-Z0-9_-]{1,80}$/.test(item.id) || typeof item.label!=="string" || !item.label.trim() || item.label.length>80 || seen.has(item.id))throw new Error("Invalid goal in backup.");
-      seen.add(item.id);return {id:item.id,label:item.label.trim()};
-    });
-    var days=Object.create(null);
-    Object.keys(raw.days).forEach(function(key){
-      if(!isDayKey(key))throw new Error("Invalid date in backup.");
-      var d=raw.days[key];
-      if(!d || !Array.isArray(d.items) || !Array.isArray(d.done) || d.items.length>250 || d.done.length>250)throw new Error("Invalid daily record.");
-      var recorded=new Set();
-      var dayItems=d.items.map(function(item){
-        if(!item || typeof item.id!=="string" || !/^[a-zA-Z0-9_-]{1,80}$/.test(item.id) || typeof item.label!=="string" || !item.label.trim() || item.label.length>80 || recorded.has(item.id))throw new Error("Invalid history entry.");
-        recorded.add(item.id);return {id:item.id,label:item.label.trim()};
-      });
-      days[key]={items:dayItems,done:d.done.filter(function(id){return typeof id==="string" && recorded.has(id)}).filter(function(id,index,array){return array.indexOf(id)===index})};
-    });
-    var created=isDayKey(raw.created)?raw.created:localKey(new Date());
-    return {version:1,created:created,items:items,days:days};
-  }
-  function showNotice(message){
-    var el=byId("storageNotice");el.textContent=message;el.classList.remove("hidden");
-  }
-  function save(){
-    try{localStorage.setItem(KEY,JSON.stringify(state));byId("storageNotice").classList.add("hidden");return true}
-    catch(error){showNotice("Couldn't save to this browser. Check private-browsing or storage settings, or try downloading a backup.");return false}
-  }
-  function load(){
-    try{
-      var raw=localStorage.getItem(KEY);
-      state=raw?tidyData(JSON.parse(raw)):makeInitial();
-    }catch(error){
-      state=makeInitial();
-      showNotice("Saved checklist data couldn't be read. A fresh list is shown; use Restore backup if you have a backup file.");
-    }
-  }
-  function ensureToday(){
-    var day=localKey(new Date());
-    if(!Object.prototype.hasOwnProperty.call(state.days,day)){
-      state.days[day]={items:state.items.map(function(item){return {id:item.id,label:item.label}}),done:[]};
-      save();
-    }
-    activeDay=day;
-    return state.days[day];
-  }
-  function refreshTodayItems(){
-    var day=state.days[activeDay];
-    var ids=new Set(state.items.map(function(item){return item.id}));
-    day.items=state.items.map(function(item){return {id:item.id,label:item.label}});
-    day.done=day.done.filter(function(id){return ids.has(id)});
-    save();
-    render();
-  }
-  function elem(tag,cls,value){
-    var el=document.createElement(tag);if(cls)el.className=cls;
-    if(value!==undefined)el.textContent=value;return el;
-  }
-  function changeDone(id){
-    tickClock();
-    var done=state.days[activeDay].done;
-    var index=done.indexOf(id);
-    if(index===-1)done.push(id);else done.splice(index,1);
-    save();render();
-  }
-  function renderTasks(){
-    var box=byId("tasks");box.replaceChildren();
-    var done=state.days[activeDay].done;
-    state.items.forEach(function(item){
-      var selected=done.includes(item.id);
-      var button=elem("button","task"+(selected?" checked":""));
-      button.type="button";
-      button.setAttribute("aria-pressed",String(selected));
-      button.setAttribute("aria-label",item.label+(selected?", completed":", not completed"));
-      var tick=elem("span","tick",selected?"✓":"");tick.setAttribute("aria-hidden","true");
-      var name=elem("span","task-name",item.label);
-      button.append(tick,name);button.addEventListener("click",function(){changeDone(item.id)});
-      box.appendChild(button);
-    });
-    if(state.items.length===0)box.appendChild(elem("div","empty-list","No goals yet. Choose “Edit my routine” to add your first one."));
-  }
-  function renderManage(){
-    var root=byId("manageList");root.replaceChildren();
-    state.items.forEach(function(item,index){
-      var row=elem("div","manage-item");
-      var input=elem("input","edit-label");input.type="text";input.maxLength=80;input.value=item.label;input.setAttribute("aria-label","Goal "+String(index+1));
-      function rename(){
-        var next=input.value.trim();
-        if(!next){input.value=item.label;return}
-        if(next===item.label)return;
-        item.label=next;refreshTodayItems();
-      }
-      input.addEventListener("change",rename);
-      input.addEventListener("keydown",function(event){if(event.key==="Enter"){event.preventDefault();input.blur()}});
-      row.appendChild(input);
-      function smallBtn(label,title,action,disabled){
-        var btn=elem("button","action",label);btn.type="button";btn.title=title;btn.setAttribute("aria-label",title);btn.disabled=!!disabled;
-        btn.addEventListener("click",action);row.appendChild(btn);
-      }
-      smallBtn("↑","Move "+item.label+" up",function(){
-        if(index===0)return;var tmp=state.items[index-1];state.items[index-1]=state.items[index];state.items[index]=tmp;refreshTodayItems();
-      },index===0);
-      smallBtn("↓","Move "+item.label+" down",function(){
-        if(index===state.items.length-1)return;var tmp=state.items[index+1];state.items[index+1]=state.items[index];state.items[index]=tmp;refreshTodayItems();
-      },index===state.items.length-1);
-      smallBtn("×","Remove "+item.label,function(){
-        if(!confirm("Remove “"+item.label+"” from your routine? Previous days will still show it."))return;
-        state.items.splice(index,1);refreshTodayItems();
-      });
-      root.appendChild(row);
-    });
-  }
-  function dateForOffset(offset){
-    var now=new Date();
-    return new Date(now.getFullYear(),now.getMonth(),now.getDate()+offset);
-  }
-  function renderWeek(){
-    var week=byId("weekStrip");week.replaceChildren();
-    for(var offset=-6;offset<=0;offset++){
-      var date=dateForOffset(offset),key=localKey(date),record=state.days[key];
-      var day=elem("div","week-day");
-      var small=elem("small","",new Intl.DateTimeFormat("en-GB",{weekday:"short"}).format(date));day.appendChild(small);
-      var isFull=!!record&&record.items.length>0&&record.done.length===record.items.length;
-      var isPartial=!!record&&record.done.length>0&&!isFull;
-      var dot=elem("span","week-dot "+(isFull?"full":isPartial?"partial":"empty")+(offset===0?" today":""),
-        !record?"–":isFull?"✓":isPartial?String(record.done.length):"·");
-      dot.title=date.toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long"})+": "+(!record?"Not logged":String(record.done.length)+" of "+record.items.length+" complete");
-      day.appendChild(dot);week.appendChild(day);
-    }
-  }
-  function renderHistory(){
-    var root=byId("historyList");root.replaceChildren();
-    var today=localKey(new Date());
-    for(var offset=0;offset>-14;offset--){
-      var date=dateForOffset(offset),key=localKey(date);
-      if(key<state.created || key>today)continue;
-      var record=state.days[key],details=elem("details","history-day"),summary=elem("summary");
-      var label=offset===0?"Today":date.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"});
-      summary.appendChild(elem("strong","",label));
-      var count=record?record.done.length+" / "+record.items.length:"Not logged";
-      summary.appendChild(elem("span",record?"":"not-logged",count));
-      details.appendChild(summary);
-      var list=elem("ul","history-detail");
-      if(record && record.items.length){
-        record.items.forEach(function(item){list.appendChild(elem("li",record.done.includes(item.id)?"hit":"", (record.done.includes(item.id)?"✓ ":"○ ")+item.label))});
-      }else list.appendChild(elem("li","","No items recorded."));
-      details.appendChild(list);root.appendChild(details);
-    }
-  }
-  function render(){
-    var date=new Date();
-    byId("todayLabel").textContent="Today · "+date.toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long"});
-    var today=state.days[activeDay],total=state.items.length,completed=today.done.length;
-    var percent=total?Math.round(100*completed/total):0;
-    var ring=byId("progressRing");ring.style.setProperty("--p",percent);ring.setAttribute("aria-valuenow",String(percent));
-    byId("progressNumber").textContent=percent+"%";byId("doneCount").textContent=completed+" / "+total;
-    byId("progressTitle").textContent=total===0?"Make it yours":completed===total?"Everything ticked off!":completed===0?"Ready to get going?":completed+" down, "+(total-completed)+" to go";
-    byId("progressDetail").textContent=total===0?"Add your first daily goal below.":completed===total?"You've smashed today's checklist.":completed===0?"Tap a goal when you've done it.":"You're making progress. Keep it up.";
-    byId("doneMessage").classList.toggle("hidden",total===0||completed!==total);
-    renderTasks();if(managing)renderManage();renderWeek();renderHistory();
-  }
-  function tickClock(){
-    var now=localKey(new Date());
-    if(now!==activeDay){ensureToday();render()}
-  }
-  byId("editToggle").addEventListener("click",function(){
-    managing=!managing;byId("manage").classList.toggle("hidden",!managing);
-    this.setAttribute("aria-expanded",String(managing));
-    this.textContent=managing?"Done editing":"Edit my routine";
-    if(managing){renderManage();byId("newTask").focus()}
-  });
-  byId("addForm").addEventListener("submit",function(event){
-    event.preventDefault();tickClock();
-    var input=byId("newTask"),label=input.value.trim();
-    if(!label)return;
-    if(state.items.length>=250){showNotice("Maximum of 250 goals reached.");return}
-    if(state.items.some(function(item){return item.label.toLowerCase()===label.toLowerCase()})){showNotice("That goal is already in your routine.");return}
-    state.items.push({id:"goal_"+Date.now().toString(36)+"_"+Math.random().toString(36).slice(2,7),label:label});
-    input.value="";refreshTodayItems();input.focus();
-  });
-  byId("exportBtn").addEventListener("click",function(){
-    tickClock();
-    var blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
-    var url=URL.createObjectURL(blob),a=document.createElement("a");
-    a.href=url;a.download="tom-daily-checklist-"+activeDay+".json";document.body.appendChild(a);a.click();a.remove();
-    setTimeout(function(){URL.revokeObjectURL(url)},1000);
-  });
-  byId("importBtn").addEventListener("click",function(){byId("importFile").click()});
-  byId("importFile").addEventListener("change",async function(){
-    var file=this.files&&this.files[0];this.value="";if(!file)return;
-    if(file.size>5000000){showNotice("That backup file is too large.");return}
-    try{
-      var restored=tidyData(JSON.parse(await file.text()));
-      if(!confirm("Restore this backup? It will replace the checklist and history currently saved in this browser."))return;
-      state=restored;ensureToday();save();render();
-    }catch(error){showNotice("Couldn't restore: "+(error&&error.message?error.message:"invalid backup file"))}
-  });
-  window.addEventListener("storage",function(event){
-    if(event.key!==KEY)return;
-    try{state=event.newValue?tidyData(JSON.parse(event.newValue)):makeInitial();ensureToday();render()}
-    catch(error){showNotice("The checklist changed in another tab, but it couldn't be read.")}
-  });
-  document.addEventListener("visibilitychange",function(){if(!document.hidden)tickClock()});
-  window.addEventListener("focus",tickClock);
-  load();ensureToday();render();
-  setInterval(tickClock,10000);
-})();
-</script>
+<div class="toast" id="toast" role="status" hidden><span id="toastText"></span><button type="button" id="undoBtn">Undo</button></div>
 </body>
 </html>
