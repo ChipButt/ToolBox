@@ -1,0 +1,19 @@
+{
+  "id": "./tom-daily.html",
+  "name": "Tom's Daily",
+  "short_name": "Tom's Daily",
+  "description": "Daily goals and routine tracker",
+  "start_url": "./tom-daily.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f1f7f7",
+  "theme_color": "#0e2946",
+  "icons": [
+    {
+      "src": "./tom-daily-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
