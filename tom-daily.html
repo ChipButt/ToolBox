@@ -19,18 +19,23 @@
     <span class="brand">Chip In · Daily Tracker</span>
   </header>
   <section class="hero" aria-label="Today's progress">
+    <div class="hero-banner"><span>EVERY DAY COUNTS</span><span class="hero-spark">✦</span></div>
     <p class="eyebrow" id="dateLabel">Today</p>
-    <h1 id="appHeading">Tom's Daily</h1>
-    <p class="hero-sub">Small wins. One day at a time.</p>
+    <h1 id="appHeading">Let's go, Tom!</h1>
+    <p class="hero-sub" id="heroSub">Your next win starts here.</p>
     <div class="hero-bottom">
-      <div class="ring" id="ring" role="progressbar" aria-label="Today's progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
-        <div class="ring-inner"><strong id="percent">0%</strong><small>Complete</small></div>
+      <div class="ring" id="ring" role="progressbar" aria-label="Daily completion" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <div class="ring-inner"><strong id="percent">0%</strong><small>Today</small></div>
       </div>
-      <div class="hero-copy">
-        <strong id="statusHeading">Ready to start?</strong>
-        <p id="statusDetail">Tick goals off as you go.</p>
-        <span class="streak-chip" id="streakLabel">0-day streak</span>
+      <div class="hero-copy"><span class="mini-kicker">TODAY'S MOMENTUM</span>
+        <strong id="statusHeading">Ready to start strong?</strong>
+        <p id="statusDetail">One step at a time. You've got this.</p>
       </div>
+    </div>
+    <div class="hero-stats">
+      <div><span aria-hidden="true">🔥</span><strong id="streakCount">0</strong><small>Current streak</small></div>
+      <div><span aria-hidden="true">🏆</span><strong id="bestStreak">0</strong><small>Personal best</small></div>
+      <div><span aria-hidden="true">✓</span><strong id="heroWeekWins">0</strong><small>Wins this week</small></div>
     </div>
   </section>
   <nav class="tabs" aria-label="App sections">
@@ -39,11 +44,27 @@
     <button type="button" class="tab" data-tab="routine">Routine</button>
   </nav>
   <section id="view-today" aria-label="Today's goals">
-    <div class="panel">
-      <div class="hrow"><h2>Today's goals</h2><span class="pill" id="doneCount">0 / 0</span></div>
+    <div class="panel focus-panel">
+      <div class="mini-kicker">UP NEXT</div>
+      <div class="hrow"><h2>Still to do</h2><span class="pill" id="remainingCount">0 left</span></div>
+      <p class="muted" id="remainingMessage">Your next win is waiting.</p>
       <div id="taskList" class="task-list"></div>
-      <p class="success-note" id="allDone" hidden>All done for today. Brilliant work!</p>
       <div id="reminderMessage" class="notice" hidden></div>
+    </div>
+    <div class="panel wins-panel">
+      <div class="mini-kicker">LOOK WHAT YOU'VE DONE</div>
+      <div class="hrow"><h2>✦ Wins today</h2><span class="pill" id="doneCount">0 / 0</span></div>
+      <div id="winsList" class="task-list"></div>
+      <p class="success-note" id="allDone" hidden>Clean sweep. Everything done — brilliant!</p>
+    </div>
+    <div class="panel momentum-panel">
+      <div class="mini-kicker">KEEP IT GOING</div><h2 id="pulseHeadline">This week's momentum</h2>
+      <div class="pulse-stats">
+        <div><strong id="pulseDone">0</strong><span>Goals done</span></div>
+        <div><strong id="pulseRate">0%</strong><span>Completed</span></div>
+        <div><strong id="pulseDays">0</strong><span>Days logged</span></div>
+      </div>
+      <p id="pulseMessage">Every little win adds up.</p>
     </div>
   </section>
   <section id="view-history" hidden aria-label="Goal history">
@@ -112,6 +133,7 @@
     </details>
   </section>
   <div class="notice" role="alert" id="errorNotice" hidden></div>
+  <div id="celebrationLayer" aria-hidden="true" class="celebration-layer"></div>
   <footer class="footer">ToolBox · Private to this browser · Fresh checklist every local calendar day</footer>
 </main>
 <div class="toast" id="toast" role="status" hidden><span id="toastText"></span><button type="button" id="undoBtn">Undo</button></div>

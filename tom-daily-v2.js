@@ -158,10 +158,16 @@
     if(!item)return;
     const values=state.days[currentDay].values;
     const had=Object.prototype.hasOwnProperty.call(values,id),previous=values[id];
+    const wasDone=complete(item,previous);
     values[id]=item.type==="number"?numberOr(value,0):!!value;
+    const nowDone=complete(item,values[id]);
     undo={day:currentDay,id,had,previous};
     save();render();
-    showToast("Goal updated.");
+    if(!wasDone&&nowDone){
+      const stats=dayStats(currentDay),sweep=stats.total>0&&stats.done===stats.total;
+      showToast(sweep?"Clean sweep — every goal done!":"Nice one! "+item.label+" complete.");
+      celebrate(sweep);
+    }else showToast(wasDone&&!nowDone?"Updated — you can tick this again.":"Progress saved. Keep it up.");
   }
   function undoLast() {
     if(!undo)return;
@@ -189,20 +195,96 @@
     }
     return count;
   }
+
+  function weeklyMomentum() {
+    const monday=new Date();monday.setHours(12,0,0,0);
+    monday.setDate(monday.getDate()-((monday.getDay()+6)%7));
+    let done=0,total=0,logged=0;
+    for(let i=0;i<7;i++) {
+      const date=new Date(monday);date.setDate(monday.getDate()+i);
+      const key=keyOf(date);if(key>todayKey())break;
+      const stats=dayStats(key);
+      if(stats){done+=stats.done;total+=stats.total;logged++;}
+    }
+    return {done,total,logged,rate:percent(done,total)};
+  }
+  function personalBestStreak() {
+    const start=dateFromKey(state.created);
+    if(!Number.isFinite(start.getTime()))return 0;
+    let best=0,run=0,d=new Date(start);
+    for(let i=0;i<20000&&keyOf(d)<=todayKey();i++,d.setDate(d.getDate()+1)){
+      const key=keyOf(d),record=state.days[key],due=record?record.items:dueItems(key);
+      if(due.length===0)continue;
+      const stats=dayStats(key);
+      if(stats&&stats.done===stats.total){run++;best=Math.max(best,run);}else run=0;
+    }
+    return best;
+  }
+  function encouragement(done,total) {
+    const name=state.name;
+    if(total===0)return ["Rest up, "+name+".","Recovery is part of the routine.","A breather today. Your goals will be here tomorrow."];
+    if(done===total)return ["You smashed it, "+name+"!","Clean sweep — every goal in the bag.","You showed up. You followed through. Brilliant."];
+    const p=percent(done,total);
+    if(p>=75)return ["Almost there, "+name+"!","One more push — finish strong.","Look at that progress. Nearly a clean sweep."];
+    if(p>=50)return ["Halfway there, "+name+"!","You're building serious momentum.","You've come a long way already. Keep it going."];
+    if(done>0)return ["Nice start, "+name+"!","Another win on the board.","You've started. Now keep rolling."];
+    return ["Let's go, "+name+"!","Ready to start strong?","One small step is all it takes to get moving."];
+  }
+  function renderMotivation() {
+    const stats=dayStats(currentDay),remaining=stats.total-stats.done;
+    const todo=$("taskList"),wins=$("winsList");wins.replaceChildren();
+    [...todo.children].forEach(card=>{
+      if(card.classList.contains("complete"))wins.appendChild(card);
+    });
+    if(stats.done===0)wins.appendChild(elem("div","wins-placeholder","Your first win is one tick away."));
+    if(stats.total===0)todo.replaceChildren(elem("div","empty","No goals scheduled. Enjoy your rest day."));
+    else if(remaining===0)todo.appendChild(elem("div","empty","Everything done. You earned that good feeling."));
+    $("remainingCount").textContent=remaining+" left";
+    $("remainingMessage").textContent=stats.total===0?"Recharge. Recovery matters.":remaining===0?"Nothing left today — amazing.":remaining===1?"One more win to go.":"Pick your next goal and get it done.";
+    const week=weeklyMomentum();
+    $("pulseDone").textContent=String(week.done);
+    $("pulseRate").textContent=week.rate+"%";
+    $("pulseDays").textContent=String(week.logged);
+    $("heroWeekWins").textContent=String(week.done);
+    $("bestStreak").textContent=String(personalBestStreak());
+    $("pulseHeadline").textContent=week.done>=15?"What a week!":week.done>=5?"You're on a roll":"This week's momentum";
+    $("pulseMessage").textContent=week.done===0?"Start with one win and build from there.":week.rate===100&&week.total>0?"Every logged goal completed — that's consistency!":week.rate>=75?"Strong progress this week. Keep showing up.":week.done>=5?"All those little wins add up. Keep going.":"That's progress. One more win will build on it.";
+  }
+  function celebrate(big) {
+    if(window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches)return;
+    const ring=$("ring");ring.classList.remove("ring-pop");void ring.offsetWidth;ring.classList.add("ring-pop");
+    if(!big)return;
+    const layer=$("celebrationLayer");layer.replaceChildren();
+    const colors=["#f4bf40","#39bb8f","#ff9d75","#94d9f2","#fff1b5"];
+    for(let i=0;i<27;i++){
+      const piece=elem("i","confetti");
+      piece.style.left=(20+Math.random()*60)+"%";
+      piece.style.top=(14+Math.random()*28)+"%";
+      piece.style.setProperty("--piece-color",colors[i%colors.length]);
+      piece.style.setProperty("--fly-x",(Math.random()*480-240)+"px");
+      piece.style.setProperty("--fly-y",(170+Math.random()*420)+"px");
+      piece.style.setProperty("--spin",(Math.random()*900-450)+"deg");
+      layer.appendChild(piece);
+    }
+    setTimeout(()=>layer.replaceChildren(),1300);
+  }
   function renderHero() {
-    const date=new Date(),day=ensureToday(),stats=dayStats(currentDay),p=percent(stats.done,stats.total);
+    ensureToday();
+    const date=new Date(),stats=dayStats(currentDay),p=percent(stats.done,stats.total);
+    const message=encouragement(stats.done,stats.total);
     document.body.dataset.accent=state.accent;
     $("dateLabel").textContent=date.toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long"});
-    $("appHeading").textContent=state.name+"'s Daily";
+    $("appHeading").textContent=message[0];
+    $("statusHeading").textContent=message[1];
+    $("heroSub").textContent=message[2];
     document.title=state.name+"'s Daily · ToolBox";
     $("ring").style.setProperty("--pct",p);
     $("ring").setAttribute("aria-valuenow",String(p));
-    $("percent").textContent=p+"%";$("doneCount").textContent=stats.done+" / "+stats.total;
-    $("statusHeading").textContent=!stats.total?"A well-earned rest":stats.done===stats.total?"Today's goals complete!":stats.done===0?"Ready to start?":stats.done+" down, "+(stats.total-stats.done)+" to go";
-    $("statusDetail").textContent=!stats.total?"Nothing scheduled for today.":stats.done===stats.total?"Great work. Your next list starts tomorrow.":"Check off goals as you complete them.";
+    $("percent").textContent=p+"%";
+    $("doneCount").textContent=stats.done+" / "+stats.total;
+    $("statusDetail").textContent=stats.total?stats.done+" of "+stats.total+" goals completed today.":"No goals scheduled. Rest days count.";
     $("allDone").hidden=!stats.total||stats.done!==stats.total;
-    const streak=progressStreak();
-    $("streakLabel").textContent=streak+"-session streak · Rest days skipped";
+    $("streakCount").textContent=String(progressStreak());
   }
   function renderToday() {
     const root=$("taskList");root.replaceChildren();
@@ -390,7 +472,7 @@
     $("reminderTime").value=state.reminders.time;
   }
   function render() {
-    renderHero();renderToday();renderWeek();renderCalendar();renderRoutine();showSettings();checkReminder();
+    renderHero();renderToday();renderWeek();renderCalendar();renderRoutine();showSettings();checkReminder();renderMotivation();
   }
   function activeTab(name) {
     ["today","history","routine"].forEach(tab=>{
