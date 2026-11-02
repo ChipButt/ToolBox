@@ -52,7 +52,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none;user-select:none;-
 <div id="stage"></div>
 <header class="topbar">
   <a class="back glass" href="./" aria-label="Back to ToolBox">&lsaquo;</a>
-  <div class="brand glass"><small>GameBox - Player creation · V 2</small><strong>Character <span>Builder</span></strong></div>
+  <div class="brand glass"><small>GameBox - Player creation · V 3</small><strong>Character <span>Builder</span></strong></div>
   <div class="topActions">
     <button class="iconBtn" id="randomBtn" aria-label="Random character">&#127922;</button>
     <button class="iconBtn" id="resetViewBtn" aria-label="Reset view">&#9678;</button>
@@ -211,7 +211,7 @@ function applySkinTexture(r,url){return new Promise(resolve=>textureLoader.load(
 function normalize(r){r.updateMatrixWorld(true);let b=new THREE.Box3().setFromObject(r),s=new THREE.Vector3();b.getSize(s);const target=1.78,den=Math.max(s.y,s.x*.72,s.z*.72,.001);r.scale.multiplyScalar(target/den);r.updateMatrixWorld(true);b=new THREE.Box3().setFromObject(r);const c=new THREE.Vector3();b.getCenter(c);r.position.x-=c.x;r.position.z-=c.z;r.position.y-=b.min.y;r.updateMatrixWorld(true)}
 // Keep the lowest visible geometry on the stage, even when a clip changes the pose.
 let groundCheckFrame=0;
-function keepCharacterAboveStage(){if(!root||!mixer||++groundCheckFrame%4)return;root.updateMatrixWorld(true);const bounds=new THREE.Box3().setFromObject(root);if(!Number.isFinite(bounds.min.y))return;const stageTop=0.033;const delta=stageTop-bounds.min.y;if(Math.abs(delta)>0.003){root.position.y+=THREE.MathUtils.clamp(delta,-0.08,0.18);root.updateMatrixWorld(true)}}
+function keepCharacterAboveStage(){if(!root||!mixer||++groundCheckFrame%1)return;root.updateMatrixWorld(true);const bounds=new THREE.Box3().setFromObject(root);if(!Number.isFinite(bounds.min.y))return;const stageTop=0.033;const delta=stageTop-bounds.min.y;if(Math.abs(delta)>0.001){root.position.y+=delta;root.updateMatrixWorld(true)}}
 function baseSkinnedMesh(){let hit=null;root?.traverse(o=>{if(!hit&&o.isSkinnedMesh)hit=o});return hit}
 function collectMaterials(){const map=new Map();for(const holder of [root,headgearHolder,footwearHolder])holder?.traverse(o=>{if(!o.isMesh)return;for(const m of (Array.isArray(o.material)?o.material:[o.material])){if(!m?.color)continue;const key=m.name||o.name||'Material';if(!map.has(key))map.set(key,[]);map.get(key).push(m)}});return map}
 function resetColours(){for(const list of collectMaterials().values())for(const m of list){const c=m.userData.builderDefaultColor;if(c)m.color.set(c)}renderColours();$$('[data-preset]').forEach(b=>b.classList.toggle('active',b.dataset.preset==='original'))}
