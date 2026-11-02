@@ -45,6 +45,49 @@ canvas{display:block;width:100%;height:100%;touch-action:none;user-select:none;-
  .topbar{top:max(7px,env(safe-area-inset-top));left:7px;right:7px}.back,.iconBtn{width:42px;height:42px}.primaryBtn{height:42px;padding:0 10px;font-size:8px}.brand{padding:6px 10px}.brand small{display:none}.brand strong{font-size:15px}.identity{top:58px;left:7px;width:236px;padding:9px 11px}.identity h1{font-size:18px}.stageHint{display:none}.cycle{width:47px;height:68px;font-size:35px}.cycle.prev{left:7px}.cycle.next{right:7px}.bottomDock{bottom:max(7px,env(safe-area-inset-bottom));width:calc(100% - 14px);padding:5px;gap:4px;border-radius:16px}.modeBtn{height:46px;border-radius:11px;font-size:7px}.modeBtn span{font-size:16px}.panel{left:7px;right:7px;top:auto;bottom:64px;width:auto;max-height:62vh;border-radius:19px}.panelHead{padding:12px 12px 8px}.panelBody{padding:0 12px 12px}.palettePresets{grid-template-columns:repeat(2,1fr)}.toast{bottom:68px}.animList{grid-template-columns:1fr 1fr}
 }
 @media(max-width:430px){.topActions .iconBtn:nth-child(1){display:none}.primaryBtn{padding:0 8px}.identity{max-width:205px}.identityMeta .tag:nth-child(3){display:none}.cycle{top:47%}.gearGrid{grid-template-columns:1fr}}
+
+/* V7: clear guided character-creation interface */
+:root{--panel:rgba(247,250,248,.97);--line:rgba(29,70,66,.16);--shadow:rgba(20,50,51,.15)}
+.brand{background:#143b39!important;border-color:#3d6763!important}.brand strong span{color:#f4cc7a}
+.panel{background:rgba(252,252,248,.97);color:#163732;border-color:#c6dad1;box-shadow:0 18px 50px rgba(26,58,53,.18)}
+.panelHead{border-bottom:1px solid #e1e9e3;margin-bottom:11px}.panelHead small{color:#52746b;font-size:10px;letter-spacing:.08em}.panelHead h2{font-size:25px;color:#133b34}.close{background:#e9f0e9;border:1px solid #c8d7cd;color:#244c44}
+.bottomDock{width:min(930px,calc(100% - 20px));grid-template-columns:repeat(8,minmax(0,1fr));background:rgba(16,49,46,.96);padding:6px}
+.modeBtn{height:54px;color:#d6e6de;border-color:rgba(255,255,255,.08);font-size:9px;letter-spacing:.03em}
+.modeBtn span{color:#a4c2b4;font:700 12px/1 Fredoka,Inter,sans-serif}
+.modeBtn.active{background:#e6f0d9;color:#143f36;border-color:#b9d9bb}.modeBtn.active span{color:#276e51}
+.modeBtn.use{background:#f4cd75;color:#25352e}.modeBtn.use span{color:#25352e}
+.panelBody{padding:0 18px 20px}.stepIntro{font-size:12px;line-height:1.5;margin:0 0 13px;color:#476960}
+.swatchGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+.swatchTile{min-width:0;display:grid;justify-items:center;gap:6px;border-radius:14px;padding:11px 4px 9px;background:#f1f5ee;border:2px solid transparent;color:#31574c;font-size:10px;font-weight:700}
+.swatchTile.selected{border-color:#1e785b;background:#e6f2e9}.swatchDot{display:block;width:42px;height:42px;border-radius:50%;border:2px solid rgba(0,0,0,.08);box-shadow:0 1px 5px #24492f24}
+.supportNote{font-size:11px;line-height:1.5;color:#557168;margin:7px 0}.supportNote:empty{display:none}
+.sectionTitle{color:#477469;font-size:10px}.sectionTitle.spaced{margin-top:20px}
+.styleGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.styleTile{border:1px solid #d2dfd5;background:#f2f7f1;border-radius:12px;color:#17463b;padding:13px;text-align:left;font-size:12px;font-weight:700}
+.styleTile.selected{border:2px solid #277b59;background:#e7f3e8}.styleTile:disabled{opacity:.45}
+.styleTile small{display:block;font-size:10px;color:#69877d;font-weight:500;margin-top:4px}
+.stepActions{display:flex;gap:10px;margin:22px 0 6px}.stepActions button{flex:1;min-width:0;padding:12px;border-radius:12px;border:1px solid #bfd4c7;font-size:11px;font-weight:800}
+.stepPrev{background:#e9f0e8;color:#31584e}.stepNext{background:#1d6d55;color:white}
+.gearCard{background:#f3f7f2;color:#164539;border-color:#d2e0d6}.gearCard small{color:#628478}.gearCard.active{background:#e1f2e7;border-color:#28805d}
+.note{background:#edf4ee;color:#547166;border-color:#d6e6d9}.note strong{color:#16463a}
+.search,.saveName{background:#f0f6f1;color:#143d34;border-color:#cdded2}.search::placeholder{color:#7d988a}
+.chip{background:#e8f0e8;color:#34574b;border-color:#d3ded2}.chip.active{background:#1c7657;color:white;border-color:#1c7657}
+.charRow{background:#f3f7f2;border-color:#d6e3d7;color:#164339}.charRow.active{background:#dff0e6;border-color:#31835f}
+.charCopy small,.panelMeta{color:#58776b}.panelMeta strong{color:#17493a}
+.animItem,.animQuick button,.secondary,.tiny{background:#eaf2ea;color:#164c39;border-color:#c8dccd}
+.animItem.active,.animQuick button.active{background:#cce9d5;border-color:#3d906e;color:#164b37}
+.savedRow{background:#f1f5ee;border-color:#d3e1d6}.savedRow small{color:#698779}
+#colourPanel{display:none!important}
+@media(max-width:760px){
+ .brand small{display:block;font-size:8px}
+ .bottomDock{display:flex;justify-content:initial;gap:4px;overflow-x:auto;width:calc(100% - 10px);scrollbar-width:none}
+ .modeBtn{flex:0 0 67px;height:45px;font-size:8px}.modeBtn span{font-size:10px}
+ .panel{left:7px;right:7px;top:auto;bottom:63px;width:auto;max-height:54vh}
+ .panelHead{padding:11px 14px 7px;margin-bottom:7px}.panelHead h2{font-size:21px}
+ .panelBody{padding:0 13px 15px}
+ .identity{width:218px}.cycle{top:37%;width:37px;height:60px}
+ .swatchDot{width:34px;height:34px}.swatchGrid{gap:5px}
+}
 </style>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}</script>
 </head>
@@ -52,7 +95,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none;user-select:none;-
 <div id="stage"></div>
 <header class="topbar">
   <a class="back glass" href="./" aria-label="Back to ToolBox">&lsaquo;</a>
-  <div class="brand glass"><small>GameBox - Player creation · V 6</small><strong>Character <span>Builder</span></strong></div>
+  <div class="brand glass"><small>Character Factory · V 7</small><strong>Character <span>Factory</span></strong></div>
   <div class="topActions">
     <button class="iconBtn" id="randomBtn" aria-label="Random character">&#127922;</button>
     <button class="iconBtn" id="resetViewBtn" aria-label="Reset view">&#9678;</button>
@@ -69,32 +112,68 @@ canvas{display:block;width:100%;height:100%;touch-action:none;user-select:none;-
 <button class="cycle prev" id="prevBtn" aria-label="Previous character">&lsaquo;</button>
 <button class="cycle next" id="nextBtn" aria-label="Next character">&rsaquo;</button>
 
-<nav class="bottomDock" aria-label="Character builder tools">
-  <button class="modeBtn" data-panel="libraryPanel"><span>&#129485;</span>CHARACTER</button>
-  <button class="modeBtn" data-panel="gearPanel"><span>&#127913;</span>GEAR</button>
-  <button class="modeBtn" data-panel="colourPanel"><span>&#127912;</span>COLOURS</button>
-  <button class="modeBtn" data-panel="animPanel"><span>&#9654;</span>MOVES</button>
-  <button class="modeBtn use" id="useBtn"><span>&#10003;</span>USE</button>
+<nav class="bottomDock" aria-label="Build your character step by step">
+  <button class="modeBtn" data-panel="libraryPanel" data-step="1"><span>01</span>BASE</button>
+  <button class="modeBtn" data-panel="skinPanel" data-step="2"><span>02</span>SKIN</button>
+  <button class="modeBtn" data-panel="hairPanel" data-step="3"><span>03</span>HAIR</button>
+  <button class="modeBtn" data-panel="eyesPanel" data-step="4"><span>04</span>EYES</button>
+  <button class="modeBtn" data-panel="outfitPanel" data-step="5"><span>05</span>CLOTHES</button>
+  <button class="modeBtn" data-panel="gearPanel" data-step="6"><span>06</span>EXTRAS</button>
+  <button class="modeBtn" data-panel="animPanel" data-step="7"><span>07</span>MOVES</button>
+  <button class="modeBtn use" data-panel="savePanel" data-step="8"><span>08</span>SAVE</button>
 </nav>
 
 <section class="panel" id="libraryPanel" hidden>
-  <div class="panelHead"><div><small>Base character</small><h2>Choose a character</h2></div><button class="close" data-close>X</button></div>
+  <div class="panelHead"><div><small>Base character</small><h2>Choose your base look</h2></div><button class="close" data-close>X</button></div>
   <div class="panelBody">
     <input class="search" id="charSearch" type="search" placeholder="Search 100+ GameBox characters...">
     <div class="filterRail" id="filterRail"></div>
     <div class="panelMeta"><span><strong id="libraryCount">0</strong> available</span><span id="librarySourceMeta">Local assets</span></div>
     <div class="characterList" id="characterList"></div>
+    <div class="stepActions"><button class="stepNext" data-go="skinPanel">SKIN →</button></div>
   </div>
 </section>
 
+<section class="panel customPanel" id="skinPanel" hidden>
+  <div class="panelHead"><div><small>Step 2 of 8 · Appearance</small><h2>Skin tone</h2></div><button class="close" data-close aria-label="Close">×</button></div>
+  <div class="panelBody"><p class="stepIntro">Choose a shade. No colour wheel or RGB settings.</p>
+    <div id="skinStatus" class="supportNote"></div><div id="skinSwatches" class="swatchGrid"></div>
+    <div class="stepActions"><button class="stepPrev" data-go="libraryPanel">BACK</button><button class="stepNext" data-go="hairPanel">HAIR →</button></div>
+  </div>
+</section>
+<section class="panel customPanel" id="hairPanel" hidden>
+  <div class="panelHead"><div><small>Step 3 of 8 · Appearance</small><h2>Hair</h2></div><button class="close" data-close aria-label="Close">×</button></div>
+  <div class="panelBody">
+    <div class="sectionTitle">Hair style</div><div id="hairStyleStatus" class="supportNote"></div><div id="hairStyleGrid" class="styleGrid"></div>
+    <div class="sectionTitle spaced">Hair colour</div><div id="hairStatus" class="supportNote"></div><div id="hairSwatches" class="swatchGrid"></div>
+    <div class="stepActions"><button class="stepPrev" data-go="skinPanel">BACK</button><button class="stepNext" data-go="eyesPanel">EYES →</button></div>
+  </div>
+</section>
+<section class="panel customPanel" id="eyesPanel" hidden>
+  <div class="panelHead"><div><small>Step 4 of 8 · Appearance</small><h2>Eyes</h2></div><button class="close" data-close aria-label="Close">×</button></div>
+  <div class="panelBody"><p class="stepIntro">Choose an eye colour on models with separately coloured eyes.</p>
+    <div id="eyesStatus" class="supportNote"></div><div id="eyesSwatches" class="swatchGrid"></div>
+    <div class="stepActions"><button class="stepPrev" data-go="hairPanel">BACK</button><button class="stepNext" data-go="outfitPanel">CLOTHES →</button></div>
+  </div>
+</section>
+<section class="panel customPanel" id="outfitPanel" hidden>
+  <div class="panelHead"><div><small>Step 5 of 8 · Wardrobe</small><h2>Clothes &amp; shoes</h2></div><button class="close" data-close aria-label="Close">×</button></div>
+  <div class="panelBody">
+    <p class="stepIntro">Tap a colour to change a separately coloured item. The selected base model determines clothing shape.</p>
+    <div class="sectionTitle">Top</div><div id="topStatus" class="supportNote"></div><div id="topSwatches" class="swatchGrid"></div>
+    <div class="sectionTitle spaced">Bottoms</div><div id="bottomStatus" class="supportNote"></div><div id="bottomSwatches" class="swatchGrid"></div>
+    <div class="sectionTitle spaced">Shoe colour</div><div id="shoesStatus" class="supportNote"></div><div id="shoesSwatches" class="swatchGrid"></div>
+    <div class="sectionTitle spaced">Shoe options</div><div class="gearGrid" id="footwearGrid"></div>
+    <div class="stepActions"><button class="stepPrev" data-go="eyesPanel">BACK</button><button class="stepNext" data-go="gearPanel">EXTRAS →</button></div>
+  </div>
+</section>
 <section class="panel" id="gearPanel" hidden>
   <div class="panelHead"><div><small>Compatible extras</small><h2>Gear</h2></div><button class="close" data-close>X</button></div>
   <div class="panelBody">
     <div class="note" id="gearNote"><strong>Rig-aware gear.</strong> Only items that can safely bind to the current character are enabled.</div>
     <div class="sectionTitle" style="margin-top:12px">Headwear & hair</div>
     <div class="gearGrid" id="headgearGrid"></div>
-    <div class="sectionTitle" style="margin-top:13px">Footwear</div>
-    <div class="gearGrid" id="footwearGrid"></div>
+    <div class="stepActions"><button class="stepPrev" data-go="outfitPanel">BACK</button><button class="stepNext" data-go="animPanel">MOVES →</button></div>
   </div>
 </section>
 
@@ -119,6 +198,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none;user-select:none;-
     <input class="search" id="animSearch" type="search" placeholder="Search animations...">
     <div class="panelMeta" style="padding-top:9px"><span><strong id="animCount">0</strong> clips</span><span>Playing: <strong id="playingName">-</strong></span></div>
     <div class="animList" id="animList"></div>
+    <div class="stepActions"><button class="stepPrev" data-go="gearPanel">BACK</button><button class="stepNext" data-go="savePanel">SAVE →</button></div>
   </div>
 </section>
 
@@ -130,6 +210,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none;user-select:none;-
     <div class="note"><strong>Game-ready output.</strong> "Use" stores the active preset locally for a future GameBox game. Saved presets stay on this device.</div>
     <div class="sectionTitle" style="margin-top:13px">Saved characters</div>
     <div class="savedList" id="savedList"></div>
+    <div class="stepActions"><button class="stepPrev" data-go="animPanel">BACK</button></div>
   </div>
 </section>
 
@@ -220,15 +301,86 @@ function randomColours(){const palette=['#a92f3b','#276747','#2f6e9d','#744d8c',
 
 async function loadBase(def,token){if(def.format==='fbx'){const obj=await fbxLoader.loadAsync(def.path,p=>{if(token===state.loadToken&&p.total)loadBar.style.width=(12+Math.round(p.loaded/p.total*52))+'%'});return{scene:obj,animations:[...(obj.animations||[])]}}const g=await gltfLoader.loadAsync(def.path,p=>{if(token===state.loadToken&&p.total)loadBar.style.width=(12+Math.round(p.loaded/p.total*52))+'%'});return{scene:g.scene,animations:[...(g.animations||[])]}}
 async function loadExtraAnimations(def){if(!def.extraAnimations?.length)return[];const arr=[];for(const path of def.extraAnimations){try{const a=await fbxLoader.loadAsync(path);arr.push(...(a.animations||[]))}catch(e){console.warn('Animation skipped',path,e)}}return arr}
-async function loadCharacter(id,{silentPanel=false}={}){const def=CHARACTERS.find(c=>c.id===id)||CHARACTERS[0],token=++state.loadToken;state.characterId=def.id;currentDef=def;localStorage.setItem('gamebox.builder.lastCharacter',def.id);state.headgear='none';state.footwear='none';clearGear();setLoading(true,'Loading '+def.label+'...',def.source+' - '+def.collection,15);renderLibrary();renderIdentity();try{const loaded=await loadBase(def,token);if(token!==state.loadToken){disposeObject(loaded.scene);return}if(root)disposeObject(root);if(mixer)mixer.stopAllAction();root=loaded.scene;cloneMaterials(root);if(def.skin)await applySkinTexture(root,def.skin);root.traverse(o=>{if(!o.isMesh)return;for(const m of (Array.isArray(o.material)?o.material:[o.material])){if(!m)continue;if(m.color&&m.color.r===0&&m.color.g===0&&m.color.b===0&&m.map){m.color.set(0xffffff);m.needsUpdate=true}}});normalize(root);scene.add(root);loadBar.style.width='72%';const extra=await loadExtraAnimations(def);if(token!==state.loadToken)return;clips=[...loaded.animations,...extra].filter((c,i,a)=>a.findIndex(x=>x.name===c.name)===i).sort((a,b)=>a.name.localeCompare(b.name));mixer=clips.length?new THREE.AnimationMixer(root):null;currentAction=null;state.playing='';const idle=clips.find(c=>/idle/i.test(c.name))||clips[0];if(idle)playClip(idle.name);loadBar.style.width='100%';renderIdentity();renderAnimations();renderGear();renderColours();setTimeout(()=>{if(token===state.loadToken)setLoading(false)},130);return true}catch(e){console.error(e);loadTitle.textContent='Character could not load';loadText.textContent='This asset stayed untouched. Choose another character to continue.';loadBar.style.width='100%';toast('That character could not load');setTimeout(()=>{if(token===state.loadToken)setLoading(false)},900);return false}}
+async function loadCharacter(id,{silentPanel=false}={}){const def=CHARACTERS.find(c=>c.id===id)||CHARACTERS[0],token=++state.loadToken;state.characterId=def.id;currentDef=def;localStorage.setItem('gamebox.builder.lastCharacter',def.id);state.headgear='none';state.footwear='none';clearGear();setLoading(true,'Loading '+def.label+'...',def.source+' - '+def.collection,15);renderLibrary();renderIdentity();try{const loaded=await loadBase(def,token);if(token!==state.loadToken){disposeObject(loaded.scene);return}if(root)disposeObject(root);if(mixer)mixer.stopAllAction();root=loaded.scene;cloneMaterials(root);if(def.skin)await applySkinTexture(root,def.skin);root.traverse(o=>{if(!o.isMesh)return;for(const m of (Array.isArray(o.material)?o.material:[o.material])){if(!m)continue;if(m.color&&m.color.r===0&&m.color.g===0&&m.color.b===0&&m.map){m.color.set(0xffffff);m.needsUpdate=true}}});normalize(root);scene.add(root);loadBar.style.width='72%';const extra=await loadExtraAnimations(def);if(token!==state.loadToken)return;clips=[...loaded.animations,...extra].filter((c,i,a)=>a.findIndex(x=>x.name===c.name)===i).sort((a,b)=>a.name.localeCompare(b.name));mixer=clips.length?new THREE.AnimationMixer(root):null;currentAction=null;state.playing='';const idle=clips.find(c=>/idle/i.test(c.name))||clips[0];if(idle)playClip(idle.name);loadBar.style.width='100%';renderIdentity();renderAnimations();renderGear();renderColours();v7RenderCustom();setTimeout(()=>{if(token===state.loadToken)setLoading(false)},130);return true}catch(e){console.error(e);loadTitle.textContent='Character could not load';loadText.textContent='This asset stayed untouched. Choose another character to continue.';loadBar.style.width='100%';toast('That character could not load');setTimeout(()=>{if(token===state.loadToken)setLoading(false)},900);return false}}
 function playClip(name){if(!mixer)return;const clip=clips.find(c=>c.name===name);if(!clip)return;if(currentAction)currentAction.fadeOut(.12);const a=mixer.clipAction(clip);a.reset().enabled=true;const loop=/idle|walk|run|dance|float|fly/i.test(clip.name);a.setLoop(loop?THREE.LoopRepeat:THREE.LoopOnce,loop?Infinity:1);a.clampWhenFinished=!loop;a.fadeIn(.12).play();currentAction=a;state.playing=clip.name;renderAnimations();renderIdentity()}
 function playKeyword(word){const re=new RegExp(word,'i'),clip=clips.find(c=>re.test(c.name));if(clip)playClip(clip.name);else toast('No '+word+' animation in this character')}
 function clearGear(){gearToken++;if(headgearHolder)disposeObject(headgearHolder);if(footwearHolder)disposeObject(footwearHolder);headgearHolder=null;footwearHolder=null}
 async function attachGear(kind,item){const holderKey=kind==='headgear'?'headgearHolder':'footwearHolder';if(item.id==='none'){if(kind==='headgear'&&headgearHolder)disposeObject(headgearHolder);if(kind==='footwear'&&footwearHolder)disposeObject(footwearHolder);if(kind==='headgear')headgearHolder=null;else footwearHolder=null;state[kind]='none';renderGear();renderColours();return}if(!currentDef||currentDef.family!=='quaternius'){toast('This gear is for the Quaternius rig');return}if(item.elfOnly&&!currentDef.id.startsWith('christmas-elf')){toast('These shoes are fitted to the Christmas Elf');return}const base=baseSkinnedMesh();if(!base){toast('No compatible rig found');return}const token=++gearToken;try{const g=await gltfLoader.loadAsync(item.path);if(token!==gearToken)return;const holder=new THREE.Group();holder.name='BuilderGear_'+item.id;const baseBones=new Map(base.skeleton.bones.map((b,i)=>[b.name,{bone:b,inverse:base.skeleton.boneInverses[i]}]));g.scene.updateMatrixWorld(true);let added=0;g.scene.traverse(src=>{if(!src.isMesh)return;const mats=(Array.isArray(src.material)?src.material:[src.material]).map(m=>{const c=m.clone();if(c.color)c.userData.builderDefaultColor='#'+c.color.getHexString();return c});if(src.isSkinnedMesh){const bones=[],inverses=[];for(const sb of src.skeleton.bones){const hit=baseBones.get(sb.name);if(!hit)return;bones.push(hit.bone);inverses.push(hit.inverse.clone())}const mesh=new THREE.SkinnedMesh(src.geometry,mats.length===1?mats[0]:mats);src.matrixWorld.decompose(mesh.position,mesh.quaternion,mesh.scale);mesh.bind(new THREE.Skeleton(bones,inverses),base.bindMatrix.clone());mesh.castShadow=true;holder.add(mesh);added++}else{const mesh=new THREE.Mesh(src.geometry,mats.length===1?mats[0]:mats);src.matrixWorld.decompose(mesh.position,mesh.quaternion,mesh.scale);mesh.castShadow=true;holder.add(mesh);added++}});if(!added){toast('This item is not compatible with the current rig');return}if(kind==='headgear'){if(headgearHolder)disposeObject(headgearHolder);headgearHolder=holder}else{if(footwearHolder)disposeObject(footwearHolder);footwearHolder=holder}root.add(holder);state[kind]=item.id;renderGear();renderColours();toast(item.label+' equipped')}catch(e){console.error(e);toast('Could not equip '+item.label)}}
 
+
+const V7_PALETTES={
+ skin:[['Porcelain','#f5d9c2'],['Fair','#e8bd99'],['Light','#daa97f'],['Medium','#c68d64'],['Warm','#ad734e'],['Tan','#925b3f'],['Deep','#75432d'],['Rich','#513025']],
+ hair:[['Black','#292521'],['Dark brown','#4c3227'],['Brown','#805338'],['Chestnut','#ae6b3f'],['Blonde','#dfbf80'],['Light blonde','#f5ddaa'],['Auburn','#a54f30'],['Silver','#c9c8bf']],
+ eyes:[['Brown','#79523a'],['Hazel','#987c40'],['Green','#4a7960'],['Blue','#5884aa'],['Grey','#88969a'],['Amber','#b48b49']],
+ top:[['Cream','#ece2d1'],['White','#f2f2eb'],['Rose','#c46f81'],['Red','#aa3941'],['Olive','#738151'],['Green','#3d8069'],['Blue','#557ea1'],['Charcoal','#464c50']],
+ bottom:[['Navy','#33475f'],['Black','#373839'],['Denim','#52769c'],['Tan','#b69572'],['Olive','#69724b'],['Brown','#6a4c3e']],
+ shoes:[['Black','#303134'],['Brown','#694b38'],['Tan','#ac805b'],['White','#eae7e0'],['Navy','#3d566c'],['Red','#9d4543']]
+};
+const V7_GROUPS={
+ skin:/skin|flesh|complexion|face[_ -]?skin|body[_ -]?skin|hand[_ -]?skin/i,
+ hair:/hair|fringe|bangs|locks|ponytail|braid/i,
+ eyes:/iris|eyecolor|eye[_ -]?colour|eye[_ -]?color/i,
+ top:/shirt|top|jacket|coat|sweater|jumper|hoodie|blouse|tunic|vest|torso[_ -]?cloth|uniform/i,
+ bottom:/trouser|pants|jeans|skirt|shorts|leggings|bottom/i,
+ shoes:/shoes?|boots?|footwear|sneaker|trainers/i
+};
+function v7Mats(group){
+ const list=[];
+ for(const [name,mats] of collectMaterials()){
+   if(!V7_GROUPS[group].test(name))continue;
+   for(const m of mats)if(m.color&&!list.includes(m))list.push(m);
+ }
+ return list;
+}
+function v7RenderPalette(group){
+ const box=$('#'+group+'Swatches'),status=$('#'+group+'Status');
+ if(!box||!status)return;
+ box.replaceChildren();
+ const mats=v7Mats(group);
+ if(!mats.length){
+   status.textContent='This base model does not expose a separate '+(group==='top'?'top':group==='bottom'?'bottoms':group==='shoes'?'shoe':group)+' colour. Try another base look.';
+   return;
+ }
+ const texture=mats.some(m=>!!m.map);
+ status.textContent=texture?'This model uses a texture. Colours may tint its existing details rather than replacing them.':'Choose a colour:';
+ const current='#'+mats[0].color.getHexString();
+ for(const [name,hex] of V7_PALETTES[group]){
+   const b=document.createElement('button');
+   b.type='button';b.className='swatchTile'+(current.toLowerCase()===hex.toLowerCase()?' selected':'');
+   b.setAttribute('aria-label',group+' '+name);b.setAttribute('aria-pressed',current.toLowerCase()===hex.toLowerCase()?'true':'false');
+   const dot=document.createElement('span');dot.className='swatchDot';dot.style.background=hex;
+   const caption=document.createElement('span');caption.textContent=name;
+   b.append(dot,caption);
+   b.onclick=()=>{for(const m of mats)m.color.set(hex);v7RenderPalette(group)};
+   box.append(b);
+ }
+}
+function v7RenderHairStyles(){
+ const box=$('#hairStyleGrid'),status=$('#hairStyleStatus');
+ if(!box||!status)return;
+ box.replaceChildren();
+ const compatible=currentDef?.family==='quaternius'&&!!baseSkinnedMesh();
+ const choices=[['none','Original hair','Built into this character']];
+ if(compatible){choices.push(['cowboy-hair','Cowboy hair','Extra fitted hair piece'],['ninja-hair','Ninja hair','Extra fitted hair piece'])}
+ status.textContent=compatible?'Available hair pieces use this character rig. An extra piece may overlap hair built into the base model.':'This model has a fixed hairstyle. Choose another base look for a different cut.';
+ for(const [id,name,description] of choices){
+   const item=HEADGEAR.find(x=>x.id===id);
+   const b=document.createElement('button');b.type='button';
+   b.className='styleTile'+(state.headgear===id?' selected':'');
+   b.textContent=name;
+   const caption=document.createElement('small');caption.textContent=description;b.append(caption);
+   b.onclick=async()=>{if(item)await attachGear('headgear',item);v7RenderHairStyles();v7RenderPalette('hair')};
+   box.append(b);
+ }
+}
+function v7RenderCustom(){
+ for(const group of Object.keys(V7_PALETTES))v7RenderPalette(group);
+ v7RenderHairStyles();
+}
+
 const FILTERS=[['all','ALL'],['featured','FEATURED'],['quaternius','QUATERNIUS'],['kenney','KENNEY'],['human','HUMAN'],['fantasy','FANTASY'],['undead','UNDEAD'],['creature','CREATURES']];
 function renderFilters(){const rail=$('#filterRail');rail.innerHTML='';for(const [id,label] of FILTERS){const b=document.createElement('button');b.className='chip'+(state.filter===id?' active':'');b.textContent=label;b.onclick=()=>{state.filter=id;renderFilters();renderLibrary();renderIdentity()};rail.appendChild(b)}}
-function renderLibrary(){const list=filteredCharacters(),box=$('#characterList');box.innerHTML='';$('#libraryCount').textContent=list.length;$('#librarySourceMeta').textContent=CHARACTERS.length+' total local looks';for(const c of list){const b=document.createElement('button');b.className='charRow'+(c.id===state.characterId?' active':'');b.innerHTML=`<span class="charIcon">${iconFor(c.type)}</span><span class="charCopy"><strong>${c.label}</strong><small>${c.source} - ${c.collection}</small></span><span class="charArrow">&rsaquo;</span>`;b.onclick=()=>loadCharacter(c.id);box.appendChild(b)}}
+function renderLibrary(){const list=filteredCharacters(),box=$('#characterList');box.innerHTML='';$('#libraryCount').textContent=list.length;$('#librarySourceMeta').textContent=CHARACTERS.length+' base looks';for(const c of list){const b=document.createElement('button');b.className='charRow'+(c.id===state.characterId?' active':'');b.innerHTML=`<span class="charIcon">${iconFor(c.type)}</span><span class="charCopy"><strong>${c.label}</strong><small>${c.source} - ${c.collection}</small></span><span class="charArrow">&rsaquo;</span>`;b.onclick=()=>loadCharacter(c.id);box.appendChild(b)}}
 function renderIdentity(){const def=CHARACTERS.find(c=>c.id===state.characterId)||CHARACTERS[0],list=filteredCharacters(),i=Math.max(0,list.findIndex(c=>c.id===def.id));$('#identityName').textContent=def.label;$('#identitySource').textContent=(def.source+' - '+def.collection).toUpperCase();$('#identityType').textContent=humanize(def.type);$('#identityIndex').textContent=list.length?(i+1)+' / '+list.length:'-';$('#identityClips').textContent=clips.length+' moves'}
 function renderGear(){const compatible=currentDef?.family==='quaternius',head=$('#headgearGrid'),feet=$('#footwearGrid');head.innerHTML='';feet.innerHTML='';$('#gearNote').innerHTML=compatible?'<strong>Quaternius rig detected.</strong> Headwear is rebound to the active skeleton so it follows animation.':'<strong>Preset character.</strong> This model is complete as supplied; incompatible Quaternius gear is disabled.';for(const item of HEADGEAR){const b=document.createElement('button');b.className='gearCard'+(state.headgear===item.id?' active':'');b.disabled=item.id!=='none'&&!compatible;b.innerHTML=`<strong>${item.label}</strong><small>${item.detail}</small>`;b.onclick=()=>attachGear('headgear',item);head.appendChild(b)}for(const item of FOOTWEAR){const allowed=compatible&&(!item.elfOnly||currentDef.id.startsWith('christmas-elf'));const b=document.createElement('button');b.className='gearCard'+(state.footwear===item.id?' active':'');b.disabled=item.id!=='none'&&!allowed;b.innerHTML=`<strong>${item.label}</strong><small>${item.detail}</small>`;b.onclick=()=>attachGear('footwear',item);feet.appendChild(b)}}
 function renderColours(){const box=$('#colorList');box.innerHTML='';const mats=collectMaterials();if(!mats.size){box.innerHTML='<div class="note">This character has no recolourable materials exposed by the model.</div>';return}for(const [name,list] of mats){const row=document.createElement('label');row.className='colorRow';const span=document.createElement('span');span.textContent=name.replace(/_/g,' ');const input=document.createElement('input');input.type='color';input.value='#'+list[0].color.getHexString();input.oninput=()=>{list.forEach(m=>m.color.set(input.value));$$('[data-preset]').forEach(b=>b.classList.remove('active'))};row.append(span,input);box.appendChild(row)}}
@@ -238,7 +390,7 @@ function randomCharacter(){const list=filteredCharacters().length?filteredCharac
 function resetView(){camera.position.set(2.7,1.8,4.6);controls.target.set(0,.92,0);controls.update()}
 function colourState(){const out={};for(const [name,list] of collectMaterials())out[name]='#'+list[0].color.getHexString();return out}
 function serializeCurrent(){return{version:1,name:$('#saveName').value.trim()||currentDef?.label||'Character',characterId:state.characterId,label:currentDef?.label,source:currentDef?.source,collection:currentDef?.collection,path:currentDef?.path,format:currentDef?.format,skin:currentDef?.skin||null,headgear:state.headgear,footwear:state.footwear,colours:colourState(),animation:state.playing||null,savedAt:new Date().toISOString()}}
-async function applySerialized(preset){if(!preset?.characterId)return;$('#saveName').value=preset.name||'';const ok=await loadCharacter(preset.characterId);if(!ok||!root)return;for(const [name,color] of Object.entries(preset.colours||{})){const mats=collectMaterials().get(name)||[];mats.forEach(m=>m.color.set(color))}if(preset.headgear&&preset.headgear!=='none'){const item=HEADGEAR.find(x=>x.id===preset.headgear);if(item)await attachGear('headgear',item)}if(preset.footwear&&preset.footwear!=='none'){const item=FOOTWEAR.find(x=>x.id===preset.footwear);if(item)await attachGear('footwear',item)}if(preset.animation){const clip=clips.find(c=>c.name===preset.animation);if(clip)playClip(clip.name)}renderColours()}
+async function applySerialized(preset){if(!preset?.characterId)return;$('#saveName').value=preset.name||'';const ok=await loadCharacter(preset.characterId);if(!ok||!root)return;for(const [name,color] of Object.entries(preset.colours||{})){const mats=collectMaterials().get(name)||[];mats.forEach(m=>m.color.set(color))}if(preset.headgear&&preset.headgear!=='none'){const item=HEADGEAR.find(x=>x.id===preset.headgear);if(item)await attachGear('headgear',item)}if(preset.footwear&&preset.footwear!=='none'){const item=FOOTWEAR.find(x=>x.id===preset.footwear);if(item)await attachGear('footwear',item)}if(preset.animation){const clip=clips.find(c=>c.name===preset.animation);if(clip)playClip(clip.name)}renderColours();v7RenderCustom()}
 function getSaved(){try{return JSON.parse(localStorage.getItem('gamebox.character-builder.saved')||'[]')}catch{return[]}}
 function setSaved(arr){localStorage.setItem('gamebox.character-builder.saved',JSON.stringify(arr.slice(0,30)))}
 function savePreset(){const p=serializeCurrent(),arr=getSaved();arr.unshift(p);setSaved(arr);renderSaved();toast('Character preset saved')}
@@ -246,13 +398,13 @@ async function copyJson(){const text=JSON.stringify(serializeCurrent(),null,2);t
 function renderSaved(){const box=$('#savedList'),arr=getSaved();box.innerHTML='';if(!arr.length){box.innerHTML='<div class="note">No saved characters yet.</div>';return}arr.forEach((p,i)=>{const row=document.createElement('div');row.className='savedRow';row.innerHTML=`<div><strong>${p.name||p.label}</strong><small>${p.label||p.characterId}</small></div>`;const load=document.createElement('button');load.className='tiny';load.textContent='LOAD';load.onclick=()=>applySerialized(p);const del=document.createElement('button');del.className='tiny danger';del.textContent='DELETE';del.onclick=()=>{const a=getSaved();a.splice(i,1);setSaved(a);renderSaved()};row.append(load,del);box.appendChild(row)})}
 async function useCharacter(){const p=serializeCurrent();localStorage.setItem('gamebox.character.active',JSON.stringify(p));try{await navigator.clipboard.writeText(JSON.stringify(p,null,2));toast('Character ready - preset copied')}catch{toast('Character ready for GameBox')}}
 
-const panels=$$('.panel');function openPanel(id){for(const p of panels)p.hidden=p.id!==id;$$('.modeBtn[data-panel]').forEach(b=>b.classList.toggle('active',b.dataset.panel===id));if(id==='libraryPanel')renderLibrary();if(id==='gearPanel')renderGear();if(id==='colourPanel')renderColours();if(id==='animPanel')renderAnimations();if(id==='savePanel')renderSaved()}
+const panels=$$('.panel');function openPanel(id){for(const p of panels)p.hidden=p.id!==id;$('.modeBtn[data-panel]').forEach(b=>{b.classList.toggle('active',b.dataset.panel===id);b.setAttribute('aria-current',b.dataset.panel===id?'step':'false')});if(id==='libraryPanel')renderLibrary();if(id==='gearPanel'||id==='outfitPanel')renderGear();if(['skinPanel','hairPanel','eyesPanel','outfitPanel'].includes(id))v7RenderCustom();if(id==='animPanel')renderAnimations();if(id==='savePanel')renderSaved()}
 function closePanels(){panels.forEach(p=>p.hidden=true);$$('.modeBtn[data-panel]').forEach(b=>b.classList.remove('active'))}
-$$('.modeBtn[data-panel]').forEach(b=>b.onclick=()=>{const p=$('#'+b.dataset.panel);p.hidden?openPanel(b.dataset.panel):closePanels()});$$('[data-close]').forEach(b=>b.onclick=closePanels);
+$$('.modeBtn[data-panel]').forEach(b=>b.onclick=()=>{const p=$('#'+b.dataset.panel);p.hidden?openPanel(b.dataset.panel):closePanels()});$('[data-close]').forEach(b=>b.onclick=closePanels);$('[data-go]').forEach(b=>b.onclick=()=>openPanel(b.dataset.go));
 $('#charSearch').oninput=e=>{state.search=e.target.value;renderLibrary();renderIdentity()};$('#animSearch').oninput=renderAnimations;$('#prevBtn').onclick=()=>cycle(-1);$('#nextBtn').onclick=()=>cycle(1);$('#randomBtn').onclick=randomCharacter;$('#resetViewBtn').onclick=resetView;$('#saveTopBtn').onclick=()=>openPanel('savePanel');$('#savePresetBtn').onclick=savePreset;$('#copyJsonBtn').onclick=copyJson;$('#useBtn').onclick=useCharacter;$('#resetColoursBtn').onclick=resetColours;$('#randomColoursBtn').onclick=randomColours;$$('[data-preset]').forEach(b=>b.onclick=()=>applyPreset(b.dataset.preset));
 document.addEventListener('keydown',e=>{if(e.key==='ArrowLeft'&&!e.target.matches('input'))cycle(-1);if(e.key==='ArrowRight'&&!e.target.matches('input'))cycle(1);if(e.key==='Escape')closePanels()});
 
-renderFilters();renderLibrary();renderSaved();resetView();loadCharacter(state.characterId);
+renderFilters();renderLibrary();renderSaved();resetView();loadCharacter(state.characterId);openPanel('libraryPanel');
 const savedActive=localStorage.getItem('gamebox.character.active');if(savedActive){try{$('#saveName').value=JSON.parse(savedActive).name||''}catch{}}
 function frame(){requestAnimationFrame(frame);const dt=Math.min(clock.getDelta(),.04);if(mixer)mixer.update(dt);if(snow){snow.rotation.y+=dt*.012;const p=snow.geometry.attributes.position;for(let i=0;i<p.count;i++){let y=p.getY(i)-dt*.12;if(y<-.1)y=6;p.setY(i,y)}p.needsUpdate=true}controls.update();renderer.render(scene,camera)}frame();
 function resize(){const vv=window.visualViewport,w=Math.max(1,Math.round(vv?.width||innerWidth)),h=Math.max(1,Math.round(vv?.height||innerHeight));camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h,false)}addEventListener('resize',resize,{passive:true});window.visualViewport?.addEventListener('resize',resize,{passive:true});document.addEventListener('gesturestart',e=>e.preventDefault(),{passive:false});document.addEventListener('gesturechange',e=>e.preventDefault(),{passive:false});resize();
