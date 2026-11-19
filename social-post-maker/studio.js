@@ -1,24 +1,27 @@
 import {loadImage,loadArt,visibleBounds,draw,FPS,FRAMES} from './render.js';
+import {serviceSuggestion,merchSuggestion,typeTitle,priceFor,selectImage} from './suggestions.js';
 import {encode} from './export.js';
 const $=id=>document.getElementById(id),ctx=$('screen').getContext('2d',{alpha:false});
 const scenes=Array.from({length:3},()=>({title:'',price:'',images:[null,null,null]}));
 const audio=new Audio('art/swipes.m4a');
 let templates=[],template=null,art=null,scene=0,view=0,frame=24,playing=false,raf,loadId=0,exporting=false,loadingImage=false;
-let catalogPromise,downloadURL;
+let catalogPromise,downloadURL,suggestion,types=[],building=false;
 const status=message=>$('status').textContent=message;
 function button(label,action){const b=document.createElement('button');b.textContent=label;b.onclick=action;return b}
 function thumb(src,label){const im=new Image();im.loading='lazy';im.src=src;im.alt=label;return im}
 function paint(i=frame){if(template&&art)draw(ctx,template,art,scenes,i)}
 function seek(i){frame=Math.min(FRAMES-1,Math.max(0,i));$('seek').value=frame;$('clock').value=(frame/FPS).toFixed(2)+' s';paint()}
 function stop(){playing=false;cancelAnimationFrame(raf);audio.pause();$('play').textContent='Play'}
-function ready(){return template&&art&&!loadingImage&&!exporting&&scenes.every(s=>s.images[0])}
+function ready(){return template&&art&&!building&&!loadingImage&&!exporting&&scenes.every(s=>s.images[0])}
 function refresh(){
-  $('export').disabled=!ready();$('play').disabled=!art||exporting;$('seek').disabled=!art||exporting;
+  $('export').disabled=!ready();$('play').disabled=!art||exporting||building;$('seek').disabled=!art||exporting||building;
   $('cover').hidden=!!art;$('screen').hidden=!art;
   $('sceneEditor').hidden=!art;$('title').value=scenes[scene].title;$('price').value=scenes[scene].price;
   $('scenes').replaceChildren(...scenes.map((s,i)=>{const b=button('Scene '+(i+1),()=>{stop();scene=i;view=0;seek(i*84+24);refresh()});b.setAttribute('aria-pressed',scene===i);return b}));
   $('sceneHeading').textContent='Images for scene '+(scene+1);
-  $('views').replaceChildren(...scenes[scene].images.map((im,i)=>{const b=button('View '+(i+1),()=>{stop();view=i;seek(scene*84+[24,42,66][i]);refresh()});b.setAttribute('aria-pressed',view===i);if(im)b.prepend(thumb(im.src,''));return b}));
+  $('views').replaceChildren(...scenes[scene].images.map((im,i)=>{const b=button('View '+(i+1),()=>{stop();view=i;seek(scene*84+[24,42,66][i]);refresh()});b.setAttribute('aria-pressed',view===i);if(im)b.prepend(thumb(im.src,''));if(!suggestion)return b;
+    const card=document.createElement('div');card.className='view-card';card.append(b);
+    if(im&&suggestion.pool.some(item=>item.url!==im.src)){const swap=button('Swap',()=>swapImage(i));swap.className='swap';swap.setAttribute('aria-label','Swap image '+(i+1));card.append(swap)}return card}));
   $('clear').hidden=!scenes[scene].images[view];paint();
 }
 function invalidate(){if(downloadURL){URL.revokeObjectURL(downloadURL);downloadURL=null;$('save').hidden=true}}
@@ -43,7 +46,7 @@ $('play').onclick=async()=>{
   function tick(now){if(!playing)return;const i=first+Math.floor((now-start)*FPS/1000);seek(i);if(i>=FRAMES-1)stop();else raf=requestAnimationFrame(tick)}raf=requestAnimationFrame(tick);
 };
 $('seek').oninput=e=>{stop();seek(+e.target.value)};
-for(const key of ['title','price'])$(key).oninput=e=>{invalidate();scenes[scene][key]=e.target.value;paint()};
+for(const key of ['title','price'])$(key).oninput=e=>{invalidate();scenes[scene][key]=e.target.value;if(key==='price')scenes[scene].customPrice=true;paint()};
 $('upload').onclick=()=>$('file').click();
 async function assign(src,isFile){
   const dest=scenes[scene],slot=view;loadingImage=true;$('editing').disabled=true;stop();refresh();
@@ -98,4 +101,91 @@ $('export').onclick=async()=>{
     const ext=blob.type.startsWith('video/mp4')?'mp4':'webm';downloadURL=URL.createObjectURL(blob);const a=$('save');a.href=downloadURL;a.download='chip-in-'+template.id+'.'+ext;a.textContent='Download '+ext.toUpperCase();a.hidden=false;a.click();status('Video ready. You can download it again below.')
   }catch(e){status('Export failed. '+e.message)}finally{exporting=false;$('editing').disabled=false;refresh();seek(frame)}
 };
-try{const r=await fetch('templates.json');if(!r.ok)throw Error();templates=await r.json();for(const t of templates)$('template').add(new Option(t.name,t.id));refresh()}catch{status('Could not load animations. Refresh to try again.')}
+try{const r=await fetch('templates.json');if(!r.ok)throw Error();templates=await r.json();$('purpose').disabled=false;for(const t of templates)$('template').add(new Option(t.name,t.id));refresh()}catch{status('Could not load animations. Refresh to try again.')}
+
+function setBuilding(value){
+  building=value;$('editing').disabled=value;$('cover').disabled=value;
+  if(value)stop();
+  refresh();
+}
+function release(image){if(image?.src.startsWith('blob:'))URL.revokeObjectURL(image.src)}
+function fillOptions(select,first,items){
+  select.replaceChildren(new Option(first,''));
+  items.forEach(([value,label])=>select.add(new Option(label,value)));
+}
+async function readSuggestion(item){
+  const image=await loadImage(item.url);
+  image.artBounds=visibleBounds(image);image.suggestion=item;return image;
+}
+function usedItems(){return scenes.flatMap(s=>s.images).filter(Boolean).map(image=>image.suggestion||{url:image.src})}
+async function nextAvailable(plan,used,excluded){
+  for(let attempt=0;attempt<8;attempt++){
+    const pick=selectImage(plan.pool,used,excluded);if(!pick)break;
+    try{return await readSuggestion(pick)}catch{excluded.add(pick.url)}
+  }
+  throw Error('No other image could be loaded. Your current images are still here.');
+}
+async function swapImage(slot){
+  if(building||!suggestion)return;
+  const dest=scenes[scene],old=dest.images[slot];setBuilding(true);
+  try{
+    status('Choosing a different image…');
+    const image=await nextAvailable(suggestion,usedItems(),new Set([old?.src]));
+    dest.images[slot]=image;release(old);view=slot;
+    if(!dest.customPrice)dest.price=suggestion.price||priceFor(dest.images.map(i=>i?.suggestion));
+    invalidate();seek(scene*84+[24,42,66][slot]);status('Image swapped.');
+  }catch(e){status(e.message)}finally{setBuilding(false)}
+}
+async function populate(){
+  const purpose=$('purpose').value;if(!purpose||building)return;
+  const type=types.find(t=>t.id===$('productType').value);
+  if(purpose==='merch'&&!type)return;
+  const plan=purpose==='merch'?merchSuggestion(type,$('designChoice').value,Number($('viewCount').value),gallery):serviceSuggestion(purpose);
+  $('retrySuggestion').hidden=true;setBuilding(true);
+  try{
+    if(!art){await choose('blackboard_gold');if(!art)throw Error('Could not load the animation. Please retry.')}
+    status('Building your '+plan.title+' suggestion…');
+    const selected=[],assignments=[];
+    // Plan the first view of each scene before filling the extra views.
+    for(let v=0;v<plan.views;v++)for(let i=0;i<3;i++){
+      const pick=selectImage(plan.pool,selected,new Set());
+      if(!pick)throw Error('No mock-ups are available for this selection.');
+      selected.push(pick);assignments.push({i,v,pick});
+    }
+    const draft=Array.from({length:3},()=>[null,null,null]),failed=new Set();
+    for(let start=0;start<assignments.length;start+=3){
+      await Promise.all(assignments.slice(start,start+3).map(async({i,v,pick})=>{
+        try{draft[i][v]=await readSuggestion(pick)}
+        catch{failed.add(pick.url);draft[i][v]=await nextAvailable(plan,selected,failed)}
+      }));
+    }
+    for(const [i,images] of draft.entries()){
+      scenes[i].images.forEach(release);
+      Object.assign(scenes[i],{images,title:plan.title,price:plan.price||priceFor(images.map(im=>im?.suggestion)),customPrice:false});
+    }
+    suggestion=plan;invalidate();scene=0;view=0;seek(24);status('Your suggestion is ready. Swap an image or edit any scene.');
+  }catch(e){status(e.message);$('retrySuggestion').hidden=false}finally{setBuilding(false)}
+}
+function selectType(){
+  const type=types.find(t=>t.id===$('productType').value);
+  $('merchOptions').hidden=!type;
+  if(!type)return;
+  fillOptions($('designChoice'),'Mix different designs',type.designs.map(d=>[d.slug,d.label]));
+  populate();
+}
+async function selectPurpose(){
+  const purpose=$('purpose').value;
+  $('merchSetup').hidden=purpose!=='merch';$('merchOptions').hidden=true;
+  $('retrySuggestion').hidden=true;
+  if(!purpose){suggestion=null;refresh();status('Choose or edit your images manually.');return}
+  if(purpose!=='merch'){await populate();return}
+  setBuilding(true);status('Loading product types…');fillOptions($('productType'),'Choose a product type…',[]);
+  try{catalogPromise??=fetchCatalog();types=await catalogPromise;
+    fillOptions($('productType'),'Choose a product type…',types.map(t=>[t.id,typeTitle(t)]));
+    status('Choose a product type to fill all three scenes.')
+  }catch{catalogPromise=null;$('retrySuggestion').hidden=false;status('Could not load the shop catalogue. Please retry.')}
+  finally{setBuilding(false)}
+}
+$('purpose').onchange=selectPurpose;$('productType').onchange=selectType;
+$('designChoice').onchange=populate;$('viewCount').onchange=populate;
+$('retrySuggestion').onclick=()=>$('purpose').value==='merch'&&!$('productType').value?selectPurpose():populate();
