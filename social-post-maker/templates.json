@@ -1,0 +1,1087 @@
+[
+ {
+  "id": "service_stripe",
+  "name": "Service Stripe",
+  "kind": "brand",
+  "source": "Chip_In_10_Branded_Dynamic_Background_Animation_Packs.zip / 01_service_stripe_Animated_Background_Pack.zip",
+  "frames": [
+   "service_stripe.avif"
+  ],
+  "brush": [
+   "brush-2f48526ff00a2311.png",
+   "brush-c793134b8fddafad.png",
+   "brush-1a461540baa7f808.png"
+  ],
+  "pad": 8,
+  "title_text": {
+   "x": 86,
+   "y": 97,
+   "width": 788,
+   "height": 122,
+   "fontSize": 88,
+   "color": "#292520",
+   "rotation": 0,
+   "maxLines": 2
+  },
+  "mockup": {
+   "x": 97,
+   "y": 318,
+   "width": 766,
+   "height": 635,
+   "fontSize": 0,
+   "color": "#292520",
+   "rotation": 0,
+   "maxLines": 1
+  },
+  "price_text": {
+   "x": 331,
+   "y": 1035,
+   "width": 296,
+   "height": 100,
+   "fontSize": 80,
+   "color": "#292520",
+   "rotation": 0,
+   "maxLines": 1
+  },
+  "intro": "service_stripe-intro.avif",
+  "panels": [
+   "paper-4c6fc781bbc5a0e1.png",
+   "paper-218d668d0e8388b5.png",
+   "paper-4f1ed1d84f7c7cf2.png",
+   "paper-d3da478d9412cb2a.png",
+   "paper-b8666da808ff8143.png",
+   "paper-967de8b727e19b0f.png"
+  ]
+ },
+ {
+  "id": "menu_card",
+  "name": "Menu Card",
+  "kind": "brand",
+  "source": "Chip_In_10_Branded_Dynamic_Background_Animation_Packs.zip / 02_menu_card_Animated_Background_Pack.zip",
+  "frames": [
+   "menu_card.avif"
+  ],
+  "brush": [
+   "brush-5f536f61549afe27.png",
+   "brush-9761168ba3ebaecd.png",
+   "brush-6cca805639f3fcae.png"
+  ],
+  "pad": 8,
+  "title_text": {
+   "x": 86,
+   "y": 97,
+   "width": 788,
+   "height": 122,
+   "fontSize": 88,
+   "color": "#292520",
+   "rotation": 0,
+   "maxLines": 2
+  },
+  "mockup": {
+   "x": 97,
+   "y": 318,
+   "width": 766,
+   "height": 635,
+   "fontSize": 0,
+   "color": "#292520",
+   "rotation": 0,
+   "maxLines": 1
+  },
+  "price_text": {
+   "x": 331,
+   "y": 1035,
+   "width": 296,
+   "height": 100,
+   "fontSize": 80,
+   "color": "#292520",
+   "rotation": 0,
+   "maxLines": 1
+  },
+  "intro": "menu_card-intro.avif",
+  "panels": [
+   "paper-4fe02f4eafe9fcbb.png",
+   "paper-def3f955f2542892.png",
+   "paper-32e3088810d194b6.png",
+   "paper-39cd492a7ff62c03.png",
+   "paper-b4cc85c3c97c9513.png",
+   "paper-e3913341d6d361a3.png"
+  ]
+ },
+ {
+  "id": "last_orders_burst",
+  "name": "Last Orders Burst",
+  "kind": "brand",
+  "source": "Chip_In_10_Branded_Dynamic_Background_Animation_Packs.zip / 03_last_orders_burst_Animated_Background_Pack.zip",
+  "frames": [
+   "last_orders_burst.avif"
+  ],
+  "brush": [
+   "brush-72581a5317f2b24d.png",
+   "brush-2cf3c21ee2b35a57.png",
+   "brush-691667ebf9e0403d.png"
+  ],
+  "pad": 8,
+  "title_text": {
+   "x": 86,
+   "y": 97,
+   "width": 788,
+   "height": 122,
+   "fontSize": 88,
+   "color": "#292520",
+   "rotation": 0,
+   "maxLines": 2
+  },
+  "mockup": {
+   "x": 97,
+   "y": 318,
+   "width": 766,
+   "height": 635,
+   "fontSize": 0,
+   "color": "#292520",
+   "rotation": 0,
+   "maxLines": 1
+  },
+  "price_text": {
+   "x": 331,
+   "y": 1035,
+   "width": 296,
+   "height": 100,
+   "fontSize": 80,
+   "color": "#292520",
+   "rotation": 0,
+   "maxLines": 1
+  },
+  "intro": "last_orders_burst-intro.avif",
+  "panels": [
+   "paper-bd9d9157a674b32c.png",
+   "paper-d2572083c674f989.png",
+   "paper-23127385173eecc2.png",
+   "paper-0cfa48617700c5c8.png",
+   "paper-97b24d25ca78af5a.png",
+   "paper-bd2b1fc490919614.png"
+  ]
+ },
+ {
+  "id": "diner_pennants",
+  "name": "Diner Pennants",
+  "kind": "brand",
+  "source": "Chip_In_10_Branded_Dynamic_Background_Animation_Packs.zip / 04_diner_pennants_Animated_Background_Pack.zip",
+  "frames": [
+   "diner_pennants.avif"
+  ],
+  "brush": [
+   "brush-cc76bc0d7c60a44a.png",
+   "brush-769b143f8fd67982.png",
+   "brush-f09e9d6534e35ce4.png"
+  ],
+  "pad": 8,
+  "title_text": {
+   "x": 86,
+   "y": 97,
+   "width": 788,
+   "height": 122,
+   "fontSize": 88,
+   "color": "#292520",
+   "rotation": 0,
+   "maxLines": 2
+  },
+  "mockup": {
+   "x": 97,
+   "y": 318,
+   "width": 766,
+   "height": 635,
+   "fontSize": 0,
+   "color": "#292520",
+   "rotation": 0,
+   "maxLines": 1
+  },
+  "price_text": {
+   "x": 331,
+   "y": 1035,
+   "width": 296,
+   "height": 100,
+   "fontSize": 80,
+   "color": "#292520",
+   "rotation": 0,
+   "maxLines": 1
+  },
+  "intro": "diner_pennants-intro.avif",
+  "panels": [
+   "paper-8c1612ac376cc51b.png",
+   "paper-e56100750b42ca19.png",
+   "paper-b36c18c0f04e6dd9.png",
+   "paper-eabf143691282327.png",
+   "paper-f16772d4f8ad47d9.png",
+   "paper-d58a2ebb13e129cb.png"
+  ]
+ },
+ {
+  "id": "noticeboard_cutout",
+  "name": "Noticeboard Cutout",
+  "kind": "brand",
+  "source": "Chip_In_10_Branded_Dynamic_Background_Animation_Packs.zip / 05_noticeboard_cutout_Animated_Background_Pack.zip",
+  "frames": [
+   "noticeboard_cutout.avif"
+  ],
+  "brush": [
+   "brush-359a814d49a00a9d.png",
+   "brush-7dc204776b354633.png",
+   "brush-306da64dd8d1814b.png"
+  ],
+  "pad": 8,
+  "title_text": {
+   "x": 86,
+   "y": 97,
+   "width": 788,
+   "height": 122,
+   "fontSize": 88,
+   "color": "#292520",
+   "rotation": 0,
+   "maxLines": 2
+  },
+  "mockup": {
+   "x": 97,
+   "y": 318,
+   "width": 766,
+   "height": 635,
+   "fontSize": 0,
+   "color": "#292520",
+   "rotation": 0,
+   "maxLines": 1
+  },
+  "price_text": {
+   "x": 331,
+   "y": 1035,
+   "width": 296,
+   "height": 100,
+   "fontSize": 80,
+   "color": "#292520",
+   "rotation": 0,
+   "maxLines": 1
+  },
+  "intro": "noticeboard_cutout-intro.avif",
+  "panels": [
+   "paper-6075e4703ff69ad1.png",
+   "paper-26b56c4a2fd3cf93.png",
+   "paper-ee21c54de8ebb4c2.png",
+   "paper-13d20b2c129ef117.png",
+   "paper-216ab81a7c11ce08.png",
+   "paper-65507aea41c04f05.png"
+  ]
+ },
+ {
+  "id": "happy_hour_blocks",
+  "name": "Happy Hour Blocks",
+  "kind": "brand",
+  "source": "Chip_In_10_Branded_Dynamic_Background_Animation_Packs.zip / 06_happy_hour_blocks_Animated_Background_Pack.zip",
+  "frames": [
+   "happy_hour_blocks.avif"
+  ],
+  "brush": [
+   "brush-c61df89787271ac1.png",
+   "brush-768d01c8f22d6cfd.png",
+   "brush-8b87a82e6b26550c.png"
+  ],
+  "pad": 8,
+  "title_text": {
+   "x": 86,
+   "y": 97,
+   "width": 788,
+   "height": 122,
+   "fontSize": 88,
+   "color": "#292520",
+   "rotation": 0,
+   "maxLines": 2
+  },
+  "mockup": {
+   "x": 97,
+   "y": 318,
+   "width": 766,
+   "height": 635,
+   "fontSize": 0,
+   "color": "#292520",
+   "rotation": 0,
+   "maxLines": 1
+  },
+  "price_text": {
+   "x": 331,
+   "y": 1035,
+   "width": 296,
+   "height": 100,
+   "fontSize": 80,
+   "color": "#292520",
+   "rotation": 0,
+   "maxLines": 1
+  },
+  "intro": "happy_hour_blocks-intro.avif",
+  "panels": [
+   "paper-903d43e865f74a7e.png",
+   "paper-d76cd2600870cd57.png",
+   "paper-dd33b9609d287c91.png",
+   "paper-82927063446f1ab6.png",
+   "paper-29220d5a1041f8cf.png",
+   "paper-2b9ab2bd342d7427.png"
+  ]
+ },
+ {
+  "id": "uniform_badge",
+  "name": "Uniform Badge",
+  "kind": "brand",
+  "source": "Chip_In_10_Branded_Dynamic_Background_Animation_Packs.zip / 07_uniform_badge_Animated_Background_Pack.zip",
+  "frames": [
+   "uniform_badge.avif"
+  ],
+  "brush": [
+   "brush-dcd370621d709270.png",
+   "brush-243796286f20ea83.png",
+   "brush-5afc5e949d6afe61.png"
+  ],
+  "pad": 8,
+  "title_text": {
+   "x": 86,
+   "y": 97,
+   "width": 788,
+   "height": 122,
+   "fontSize": 88,
+   "color": "#292520",
+   "rotation": 0,
+   "maxLines": 2
+  },
+  "mockup": {
+   "x": 97,
+   "y": 318,
+   "width": 766,
+   "height": 635,
+   "fontSize": 0,
+   "color": "#292520",
+   "rotation": 0,
+   "maxLines": 1
+  },
+  "price_text": {
+   "x": 331,
+   "y": 1035,
+   "width": 296,
+   "height": 100,
+   "fontSize": 80,
+   "color": "#292520",
+   "rotation": 0,
+   "maxLines": 1
+  },
+  "intro": "uniform_badge-intro.avif",
+  "panels": [
+   "paper-e4ad656c3cabeec2.png",
+   "paper-c3db901e18b31823.png",
+   "paper-1173e9672fc3b5ae.png",
+   "paper-ded2effe37e5cb7f.png",
+   "paper-7267064a2fadb2da.png",
+   "paper-0043a86acd43f5e4.png"
+  ]
+ },
+ {
+  "id": "coaster_rings",
+  "name": "Coaster Rings",
+  "kind": "brand",
+  "source": "Chip_In_10_Branded_Dynamic_Background_Animation_Packs.zip / 08_coaster_rings_Animated_Background_Pack.zip",
+  "frames": [
+   "coaster_rings.avif"
+  ],
+  "brush": [
+   "brush-d19d31ae162fbca2.png",
+   "brush-cb867e85b70accf7.png",
+   "brush-b8a57910d5fdf3d5.png"
+  ],
+  "pad": 8,
+  "title_text": {
+   "x": 86,
+   "y": 97,
+   "width": 788,
+   "height": 122,
+   "fontSize": 88,
+   "color": "#292520",
+   "rotation": 0,
+   "maxLines": 2
+  },
+  "mockup": {
+   "x": 97,
+   "y": 318,
+   "width": 766,
+   "height": 635,
+   "fontSize": 0,
+   "color": "#292520",
+   "rotation": 0,
+   "maxLines": 1
+  },
+  "price_text": {
+   "x": 331,
+   "y": 1035,
+   "width": 296,
+   "height": 100,
+   "fontSize": 80,
+   "color": "#292520",
+   "rotation": 0,
+   "maxLines": 1
+  },
+  "intro": "coaster_rings-intro.avif",
+  "panels": [
+   "paper-2b3941581078ac56.png",
+   "paper-13ca7086cd66fd1a.png",
+   "paper-a061a8540c25911a.png",
+   "paper-d433e27613b8aa46.png",
+   "paper-32a07bf33bec6164.png",
+   "paper-3c9997cd8d60c764.png"
+  ]
+ },
+ {
+  "id": "aperitif_chevron",
+  "name": "Aperitif Chevron",
+  "kind": "brand",
+  "source": "Chip_In_10_Branded_Dynamic_Background_Animation_Packs.zip / 09_aperitif_chevron_Animated_Background_Pack.zip",
+  "frames": [
+   "aperitif_chevron.avif"
+  ],
+  "brush": [
+   "brush-e0715ea188da7e33.png",
+   "brush-668edfc2a9a57a99.png",
+   "brush-603e69c1dec4b219.png"
+  ],
+  "pad": 8,
+  "title_text": {
+   "x": 86,
+   "y": 97,
+   "width": 788,
+   "height": 122,
+   "fontSize": 88,
+   "color": "#292520",
+   "rotation": 0,
+   "maxLines": 2
+  },
+  "mockup": {
+   "x": 97,
+   "y": 318,
+   "width": 766,
+   "height": 635,
+   "fontSize": 0,
+   "color": "#292520",
+   "rotation": 0,
+   "maxLines": 1
+  },
+  "price_text": {
+   "x": 331,
+   "y": 1035,
+   "width": 296,
+   "height": 100,
+   "fontSize": 80,
+   "color": "#292520",
+   "rotation": 0,
+   "maxLines": 1
+  },
+  "intro": "aperitif_chevron-intro.avif",
+  "panels": [
+   "paper-097952f32fb16990.png",
+   "paper-598be14b81098d09.png",
+   "paper-bfeb1c04cd5eaec2.png",
+   "paper-770f11298dd36aa3.png",
+   "paper-3b9dc03262db8a44.png",
+   "paper-af5bfbc01aa8817f.png"
+  ]
+ },
+ {
+  "id": "shift_notes",
+  "name": "Shift Notes",
+  "kind": "brand",
+  "source": "Chip_In_10_Branded_Dynamic_Background_Animation_Packs.zip / 10_shift_notes_Animated_Background_Pack.zip",
+  "frames": [
+   "shift_notes.avif"
+  ],
+  "brush": [
+   "brush-4b347dc15d03b87a.png",
+   "brush-ed375656f7f026d6.png",
+   "brush-3f598d214f0b8eaf.png"
+  ],
+  "pad": 8,
+  "title_text": {
+   "x": 86,
+   "y": 97,
+   "width": 788,
+   "height": 122,
+   "fontSize": 88,
+   "color": "#292520",
+   "rotation": 0,
+   "maxLines": 2
+  },
+  "mockup": {
+   "x": 97,
+   "y": 318,
+   "width": 766,
+   "height": 635,
+   "fontSize": 0,
+   "color": "#292520",
+   "rotation": 0,
+   "maxLines": 1
+  },
+  "price_text": {
+   "x": 331,
+   "y": 1035,
+   "width": 296,
+   "height": 100,
+   "fontSize": 80,
+   "color": "#292520",
+   "rotation": 0,
+   "maxLines": 1
+  },
+  "intro": "shift_notes-intro.avif",
+  "panels": [
+   "paper-4db0d5f132747a12.png",
+   "paper-32e53896f0129027.png",
+   "paper-d8081704e32cf192.png",
+   "paper-f748a9cf6517c22a.png",
+   "paper-bf98e964167188fb.png",
+   "paper-b60e3f8f14ab11be.png"
+  ]
+ },
+ {
+  "id": "rockabilly_diner",
+  "name": "Rockabilly Diner",
+  "kind": "poster",
+  "source": "Chip_In_Approved_Layouts_Bundle_Part_1_of_3.zip / animation_packs/01_rockabilly_diner_Editable_Pack.zip",
+  "frames": [
+   "rockabilly_diner.avif"
+  ],
+  "brush": [],
+  "pad": 5,
+  "title_text": {
+   "x": 142.8,
+   "y": 90.5,
+   "width": 685,
+   "height": 151,
+   "rotation": -7.5,
+   "color": "#302821",
+   "fontSize": 68,
+   "maxLines": 2
+  },
+  "mockup": {
+   "x": 200.3,
+   "y": 341,
+   "width": 595,
+   "height": 585,
+   "rotation": -7
+  },
+  "price_text": {
+   "x": 626.1,
+   "y": 950.2,
+   "width": 266,
+   "height": 106,
+   "rotation": -13,
+   "color": "#422920",
+   "fontSize": 50,
+   "maxLines": 1
+  },
+  "intro": null
+ },
+ {
+  "id": "heritage_ticket",
+  "name": "Heritage Ticket",
+  "kind": "poster",
+  "source": "Chip_In_Approved_Layouts_Bundle_Part_1_of_3.zip / animation_packs/02_heritage_ticket_Editable_Pack.zip",
+  "frames": [
+   "heritage_ticket.avif"
+  ],
+  "brush": [],
+  "pad": 5,
+  "title_text": {
+   "x": 196.2,
+   "y": 107.1,
+   "width": 564,
+   "height": 140,
+   "rotation": -2.5,
+   "color": "#302821",
+   "fontSize": 68,
+   "maxLines": 2
+  },
+  "mockup": {
+   "x": 165,
+   "y": 344.4,
+   "width": 648.2,
+   "height": 554.7,
+   "rotation": -3
+  },
+  "price_text": {
+   "x": 554.2,
+   "y": 974.9,
+   "width": 287.6,
+   "height": 118.7,
+   "rotation": 7,
+   "color": "#342923",
+   "fontSize": 50,
+   "maxLines": 1
+  },
+  "intro": null
+ },
+ {
+  "id": "checker_wave",
+  "name": "Checker Wave",
+  "kind": "poster",
+  "source": "Chip_In_Approved_Layouts_Bundle_Part_1_of_3.zip / animation_packs/03_checker_wave_Editable_Pack.zip",
+  "frames": [
+   "checker_wave.avif"
+  ],
+  "brush": [],
+  "pad": 5,
+  "title_text": {
+   "x": 190.9,
+   "y": 144.5,
+   "width": 567,
+   "height": 131,
+   "rotation": -5.5,
+   "color": "#302821",
+   "fontSize": 68,
+   "maxLines": 2
+  },
+  "mockup": {
+   "x": 191.5,
+   "y": 374.4,
+   "width": 550.6,
+   "height": 487.8,
+   "rotation": -8.5
+  },
+  "price_text": {
+   "x": 617.6,
+   "y": 862.5,
+   "width": 284.7,
+   "height": 169.2,
+   "rotation": -6.5,
+   "color": "#fff2d7",
+   "fontSize": 50,
+   "maxLines": 1
+  },
+  "intro": null
+ },
+ {
+  "id": "blackboard_gold",
+  "name": "Blackboard Gold",
+  "kind": "poster",
+  "source": "Chip_In_Approved_Layouts_Bundle_Part_2_of_3.zip / animation_packs/04_blackboard_gold_Editable_Pack.zip",
+  "frames": [
+   "blackboard_gold.avif"
+  ],
+  "brush": [],
+  "pad": 5,
+  "title_text": {
+   "x": 131.9,
+   "y": 114.1,
+   "width": 686,
+   "height": 130,
+   "rotation": -6,
+   "color": "#302821",
+   "fontSize": 68,
+   "maxLines": 2
+  },
+  "mockup": {
+   "x": 140,
+   "y": 358,
+   "width": 690,
+   "height": 506,
+   "rotation": -2
+  },
+  "price_text": {
+   "x": 274.3,
+   "y": 985.3,
+   "width": 415.3,
+   "height": 138.9,
+   "rotation": -5,
+   "color": "#342923",
+   "fontSize": 50,
+   "maxLines": 1
+  },
+  "intro": null
+ },
+ {
+  "id": "paper_scrapbook",
+  "name": "Paper Scrapbook",
+  "kind": "poster",
+  "source": "Chip_In_Approved_Layouts_Bundle_Part_2_of_3.zip / animation_packs/05_paper_scrapbook_Editable_Pack.zip",
+  "frames": [
+   "paper_scrapbook.avif"
+  ],
+  "brush": [],
+  "pad": 5,
+  "title_text": {
+   "x": 99.1,
+   "y": 103.6,
+   "width": 776.2,
+   "height": 116.7,
+   "rotation": -4.5,
+   "color": "#302821",
+   "fontSize": 68,
+   "maxLines": 2
+  },
+  "mockup": {
+   "x": 197.4,
+   "y": 313,
+   "width": 591,
+   "height": 525,
+   "rotation": 2.5
+  },
+  "price_text": {
+   "x": 419.1,
+   "y": 908.7,
+   "width": 443.6,
+   "height": 187.2,
+   "rotation": -5.5,
+   "color": "#3a2a22",
+   "fontSize": 65,
+   "maxLines": 1
+  },
+  "intro": null
+ },
+ {
+  "id": "pub_coaster",
+  "name": "Pub Coaster",
+  "kind": "poster",
+  "source": "Chip_In_Approved_Layouts_Bundle_Part_2_of_3.zip / animation_packs/06_pub_coaster_Editable_Pack.zip",
+  "frames": [
+   "pub_coaster.avif"
+  ],
+  "brush": [],
+  "pad": 5,
+  "title_text": {
+   "x": 128.2,
+   "y": 105.8,
+   "width": 686.5,
+   "height": 173.3,
+   "rotation": -6.5,
+   "color": "#302821",
+   "fontSize": 68,
+   "maxLines": 2
+  },
+  "mockup": {
+   "x": 176.9,
+   "y": 383.3,
+   "width": 605,
+   "height": 482,
+   "rotation": 12.5
+  },
+  "price_text": {
+   "x": 612.9,
+   "y": 850.9,
+   "width": 244.8,
+   "height": 181,
+   "rotation": -9.5,
+   "color": "#fff0d7",
+   "fontSize": 50,
+   "maxLines": 1
+  },
+  "intro": null
+ },
+ {
+  "id": "pinboard",
+  "name": "Pinboard",
+  "kind": "poster",
+  "source": "Chip_In_Approved_Layouts_Bundle_Part_3_of_3.zip / animation_packs/07_pinboard_Editable_Pack.zip",
+  "frames": [
+   "pinboard.avif"
+  ],
+  "brush": [],
+  "pad": 5,
+  "title_text": {
+   "x": 117.1,
+   "y": 93.7,
+   "width": 688,
+   "height": 110,
+   "rotation": -1.5,
+   "color": "#302821",
+   "fontSize": 68,
+   "maxLines": 2
+  },
+  "mockup": {
+   "x": 186.5,
+   "y": 342.9,
+   "width": 632,
+   "height": 566,
+   "rotation": -3
+  },
+  "price_text": {
+   "x": 567.4,
+   "y": 949.8,
+   "width": 334,
+   "height": 171.4,
+   "rotation": -4,
+   "color": "#372b23",
+   "fontSize": 60,
+   "maxLines": 1
+  },
+  "intro": null
+ },
+ {
+  "id": "atomic_pop",
+  "name": "Atomic Pop",
+  "kind": "poster",
+  "source": "Chip_In_Approved_Layouts_Bundle_Part_3_of_3.zip / animation_packs/08_atomic_pop_Editable_Pack.zip",
+  "frames": [
+   "atomic_pop.avif"
+  ],
+  "brush": [],
+  "pad": 5,
+  "title_text": {
+   "x": 169.4,
+   "y": 104.4,
+   "width": 573.6,
+   "height": 132,
+   "rotation": -7.5,
+   "color": "#302821",
+   "fontSize": 68,
+   "maxLines": 2
+  },
+  "mockup": {
+   "x": 239.6,
+   "y": 326.8,
+   "width": 583,
+   "height": 529,
+   "rotation": -9
+  },
+  "price_text": {
+   "x": 608,
+   "y": 918.5,
+   "width": 270,
+   "height": 170.4,
+   "rotation": 9.5,
+   "color": "#3e2c25",
+   "fontSize": 50,
+   "maxLines": 1
+  },
+  "intro": null
+ },
+ {
+  "id": "sticker_bomb",
+  "name": "Sticker Bomb",
+  "kind": "poster",
+  "source": "Chip_In_Approved_Layouts_Bundle_Part_3_of_3.zip / animation_packs/09_sticker_bomb_Editable_Pack.zip",
+  "frames": [
+   "sticker_bomb.avif"
+  ],
+  "brush": [],
+  "pad": 5,
+  "title_text": {
+   "x": 163.1,
+   "y": 140.1,
+   "width": 623,
+   "height": 114,
+   "rotation": -4.5,
+   "color": "#302821",
+   "fontSize": 68,
+   "maxLines": 2
+  },
+  "mockup": {
+   "x": 165,
+   "y": 364.4,
+   "width": 662,
+   "height": 502,
+   "rotation": 10.5
+  },
+  "price_text": {
+   "x": 626.3,
+   "y": 865.6,
+   "width": 263,
+   "height": 157.9,
+   "rotation": -4,
+   "color": "#fff2de",
+   "fontSize": 50,
+   "maxLines": 1
+  },
+  "intro": null
+ },
+ {
+  "id": "comic_kapow",
+  "name": "Comic Kapow",
+  "kind": "poster",
+  "source": "Chip_In_Approved_Layouts_Bundle_Part_3_of_3.zip / animation_packs/10_comic_kapow_Editable_Pack.zip",
+  "frames": [
+   "comic_kapow.avif"
+  ],
+  "brush": [],
+  "pad": 5,
+  "title_text": {
+   "x": 171.4,
+   "y": 103.6,
+   "width": 611.7,
+   "height": 151.6,
+   "rotation": -8,
+   "color": "#302821",
+   "fontSize": 68,
+   "maxLines": 2
+  },
+  "mockup": {
+   "x": 209.5,
+   "y": 365,
+   "width": 578.5,
+   "height": 473.1,
+   "rotation": -4.5
+  },
+  "price_text": {
+   "x": 553.8,
+   "y": 919.2,
+   "width": 298,
+   "height": 146,
+   "rotation": -11.5,
+   "color": "#31251d",
+   "fontSize": 50,
+   "maxLines": 1
+  },
+  "intro": null
+ },
+ {
+  "id": "chalk",
+  "name": "Chalkboard Poster",
+  "kind": "chalk",
+  "source": "Chip_In_Chalkboard_Custom_Arrows_v20_Editable_Pack.zip",
+  "frames": [
+   "chalk.avif"
+  ],
+  "brush": [
+   "brush-af77c51f56379f09.png",
+   "brush-abbc9259a97efc75.png",
+   "brush-20a75069773c86e7.png"
+  ],
+  "pad": 0,
+  "title_text": {
+   "x": 101.9,
+   "y": 132.4,
+   "width": 752.3,
+   "height": 98.5,
+   "rotation": -1.5,
+   "color": "#2d2825",
+   "fontSize": 68,
+   "maxLines": 2
+  },
+  "mockup": {
+   "x": 216,
+   "y": 396.4,
+   "width": 516.9,
+   "height": 507.8,
+   "rotation": -6.5
+  },
+  "price_text": {
+   "x": 596.1,
+   "y": 1066.3,
+   "width": 299.6,
+   "height": 78,
+   "rotation": -1.5,
+   "color": "#2d2825",
+   "fontSize": 52,
+   "maxLines": 1
+  },
+  "intro": "chalk-intro.avif"
+ },
+ {
+  "id": "knewave",
+  "name": "Original Knewave",
+  "kind": "knewave",
+  "source": "Chip_In_Knewave_Wipe_Front_v10_Editable_Pack.zip",
+  "frames": [
+   "knewave0.avif",
+   "knewave1.avif",
+   "knewave2.avif"
+  ],
+  "brush": [
+   "brush-f055c34e0e071746.png",
+   "brush-c2405f791e15cc37.png",
+   "brush-af5cc6f679d8812e.png"
+  ],
+  "pad": 8,
+  "title_text": {
+   "x": 86,
+   "y": 97,
+   "width": 788,
+   "height": 122,
+   "fontSize": 88,
+   "color": "#292520",
+   "rotation": 0,
+   "maxLines": 2
+  },
+  "mockup": {
+   "x": 97,
+   "y": 318,
+   "width": 766,
+   "height": 635,
+   "fontSize": 0,
+   "color": "#292520",
+   "rotation": 0,
+   "maxLines": 1
+  },
+  "price_text": {
+   "x": 331,
+   "y": 1035,
+   "width": 296,
+   "height": 100,
+   "fontSize": 80,
+   "color": "#292520",
+   "rotation": 0,
+   "maxLines": 1
+  },
+  "intro": "knewave-intro.avif",
+  "panels": [
+   "paper-f20e2a808c74abb4.png",
+   "paper-d6e4b9cee2bda810.png",
+   "paper-77f4d7c5c6b42a25.png",
+   "paper-975c9b4749c05c51.png",
+   "paper-bc97f15f0bcb06db.png",
+   "paper-62f2e1aa062a83b9.png"
+  ]
+ },
+ {
+  "id": "pop",
+  "name": "Pop Collage",
+  "kind": "pop",
+  "source": "Chip_In_Pop_Collage_Wipe_Front_v3_Editable_Pack.zip",
+  "frames": [
+   "pop0.avif",
+   "pop1.avif",
+   "pop2.avif"
+  ],
+  "brush": [
+   "brush-2ab8fc57d974e3f5.png",
+   "brush-bf9ad12e93cefde7.png",
+   "brush-a21f8d5a86321a20.png"
+  ],
+  "pad": 8,
+  "title_text": {
+   "x": 86,
+   "y": 97,
+   "width": 788,
+   "height": 122,
+   "fontSize": 88,
+   "color": "#292520",
+   "rotation": 0,
+   "maxLines": 2
+  },
+  "mockup": {
+   "x": 97,
+   "y": 318,
+   "width": 766,
+   "height": 635,
+   "fontSize": 0,
+   "color": "#292520",
+   "rotation": 0,
+   "maxLines": 1
+  },
+  "price_text": {
+   "x": 331,
+   "y": 1035,
+   "width": 296,
+   "height": 100,
+   "fontSize": 80,
+   "color": "#292520",
+   "rotation": 0,
+   "maxLines": 1
+  },
+  "intro": "pop-intro.avif",
+  "panels": [
+   "paper-122a823700e662d8.png",
+   "paper-fc94d0c09827ade5.png",
+   "paper-befa537a5add4851.png",
+   "paper-aad12750a49c168a.png",
+   "paper-f8d386321edbf6bd.png",
+   "paper-2d8a690f6a9da43e.png"
+  ]
+ }
+]
