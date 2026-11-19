@@ -1,3 +1,4 @@
+import {expectedTier} from './cutouts.js';
 const services={
   web:{title:'Website Design',price:'From £250',art:['01','02','03']},
   video:{title:'Video Creation',price:'From £100',art:['04','05','06']},
@@ -11,7 +12,7 @@ export function typeTitle(type){
   const common={'standard-unisex-tshirt':'T-shirts','pullover-hoodie':'Hoodies','ceramic-mug':'Mugs','zip-hoodie':'Zip hoodies'};
   return common[type.id]||type.label;
 }
-export function merchSuggestion(type,slug,views,gallery){
+export function merchSuggestion(type,slug,views,gallery,preferPeople=true){
   const pool=new Map();
   for(const d of type.designs){
     if(slug&&d.slug!==slug)continue;
@@ -21,25 +22,28 @@ export function merchSuggestion(type,slug,views,gallery){
       // Angle numbers identify equivalent mock-up styles across colours and designs.
       const angle=new URL(url).pathname.match(/[-_](\d{2})\.\w+$/);
       const style=angle?'angle-'+angle[1]:label==='Main image'?'hero':label.startsWith('Gallery ')?label:'colour view';
-      if(!pool.has(url))pool.set(url,{url,design:d.slug,style,price});
+      if(!pool.has(url))pool.set(url,{url,design:d.slug,style,price,productType:type.id,tier:preferPeople?expectedTier(url,d.product):0});
     }
   }
-  return {title:typeTitle(type),pool:[...pool.values()],views};
+  return {title:typeTitle(type),pool:[...pool.values()],views,preferPeople};
 }
 export function priceFor(items){
   const prices=items.map(item=>item?.price).filter(Number.isFinite);
   return prices.length?'From '+new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP'}).format(Math.min(...prices)/100):'';
 }
-export function selectImage(pool,used,excluded){
+export function selectImage(pool,used,excluded,swapping=false){
   const designs=new Map(),styles=new Map(),urls=new Map();
   for(const item of used.filter(Boolean)){
     for(const [counts,key] of [[designs,item.design],[styles,item.style],[urls,item.url]])counts.set(key,(counts.get(key)||0)+1);
   }
-  let best=null,bestScore=Infinity;
+  let best=null,bestScore=null;
   for(const item of pool){
     if(excluded.has(item.url))continue;
-    const score=(urls.get(item.url)||0)*10000+(designs.get(item.design)||0)*100+(styles.get(item.style)||0)*10+Math.random();
-    if(score<bestScore){bestScore=score;best=item}
+    const repeats=urls.get(item.url)||0,tier=item.tier||0;
+    const score=swapping?[tier,repeats]:[repeats,tier];
+    score.push(designs.get(item.design)||0,styles.get(item.style)||0,Math.random());
+    const difference=bestScore?score.findIndex((value,i)=>value!==bestScore[i]):-1;
+    if(!bestScore||(difference>=0&&score[difference]<bestScore[difference])){bestScore=score;best=item}
   }
   return best;
 }

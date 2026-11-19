@@ -1,5 +1,6 @@
+import {verifiedTier} from './cutouts.js';
 import {loadImage,loadArt,visibleBounds,draw,FPS,FRAMES} from './render.js';
-import {serviceSuggestion,merchSuggestion,typeTitle,priceFor,selectImage} from './suggestions.js';
+import {serviceSuggestion,merchSuggestion,typeTitle,priceFor,selectImage} from './suggestions.js?v=3';
 import {encode} from './export.js';
 const $=id=>document.getElementById(id),ctx=$('screen').getContext('2d',{alpha:false});
 const scenes=Array.from({length:3},()=>({title:'',price:'',images:[null,null,null]}));
@@ -118,19 +119,44 @@ async function readSuggestion(item){
   image.artBounds=visibleBounds(image);image.suggestion=item;return image;
 }
 function usedItems(){return scenes.flatMap(s=>s.images).filter(Boolean).map(image=>image.suggestion||{url:image.src})}
-async function nextAvailable(plan,used,excluded){
-  for(let attempt=0;attempt<8;attempt++){
-    const pick=selectImage(plan.pool,used,excluded);if(!pick)break;
-    try{return await readSuggestion(pick)}catch{excluded.add(pick.url)}
+async function nextAvailable(plan,used,excluded,{swapping=false,first,prepared}={}){
+  let pick=first;
+  const unavailable=new Set(excluded);let errors=0;
+  for(const [url,until] of plan.failedUntil){
+    if(until>Date.now())unavailable.add(url);else plan.failedUntil.delete(url);
   }
-  throw Error('No other image could be loaded. Your current images are still here.');
+  if(pick&&unavailable.has(pick.url)){pick=null;prepared=null}
+  while(true){
+    pick=pick||selectImage(plan.pool,used,unavailable,swapping);
+    if(!pick)throw Error('No other available image could be loaded.');
+    let image;
+    try{image=prepared?await prepared:await readSuggestion(pick)}
+    catch{plan.failedUntil.set(pick.url,Date.now()+60000);if(++errors>=5)throw Error('The shop images could not load. Please retry.');unavailable.add(pick.url);pick=null;prepared=null;continue}
+    prepared=null;
+    if(plan.preferPeople){
+      const actual=verifiedTier(image,pick.productType),previous=pick.tier;
+      pick.tier=actual;
+      // A supplier may change the photo at an existing catalogue URL.
+      if(actual>previous){
+        const next=selectImage(plan.pool,used,unavailable,swapping);
+        if(next&&next.tier<actual){pick=next;continue}
+      }
+    }
+    return image;
+  }
 }
 async function swapImage(slot){
   if(building||!suggestion)return;
   const dest=scenes[scene],old=dest.images[slot];setBuilding(true);
   try{
     status('Choosing a different image…');
-    const image=await nextAvailable(suggestion,usedItems(),new Set([old?.src]));
+    const history=suggestion.history[scene][slot];
+    if(old)history.add(old.src);
+    const exhausted=suggestion.pool.every(item=>history.has(item.url)||suggestion.failedUntil.get(item.url)>Date.now());
+    const excluded=exhausted?new Set([old?.src]):new Set(history);
+    const image=await nextAvailable(suggestion,usedItems(),excluded,{swapping:true});
+    if(exhausted)history.clear();
+    history.add(image.src);
     dest.images[slot]=image;release(old);view=slot;
     if(!dest.customPrice)dest.price=suggestion.price||priceFor(dest.images.map(i=>i?.suggestion));
     invalidate();seek(scene*84+[24,42,66][slot]);status('Image swapped.');
@@ -140,25 +166,34 @@ async function populate(){
   const purpose=$('purpose').value;if(!purpose||building)return;
   const type=types.find(t=>t.id===$('productType').value);
   if(purpose==='merch'&&!type)return;
-  const plan=purpose==='merch'?merchSuggestion(type,$('designChoice').value,Number($('viewCount').value),gallery):serviceSuggestion(purpose);
+  const plan=purpose==='merch'?merchSuggestion(type,$('designChoice').value,Number($('viewCount').value),gallery,$('mockupPreference').value==='people'):serviceSuggestion(purpose);
   $('retrySuggestion').hidden=true;setBuilding(true);
   try{
     if(!art){await choose('blackboard_gold');if(!art)throw Error('Could not load the animation. Please retry.')}
     status('Building your '+plan.title+' suggestion…');
-    const selected=[],assignments=[];
-    // Plan the first view of each scene before filling the extra views.
-    for(let v=0;v<plan.views;v++)for(let i=0;i<3;i++){
-      const pick=selectImage(plan.pool,selected,new Set());
-      if(!pick)throw Error('No mock-ups are available for this selection.');
-      selected.push(pick);assignments.push({i,v,pick});
+    plan.failedUntil=new Map();
+    const draft=Array.from({length:3},()=>[null,null,null]),selected=[];
+    for(let v=0;v<plan.views;v++){
+      const reservations=[...selected],batch=[];
+      for(let i=0;i<3;i++){
+        const pick=selectImage(plan.pool,reservations,new Set());
+        if(!pick)throw Error('No mock-ups are available for this selection.');
+        reservations.push(pick);batch.push(pick);
+      }
+      const loaded=await Promise.allSettled(batch.map(readSuggestion));
+      for(let i=0;i<3;i++){
+        const remaining=[...selected,...batch.slice(i+1)];
+        const taken=selected.some(item=>item.url===batch[i].url);
+        const excluded=new Set();
+        let first=batch[i],prepared;
+        if(loaded[i].status==='rejected'){if(plan.pool.length>1)excluded.add(first.url);first=null}
+        else if(taken&&plan.pool.some(item=>!remaining.some(other=>other.url===item.url))){first=null}
+        else prepared=loaded[i].value;
+        const image=await nextAvailable(plan,remaining,excluded,{first,prepared});
+        draft[i][v]=image;selected.push(image.suggestion);
+      }
     }
-    const draft=Array.from({length:3},()=>[null,null,null]),failed=new Set();
-    for(let start=0;start<assignments.length;start+=3){
-      await Promise.all(assignments.slice(start,start+3).map(async({i,v,pick})=>{
-        try{draft[i][v]=await readSuggestion(pick)}
-        catch{failed.add(pick.url);draft[i][v]=await nextAvailable(plan,selected,failed)}
-      }));
-    }
+    plan.history=draft.map(row=>row.map(image=>new Set(image?[image.src]:[])));
     for(const [i,images] of draft.entries()){
       scenes[i].images.forEach(release);
       Object.assign(scenes[i],{images,title:plan.title,price:plan.price||priceFor(images.map(im=>im?.suggestion)),customPrice:false});
@@ -189,3 +224,6 @@ async function selectPurpose(){
 $('purpose').onchange=selectPurpose;$('productType').onchange=selectType;
 $('designChoice').onchange=populate;$('viewCount').onchange=populate;
 $('retrySuggestion').onclick=()=>$('purpose').value==='merch'&&!$('productType').value?selectPurpose():populate();
+
+try{$('mockupPreference').value=localStorage.getItem('chipin-mockup-preference')==='mixed'?'mixed':'people'}catch{}
+$('mockupPreference').onchange=()=>{try{localStorage.setItem('chipin-mockup-preference',$('mockupPreference').value)}catch{}populate()};

@@ -1,12 +1,13 @@
 <!doctype html>
 <html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Social Post Maker · Chip In ToolBox</title><link rel="stylesheet" href="studio.css?v=2"></head>
 <body><header><a href="../index.html">← ToolBox</a><img src="../chip_in_logo.png" alt="Chip In"><span>Creative tools</span></header>
-<main><div class="heading"><div><h1>Social Post Maker <small>V2</small></h1><p>Three scenes · 10.5 seconds · 960 × 1200</p></div></div>
+<main><div class="heading"><div><h1>Social Post Maker <small>V3</small></h1><p>Three scenes · 10.5 seconds · 960 × 1200</p></div></div>
 <div class="workspace"><section class="monitor"><div class="bar"><b>Preview</b><output id="clock">0.00 s</output></div><div class="screen"><button id="cover" aria-label="Browse animation previews"><span><img src="art/blackboard_gold-preview.jpg" alt=""><img src="art/rockabilly_diner-preview.jpg" alt=""><img src="art/atomic_pop-preview.jpg" alt=""><img src="art/service_stripe-preview.jpg" alt=""></span>Choose an animation</button><canvas hidden id="screen" width="960" height="1200" aria-label="Post preview"></canvas></div><div class="transport"><button id="play" disabled>Play</button><input type="range" id="seek" aria-label="Preview frame" min="0" max="251" value="24"></div></section>
 <section class="controls"><fieldset id="editing"><label for="purpose">What’s the post for?</label>
 <select id="purpose" disabled><option value="">Build manually</option><option value="merch">Merch</option><option value="video">Video Design</option><option value="web">Website Design</option><option value="events">Hospitality &amp; Events</option></select>
 <div id="merchSetup" hidden><label for="productType">Product type</label><select id="productType"></select>
 <div id="merchOptions" hidden><label for="designChoice">Designs</label><select id="designChoice"></select>
+<label for="mockupPreference">Preferred mock-ups</label><select id="mockupPreference"><option value="people">People on transparent backgrounds first</option><option value="mixed">Mix all styles equally</option></select>
 <label for="viewCount">Images per scene</label><select id="viewCount"><option value="3">Three changing views</option><option value="1">One image</option></select></div></div>
 <button id="retrySuggestion" hidden>Retry suggestion</button><label for="template">Animation</label><div class="picker"><select id="template"><option value="">Choose an animation…</option></select><button id="browse">Browse</button></div>
 <div id="sceneEditor" hidden><h2>Scenes</h2><div id="scenes" class="tabs"></div><h2 id="sceneHeading"></h2><div id="views" class="views"></div><div class="actions"><button id="upload">Upload image</button><button id="merch">Choose merch mock-up</button><button id="clear" hidden>Remove</button></div><input id="file" type="file" accept="image/*" hidden>
@@ -14,4 +15,4 @@
 <label for="title">Title</label><input id="title" maxlength="100"><label for="price">Price or caption</label><input id="price" maxlength="80"></div></fieldset>
 <div class="export"><button id="export" disabled>Export video</button><a id="save" hidden>Download video</a></div><p role="status" id="status">Choose a purpose for a suggested post, or choose an animation to build manually.</p></section></div></main>
 <dialog id="library"><div class="bar"><h2 id="dialogTitle"></h2><button id="close">Close</button></div><div id="filters"></div><div id="gallery"></div></dialog>
-<script type="module" src="studio.js?v=2"></script></body></html>
+<script type="module" src="studio.js?v=3"></script></body></html>
