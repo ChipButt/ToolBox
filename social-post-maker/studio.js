@@ -6,7 +6,7 @@ const $=id=>document.getElementById(id),ctx=$('screen').getContext('2d',{alpha:f
 const scenes=Array.from({length:3},()=>({title:'',price:'',images:[null,null,null]}));
 const audio=new Audio('art/swipes.m4a');
 let templates=[],template=null,art=null,scene=0,view=0,frame=24,playing=false,raf,loadId=0,exporting=false,loadingImage=false;
-let catalogPromise,downloadURL,suggestion,types=[],building=false;
+let catalogPromise,downloadURL,scenePlans,types=[],building=false;
 const status=message=>$('status').textContent=message;
 function button(label,action){const b=document.createElement('button');b.textContent=label;b.onclick=action;return b}
 function thumb(src,label){const im=new Image();im.loading='lazy';im.src=src;im.alt=label;return im}
@@ -20,9 +20,9 @@ function refresh(){
   $('sceneEditor').hidden=!art;$('title').value=scenes[scene].title;$('price').value=scenes[scene].price;
   $('scenes').replaceChildren(...scenes.map((s,i)=>{const b=button('Scene '+(i+1),()=>{stop();scene=i;view=0;seek(i*84+24);refresh()});b.setAttribute('aria-pressed',scene===i);return b}));
   $('sceneHeading').textContent='Images for scene '+(scene+1);
-  $('views').replaceChildren(...scenes[scene].images.map((im,i)=>{const b=button('View '+(i+1),()=>{stop();view=i;seek(scene*84+[24,42,66][i]);refresh()});b.setAttribute('aria-pressed',view===i);if(im)b.prepend(thumb(im.src,''));if(!suggestion)return b;
+  $('views').replaceChildren(...scenes[scene].images.map((im,i)=>{const b=button('View '+(i+1),()=>{stop();view=i;seek(scene*84+[24,42,66][i]);refresh()});b.setAttribute('aria-pressed',view===i);if(im)b.prepend(thumb(im.src,''));if(!scenePlans)return b;
     const card=document.createElement('div');card.className='view-card';card.append(b);
-    if(im&&suggestion.pool.some(item=>item.url!==im.src)){const swap=button('Swap',()=>swapImage(i));swap.className='swap';swap.setAttribute('aria-label','Swap image '+(i+1));card.append(swap)}return card}));
+    if(im&&scenePlans[scene].pool.some(item=>item.url!==im.src)){const swap=button('Swap',()=>swapImage(i));swap.className='swap';swap.setAttribute('aria-label','Swap image '+(i+1));card.append(swap)}return card}));
   $('clear').hidden=!scenes[scene].images[view];paint();
 }
 function invalidate(){if(downloadURL){URL.revokeObjectURL(downloadURL);downloadURL=null;$('save').hidden=true}}
@@ -146,11 +146,12 @@ async function nextAvailable(plan,used,excluded,{swapping=false,first,prepared}=
   }
 }
 async function swapImage(slot){
-  if(building||!suggestion)return;
+  if(building||!scenePlans)return;
+  const suggestion=scenePlans[scene];
   const dest=scenes[scene],old=dest.images[slot];setBuilding(true);
   try{
     status('Choosing a different image…');
-    const history=suggestion.history[scene][slot];
+    const history=scenes[scene].history[slot];
     if(old)history.add(old.src);
     const exhausted=suggestion.pool.every(item=>history.has(item.url)||suggestion.failedUntil.get(item.url)>Date.now());
     const excluded=exhausted?new Set([old?.src]):new Set(history);
@@ -162,27 +163,45 @@ async function swapImage(slot){
     invalidate();seek(scene*84+[24,42,66][slot]);status('Image swapped.');
   }catch(e){status(e.message)}finally{setBuilding(false)}
 }
+const MIX_PRODUCTS='mix-products';
+function selectedTypes(){
+  const id=$('productType').value;
+  return id===MIX_PRODUCTS?types:types.filter(type=>type.id===id);
+}
+function buildScenePlans(purpose,eligible){
+  if(purpose!=='merch')return Array(3).fill(serviceSuggestion(purpose));
+  const slug=$('designChoice').value;
+  const candidates=eligible.filter(t=>!slug||t.designs.some(d=>d.slug===slug));
+  if(!candidates.length)throw Error('No products are available for this design.');
+  // Shuffle product types themselves so products with larger galleries get equal odds.
+  for(let i=candidates.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [candidates[i],candidates[j]]=[candidates[j],candidates[i]];
+  }
+  const plans=candidates.slice(0,3).map(t=>merchSuggestion(t,slug,Number($('viewCount').value),gallery,$('mockupPreference').value==='people'));
+  return Array.from({length:3},(_,i)=>plans[i%plans.length]);
+}
 async function populate(){
   const purpose=$('purpose').value;if(!purpose||building)return;
-  const type=types.find(t=>t.id===$('productType').value);
-  if(purpose==='merch'&&!type)return;
-  const plan=purpose==='merch'?merchSuggestion(type,$('designChoice').value,Number($('viewCount').value),gallery,$('mockupPreference').value==='people'):serviceSuggestion(purpose);
+  const eligible=selectedTypes();
+  if(purpose==='merch'&&!eligible.length)return;
   $('retrySuggestion').hidden=true;setBuilding(true);
   try{
+    const plans=buildScenePlans(purpose,eligible);
     if(!art){await choose('blackboard_gold');if(!art)throw Error('Could not load the animation. Please retry.')}
-    status('Building your '+plan.title+' suggestion…');
-    plan.failedUntil=new Map();
+    status('Building your post…');
+    for(const plan of new Set(plans))plan.failedUntil=new Map();
     const draft=Array.from({length:3},()=>[null,null,null]),selected=[];
-    for(let v=0;v<plan.views;v++){
+    for(let v=0;v<plans[0].views;v++){
       const reservations=[...selected],batch=[];
       for(let i=0;i<3;i++){
-        const pick=selectImage(plan.pool,reservations,new Set());
+        const pick=selectImage(plans[i].pool,reservations,new Set());
         if(!pick)throw Error('No mock-ups are available for this selection.');
         reservations.push(pick);batch.push(pick);
       }
       const loaded=await Promise.allSettled(batch.map(readSuggestion));
       for(let i=0;i<3;i++){
-        const remaining=[...selected,...batch.slice(i+1)];
+        const plan=plans[i],remaining=[...selected,...batch.slice(i+1)];
         const taken=selected.some(item=>item.url===batch[i].url);
         const excluded=new Set();
         let first=batch[i],prepared;
@@ -193,30 +212,33 @@ async function populate(){
         draft[i][v]=image;selected.push(image.suggestion);
       }
     }
-    plan.history=draft.map(row=>row.map(image=>new Set(image?[image.src]:[])));
     for(const [i,images] of draft.entries()){
+      const plan=plans[i],history=images.map(image=>new Set(image?[image.src]:[]));
       scenes[i].images.forEach(release);
-      Object.assign(scenes[i],{images,title:plan.title,price:plan.price||priceFor(images.map(im=>im?.suggestion)),customPrice:false});
+      Object.assign(scenes[i],{images,history,title:plan.title,price:plan.price||priceFor(images.map(im=>im?.suggestion)),customPrice:false});
     }
-    suggestion=plan;invalidate();scene=0;view=0;seek(24);status('Your suggestion is ready. Swap an image or edit any scene.');
+    scenePlans=plans;invalidate();scene=0;view=0;seek(24);status('Your suggestion is ready. Swap an image or edit any scene.');
   }catch(e){status(e.message);$('retrySuggestion').hidden=false}finally{setBuilding(false)}
 }
 function selectType(){
-  const type=types.find(t=>t.id===$('productType').value);
-  $('merchOptions').hidden=!type;
-  if(!type)return;
-  fillOptions($('designChoice'),'Mix different designs',type.designs.map(d=>[d.slug,d.label]));
+  const eligible=selectedTypes();
+  $('merchOptions').hidden=!eligible.length;
+  if(!eligible.length)return;
+  const designs=new Map(eligible.flatMap(t=>t.designs.map(d=>[d.slug,d.label])));
+  const previous=$('designChoice').value;
+  fillOptions($('designChoice'),'Mix of Designs',[...designs]);
+  if(designs.has(previous))$('designChoice').value=previous;
   populate();
 }
 async function selectPurpose(){
   const purpose=$('purpose').value;
   $('merchSetup').hidden=purpose!=='merch';$('merchOptions').hidden=true;
   $('retrySuggestion').hidden=true;
-  if(!purpose){suggestion=null;refresh();status('Choose or edit your images manually.');return}
+  if(!purpose){scenePlans=null;refresh();status('Choose or edit your images manually.');return}
   if(purpose!=='merch'){await populate();return}
   setBuilding(true);status('Loading product types…');fillOptions($('productType'),'Choose a product type…',[]);
   try{catalogPromise??=fetchCatalog();types=await catalogPromise;
-    fillOptions($('productType'),'Choose a product type…',types.map(t=>[t.id,typeTitle(t)]));
+    fillOptions($('productType'),'Choose a product type…',[[MIX_PRODUCTS,'Mix of Products'],...types.map(t=>[t.id,typeTitle(t)])]);
     status('Choose a product type to fill all three scenes.')
   }catch{catalogPromise=null;$('retrySuggestion').hidden=false;status('Could not load the shop catalogue. Please retry.')}
   finally{setBuilding(false)}
