@@ -1,13 +1,25 @@
 import {expectedTier} from './cutouts.js';
 const services={
-  web:{title:'Website Design',price:'From £250',art:['01','02','03']},
-  video:{title:'Video Creation',price:'From £100',art:['04','05','06']},
-  events:{title:'Hospitality & Events',price:'From £85',art:['07','08','09']}
+  web:{title:'Website Design',price:'From £250',path:'web'},
+  video:{title:'Video Creation',price:'Video content that works',path:'video'},
+  events:{title:'Hospitality & Events',price:'Extra support when it matters',path:'events'},
+  quizzes:{title:'Pub Quizzes',price:'A great night, sorted',path:'quizzes'},
+  bingo:{title:'Bingo Nights',price:'Bring everyone together',path:'bingo'},
+  voice:{title:'Voice Acting',price:'Bring your words to life',path:'voice'},
+  admin:{title:'Business Admin',price:'Less paperwork. More progress.',path:'admin'},
+  production:{title:'Production Support',price:'Make every shoot run smoothly',path:'production'}
 };
 export function serviceSuggestion(key){
-  const {title,price,art}=services[key];
-  return {title,price,views:1,pool:art.map(id=>({url:new URL('service-art/'+id+'.webp',document.baseURI).href,design:id,style:id}))};
+  const service=services[key];
+  if(!service)throw new Error('Unknown service selected.');
+  const pool=Array.from({length:18},(_,i)=>{
+    const id=String(i+1).padStart(2,'0');
+    const url=new URL(`service-art/v5/${service.path}/${id}.png`,document.baseURI).href;
+    return {url,design:id,style:`${service.path}-${id}`,tier:0};
+  });
+  return {title:service.title,price:service.price,views:1,pool};
 }
+
 export function typeTitle(type){
   const common={'standard-unisex-tshirt':'T-shirts','pullover-hoodie':'Hoodies','ceramic-mug':'Mugs','zip-hoodie':'Zip hoodies'};
   return common[type.id]||type.label;
