@@ -1,10 +1,9 @@
 import {verifiedTier} from './cutouts.js';
 import {loadImage,loadArt,visibleBounds,draw,FPS,FRAMES} from './render.js';
 import {serviceSuggestion,merchSuggestion,typeTitle,priceFor,selectImage} from './suggestions.js?v=5';
-import {encode} from './export.js';
+import {encode} from './export.js?v=5.1';
 const $=id=>document.getElementById(id),ctx=$('screen').getContext('2d',{alpha:false});
 const scenes=Array.from({length:3},()=>({title:'',price:'',images:[null,null,null]}));
-const audio=new Audio('art/swipes.m4a');
 let templates=[],template=null,art=null,scene=0,view=0,frame=24,playing=false,raf,loadId=0,exporting=false,loadingImage=false;
 let catalogPromise,downloadURL,scenePlans,types=[],building=false;
 const status=message=>$('status').textContent=message;
@@ -12,7 +11,7 @@ function button(label,action){const b=document.createElement('button');b.textCon
 function thumb(src,label){const im=new Image();im.loading='lazy';im.src=src;im.alt=label;return im}
 function paint(i=frame){if(template&&art)draw(ctx,template,art,scenes,i)}
 function seek(i){frame=Math.min(FRAMES-1,Math.max(0,i));$('seek').value=frame;$('clock').value=(frame/FPS).toFixed(2)+' s';paint()}
-function stop(){playing=false;cancelAnimationFrame(raf);audio.pause();$('play').textContent='Play'}
+function stop(){playing=false;cancelAnimationFrame(raf);$('play').textContent='Play'}
 function ready(){return template&&art&&!building&&!loadingImage&&!exporting&&scenes.every(s=>s.images[0])}
 function refresh(){
   $('export').disabled=!ready();$('play').disabled=!art||exporting||building;$('seek').disabled=!art||exporting||building;
@@ -43,7 +42,7 @@ $('close').onclick=()=>$('library').close();
 $('play').onclick=async()=>{
   if(playing){stop();return}
   if(frame===FRAMES-1)seek(0);
-  playing=true;$('play').textContent='Pause';const first=frame,start=performance.now();audio.currentTime=first/FPS;audio.play().catch(()=>{});
+  playing=true;$('play').textContent='Pause';const first=frame,start=performance.now();
   function tick(now){if(!playing)return;const i=first+Math.floor((now-start)*FPS/1000);seek(i);if(i>=FRAMES-1)stop();else raf=requestAnimationFrame(tick)}raf=requestAnimationFrame(tick);
 };
 $('seek').oninput=e=>{stop();seek(+e.target.value)};
