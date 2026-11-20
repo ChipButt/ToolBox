@@ -95,10 +95,44 @@ $('merch').onclick=async()=>{
     });filters.append(selectType)
   }catch{catalogPromise=null;grid.textContent='The shop catalogue could not load. Close and reopen to retry.'}
 };
+function filenamePart(label){
+  return label.replace(/[A-Za-z0-9]+/g, word => word[0].toUpperCase() + word.slice(1))
+    .replace(/[^A-Za-z0-9]/g, '');
+}
+
+let sessionExportNumber=0;
+async function nextExportNumber(){
+  const key='social-post-maker.export-number';
+  function reserve(){
+    let next=sessionExportNumber+1;
+    try{
+      const saved=Number(localStorage.getItem(key));
+      if(Number.isSafeInteger(saved) && saved>=0) next=Math.max(next,saved+1);
+      localStorage.setItem(key,String(next));
+    }catch{
+      // Storage may be disabled. Keep numbering exports in this tab.
+    }
+    sessionExportNumber=next;
+    return String(next).padStart(4,'0');
+  }
+  return navigator.locks ? navigator.locks.request(key,reserve) : reserve();
+}
+
 $('export').onclick=async()=>{
   if(!ready())return;stop();invalidate();exporting=true;$('editing').disabled=true;refresh();status('Preparing video…');
   try{const blob=await encode($('screen'),paint,p=>status('Exporting '+Math.round(p*100)+'%…'));
-    const ext=blob.type.startsWith('video/mp4')?'mp4':'webm';downloadURL=URL.createObjectURL(blob);const a=$('save');a.href=downloadURL;a.download='chip-in-'+template.id+'.'+ext;a.textContent='Download '+ext.toUpperCase();a.hidden=false;a.click();status('Video ready. You can download it again below.')
+    const ext=blob.type.startsWith('video/mp4')?'mp4':'webm';
+    const purpose=filenamePart($('purpose').selectedOptions[0].textContent);
+    const animation=filenamePart(template.name);
+    const number=await nextExportNumber();
+    downloadURL=URL.createObjectURL(blob);
+    const a=$('save');
+    a.href=downloadURL;
+    a.download=purpose+'_'+animation+'_SocialAnimation_'+number+'.'+ext;
+    a.textContent='Download '+ext.toUpperCase();
+    a.hidden=false;
+    a.click();
+    status('Video ready. You can download it again below.');
   }catch(e){status('Export failed. '+e.message)}finally{exporting=false;$('editing').disabled=false;refresh();seek(frame)}
 };
 try{const r=await fetch('templates.json');if(!r.ok)throw Error();templates=await r.json();$('purpose').disabled=false;for(const t of templates)$('template').add(new Option(t.name,t.id));refresh()}catch{status('Could not load animations. Refresh to try again.')}
