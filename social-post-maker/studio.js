@@ -1,6 +1,6 @@
 import {verifiedTier} from './cutouts.js';
 import {loadImage,loadArt,visibleBounds,draw,FPS,FRAMES} from './render.js';
-import {serviceSuggestion,merchSuggestion,typeTitle,priceFor,selectImage} from './suggestions.js?v=3';
+import {serviceSuggestion,merchSuggestion,typeTitle,priceFor,selectImage} from './suggestions.js?v=5';
 import {encode} from './export.js';
 const $=id=>document.getElementById(id),ctx=$('screen').getContext('2d',{alpha:false});
 const scenes=Array.from({length:3},()=>({title:'',price:'',images:[null,null,null]}));
