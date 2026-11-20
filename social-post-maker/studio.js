@@ -76,9 +76,51 @@ function gallery(product){
   for(const v of product.variants||[]){add(v.image,v.colour);for(const key of ['gallery','angleGallery'])if(Array.isArray(v[key]))v[key].forEach((url,i)=>add(url,v.colour+' · '+(i+1)))}
   return [...images];
 }
-$('merch').onclick=async()=>{
-  stop();const dialog=$('library'),filters=$('filters'),grid=$('gallery');$('dialogTitle').textContent='Choose a merch mock-up';filters.replaceChildren();grid.textContent='Loading the shop catalogue…';dialog.showModal();
-  try{catalogPromise??=fetchCatalog();const types=await catalogPromise;if(!dialog.open)return;
+$('chooseArtwork').onclick=()=>{
+  stop();
+  const dialog=$('library'), filters=$('filters'), grid=$('gallery');
+  const services=Array.from($('purpose').options).filter(option=>option.value && option.value!=='merch');
+  const category=document.createElement('select');
+  category.setAttribute('aria-label','Artwork category');
+  category.add(new Option('All service artwork','all'));
+  for(const service of services) category.add(new Option(service.textContent,service.value));
+  category.add(new Option('Merch mock-ups','merch'));
+  category.value=$('purpose').value || 'all';
+  const label=document.createElement('label');
+  label.append('Artwork category ',category);
+  filters.replaceChildren(label);
+  $('dialogTitle').textContent='Choose Artwork';
+  dialog.showModal();
+
+  function showCategory(){
+    filters.replaceChildren(label);
+    grid.replaceChildren();
+    grid.scrollTop=0;
+    if(category.value==='merch'){
+      const controls=document.createElement('div');
+      filters.append(controls);
+      showMerchArtwork(dialog,controls,grid);
+      return;
+    }
+    for(const service of services){
+      if(category.value!=='all' && category.value!==service.value) continue;
+      for(const item of serviceSuggestion(service.value).pool){
+        const tile=button(service.textContent+' '+item.design,async()=>{
+          if(loadingImage)return;
+          if(await assign(item.url,false)) dialog.close();
+          else $('dialogTitle').textContent='Image unavailable · choose another image';
+        });
+        tile.prepend(thumb(item.url,''));
+        grid.append(tile);
+      }
+    }
+  }
+  category.onchange=showCategory;
+  showCategory();
+};
+async function showMerchArtwork(dialog,filters,grid){
+  grid.textContent='Loading the shop catalogue…';
+  try{catalogPromise??=fetchCatalog();const types=await catalogPromise;if(!filters.isConnected || !dialog.open)return;
     grid.replaceChildren();const selectType=dropdown('Product type',types,type=>{
       filters.replaceChildren(selectType);grid.replaceChildren();if(!type)return;
       filters.append(dropdown('Design',type.designs,design=>{grid.replaceChildren();if(!design)return;
@@ -93,7 +135,7 @@ $('merch').onclick=async()=>{
         }else $('dialogTitle').textContent='Image unavailable · choose another mock-up'}finally{grid.inert=false}});b.prepend(thumb(url,''));return b}))
       }));
     });filters.append(selectType)
-  }catch{catalogPromise=null;grid.textContent='The shop catalogue could not load. Close and reopen to retry.'}
+  }catch{catalogPromise=null;if(filters.isConnected && dialog.open)grid.textContent='The shop catalogue could not load. Close and reopen to retry.'}
 };
 function filenamePart(label){
   return label.replace(/[A-Za-z0-9]+/g, word => word[0].toUpperCase() + word.slice(1))
