@@ -47,16 +47,6 @@ function eventWhen(){
   const day=val('posterDay');
   return [day,time].filter(Boolean).join(' · ').toUpperCase();
 }
-const plates = {
-  classic:  {family:'Georgia, serif', align:'center'},
-  bigtime:  {family:'Impact, "Arial Black", sans-serif', align:'left'},
-  chalk:    {family:'Georgia, serif', align:'center'},
-  ticket:   {family:'Georgia, serif', align:'center'},
-  photo:    {family:'Georgia, serif', align:'left'},
-  minimal:  {family:'Arial, sans-serif', align:'left'},
-  question: {family:'Georgia, serif', align:'center'},
-  calendar: {family:'Arial, sans-serif', align:'left'}
-};
 const artCache = new Map();
 function plateImage(style) {
   if(state.photo)return state.photo;
@@ -70,7 +60,7 @@ function plateImage(style) {
         q('posterStatus').textContent='Artwork could not load. Select the layout again to retry.';
       }
     };
-    img.src=new URL('poster-art/'+style+'.webp',import.meta.url);
+    img.src=new URL((style==='photo'?'poster-art/':'gig-art/')+style+'.webp',import.meta.url);
   }
   const image=artCache.get(style);
   return image.complete && image.naturalWidth ? image : null;
@@ -97,97 +87,127 @@ function lettering(value,x,y,w,h,size,color,family,align='center',weight=700){
   const anchor=align==='left'?x:x+w/2;
   lines.forEach((line,i)=>g.fillText(line,anchor,y+h/2+(i-(lines.length-1)/2)*size*1.05,w));
 }
-// Flat, two-colour print marks drawn at the final export resolution.
-function printMark(style,x,y,size,accent,bg){
-  g.save();g.translate(x,y);g.scale(size/160,size/160);
-  g.strokeStyle=accent;g.fillStyle=accent;g.lineWidth=8;g.lineCap='round';g.lineJoin='round';
-  function path(points,fill=false){
-    g.beginPath();points.forEach(([x,y],i)=>i?g.lineTo(x,y):g.moveTo(x,y));if(fill){g.closePath();g.fill()}else g.stroke();
-  }
-  function circle(x,y,r){g.beginPath();g.arc(x,y,r,0,Math.PI*2);g.stroke()}
-  if(style==='classic'){
-    // Two overlapping team answer cards.
-    g.rotate(-.14);rect(-62,-47,92,86,accent,8);g.rotate(.24);
-    rect(-28,-28,100,84,bg,8);g.strokeRect(-28,-28,100,84);
-    path([[-9,1],[5,15],[31,-8]]);path([[-7,34],[49,34]]);
-  }else if(style==='bigtime'){
-    circle(0,0,52);path([[0,-33],[0,0],[26,15]]);
-  }else if(style==='chalk'){
-    path([[-43,-43],[32,-43],[23,53],[-32,53],[-43,-43]]);
-    g.beginPath();g.arc(33,-6,21,-Math.PI/2,Math.PI/2);g.stroke();
-    path([[-40,-23],[30,-23]]);path([[-17,-4],[-13,30]]);
-  }else if(style==='ticket'){
-    path([[-33,-42],[33,-42],[26,8],[0,28],[-26,8],[-33,-42]]);
-    path([[-35,-30],[-54,-30],[-48,-4],[-23,8]]);path([[35,-30],[54,-30],[48,-4],[23,8]]);
-    path([[0,28],[0,49]]);path([[-23,51],[23,51]]);
-  }else if(style==='question'){
-    g.textAlign='center';g.textBaseline='middle';g.font='bold 152px Georgia, serif';g.fillText('?',0,14);
-  }else if(style==='calendar'){
-    g.strokeRect(-49,-41,98,95);path([[-49,-16],[49,-16]]);
-    path([[-25,-54],[-25,-31]]);path([[25,-54],[25,-31]]);path([[-17,17],[-4,29],[20,4]]);
-  }else if(style==='minimal'){
-    path([[-55,40],[-40,0],[29,-64],[54,-39],[-15,26]],true);
-  }
-  g.restore();
-}
 function draw(){
   const W=1080,H=sizes[val('posterFormat')]||1350;
   if(canvas.width!==W||canvas.height!==H){canvas.width=W;canvas.height=H}
-  const style=val('posterLayout'),theme=plates[style];
-  const {bg,accent,ink}=palette();
-  rect(0,0,W,H,bg);
-  q('posterSize').textContent=W+' × '+H+' px';
-  const margin=76,inner=W-margin*2,align=theme.align;
+  const style=val('posterLayout'),{bg,ink,accent}=palette();
+  const face='Arial, sans-serif',serif='Georgia, serif',mono='"Courier New", monospace';
+  const onAccent=light(accent)?'#142327':'#fff9ee';
   const title=val('posterHeadline')||'QUIZ NIGHT',when=eventWhen();
-  const isPhoto=style==='photo';
-  if(isPhoto||state.photo){
-    const image=plateImage(style);
-    if(!image)return false;
-    const height=isPhoto?H*.36:H;
-    g.save();g.beginPath();g.rect(0,0,W,height);g.clip();
-    coverImage(image,W,height,Number(val('posterPhotoPosition'))/100);
-    if(state.photo)rect(0,0,W,height,rgba(bg,Number(val('posterPhotoShade'))/100));
+  const venue=val('posterVenue'),extra=val('posterExtra');
+  const info=[val('posterEntry'),val('posterPrize')].filter(Boolean).join('   /   ');
+  const artwork=['classic','question','ticket','chalk','photo'].includes(style);
+  const img=artwork||state.photo?plateImage(style):null;
+  q('posterSize').textContent=W+' × '+H+' px';
+  if((artwork||state.photo)&&!img)return false;
+  rect(0,0,W,H,bg);
+  function picture(x,y,w,h){
+    g.save();g.translate(x,H*y);g.beginPath();g.rect(0,0,w,H*h);g.clip();
+    if(!state.photo && (style==='ticket'||style==='question')){
+      rect(0,0,w,H*h,style==='ticket'?'#8a332a':'#15283e');
+      imageLogo(img,w/2,H*h/2,w,H*h);
+    }else coverImage(img,w,H*h,state.photo?Number(val('posterPhotoPosition'))/100:0);
+    if(state.photo)rect(0,0,w,H*h,rgba(bg,Number(val('posterPhotoShade'))/100));
     g.restore();
   }
-  const start=isPhoto?H*.57:H*.52;
-  if(isPhoto){
-    lettering(title,margin,H*.36,inner,H*.20,160,ink,theme.family,align,800);
+  if(state.photo&&!artwork)picture(0,0,W,1);
+  function line(value,x,y,w,h,size,color=ink,family=face,align='left',weight=700){
+    lettering(value,x,H*y,w,H*h,size,color,family,align,weight);
+  }
+  function band(value,x,y,w,h,fill,color,family=mono){
+    if(!value)return;
+    rect(x,H*y,w,H*h,fill);
+    line(value,x+22,y,w-44,h,58,color,family,'center');
+  }
+  const words=title.split(/\s+/);
+  function stacked(x,y,w,h,color,family,align='left'){
+    if(words.length!==2){line(title,x,y,w,h,245,color,family,align,900);return}
+    words.forEach((v,i)=>line(v,x,y+i*h/2,w,h/2,Math.min(250,h*H*.55),color,family,align,900));
+  }
+  let body=.65,bodyAlign='left';
+  if(style==='classic'){
+    picture(0,0,W,.42);
+    rect(0,H*.417,W,8,accent);
+    line(title,52,.436,976,.134,156,ink,serif,'center',900);
+    band(when,110,.586,860,.063,accent,onAccent);
+    body=.667;bodyAlign='center';
+  }else if(style==='bigtime'){
+    // Dial indexes bleed off the page like an oversized station clock.
+    g.save();g.translate(W*.86,H*.19);g.strokeStyle=rgba(accent,.52);
+    for(let i=0;i<60;i++){g.rotate(Math.PI/30);g.lineWidth=i%5===0?10:3;g.beginPath();g.moveTo(263,0);g.lineTo(i%5===0?323:290,0);g.stroke()}
+    g.restore();
+    line(title,58,.055,705,.14,130,ink,face,'left',900);
+    const [day,time]=when.split(' · ');
+    if(when){
+      if(time)line(day,58,.245,964,.115,119,ink,mono);
+      rect(0,H*.382,W,H*.223,accent);
+      line(time||day,42,.382,W-84,.223,230,onAccent,face,'center',900);
+    }
+    body=when ? .63 : .40;
+  }else if(style==='chalk'){
+    picture(0,0,W,.38);
+    g.save();g.translate(W/2,H*.468);g.rotate(-.055);
+    lettering(title,-483,-H*.088,966,H*.176,163,ink,serif,'center',900);
+    rect(-270,H*.080,540,4,accent);g.restore();
+    line(when,62,.575,956,.078,64,ink,mono,'center');
+    body=.66;bodyAlign='center';
+  }else if(style==='ticket'){
+    const edge=36,stub=355;
+    rect(edge,H*.042,W-2*edge,H*.56,accent,20);
+    picture(edge+16,.061,stub,.508);
+    stacked(438,.092,530,.292,onAccent,serif);
+    const [day,time]=when.split(' · ');
+    line(day,438,.404,525,.067,62,onAccent,mono);
+    line(time,438,.471,525,.070,65,onAccent,mono);
+    g.save();g.strokeStyle=onAccent;g.lineWidth=3;g.setLineDash([10,11]);
+    g.beginPath();g.moveTo(414,H*.062);g.lineTo(414,H*.581);g.stroke();g.restore();
+    for(let n=0;n<9;n++){
+      const y=H*(.072+n*.062);
+      for(const x of [edge,W-edge]){g.beginPath();g.arc(x,y,10,0,Math.PI*2);g.fillStyle=bg;g.fill()}
+    }
+    body=.635;
+  }else if(style==='photo'){
+    picture(0,0,W,.60);
+    const shade=g.createLinearGradient(0,H*.19,0,H*.60);
+    shade.addColorStop(0,'rgba(0,0,0,0)');shade.addColorStop(1,'rgba(0,0,0,.9)');
+    rect(0,H*.19,W,H*.41,shade);
+    line(title,54,.37,968,.199,182,'#fffaf0',serif,'left',900);
+    band(when,0,.60,W,.070,accent,onAccent);
+    body=.69;
+  }else if(style==='minimal'){
+    // A single broad diagonal pencil crosses the top-right corner.
+    g.save();g.translate(907,H*.219);g.rotate(-.94);
+    rect(-171,-53,580,106,accent);rect(-171,-53,580,15,rgba(ink,.25));
+    g.fillStyle=ink;g.beginPath();g.moveTo(-263,0);g.lineTo(-171,-53);g.lineTo(-171,53);g.fill();g.restore();
+    stacked(58,.075,615,.374,ink,face);
+    rect(62,H*.49,956,8,accent);
+    line(when,62,.515,956,.093,76,ink,mono);body=.62;
+  }else if(style==='question'){
+    picture(516,0,564,.55);
+    stacked(48,.09,452,.365,ink,serif);
+    band(when,0,.55,W,.085,accent,onAccent);
+    body=.662;
   }else{
-    if(style==='chalk'){
-      g.strokeStyle=accent;g.lineWidth=3;g.strokeRect(28,28,W-56,H-56);
-    }
-    const markY=H*.13,markSize=Math.min(176,H*.14);
-    const markX=align==='left'?margin+markSize*.4:W/2;
-    printMark(style,markX,markY,markSize,accent,bg);
-    if(style==='bigtime' && when){
-      lettering(title,margin,H*.21,inner,H*.10,78,ink,theme.family,align,700);
-      const [day,time]=when.split(' · ');
-      lettering(day,margin,H*.31,inner,H*(time ? .105 : .19),142,ink,theme.family,align,800);
-      if(time)lettering(time,margin,H*.412,inner,H*.093,112,ink,theme.family,align,800);
-    }else{
-      lettering(title,margin,H*.23,inner,H*.26,194,ink,theme.family,align,800);
-    }
+    const [day,time]=when.split(' · ');
+    rect(42,H*.055,996,H*.48,accent,28);
+    for(let n=0;n<9;n++)rect(106+n*106,H*.035,15,H*.057,ink,7);
+    line(when?day:title,82,.106,916,.147,154,onAccent,face,'center',900);
+    rect(83,H*.278,914,3,rgba(onAccent,.55));
+    line(time||(!when?'':title),82,.29,916,.208,185,onAccent,serif,'center',900);
+    if(time)line(title,62,.548,956,.107,112,ink,face,'left',900);
+    body=time ? .663 : .567;
   }
-  const footH=Math.round(H*.12),end=H-footH-18;
-  if(style==='ticket'){
-    g.save();g.setLineDash([10,13]);g.strokeStyle=accent;g.lineWidth=4;
-    g.beginPath();g.moveTo(margin,start+4);g.lineTo(W-margin,start+4);g.stroke();g.restore();
-  }else rect(margin,start+2,align==='left'?106:inner,4,accent);
-  const rows=[];
-  const venue=val('posterVenue'),extra=val('posterExtra');
-  if(when && style!=='bigtime')rows.push([when,style==='bigtime'?96:56,1.1]);
-  if(venue)rows.push([venue,80,1.25]);
-  if(extra)rows.push([extra,42,.85]);
-  const info=[val('posterEntry'),val('posterPrize')].filter(Boolean).join('   •   ');
-  if(info)rows.push([info,39,.78]);
-  const space=end-start-22,units=rows.reduce((sum,r)=>sum+r[2],0);
-  let y=start+14;
-  for(const [value,size,weight] of rows){
-    const h=space*weight/units;
-    lettering(value,margin,y,inner,h,size,ink,value===venue?theme.family:'Arial, sans-serif',align,value===venue?700:600);
+  const footH=Math.round(H*.105),end=H-footH-10,margin=62;
+  const rows=[[venue,88,1.35],[extra,46,.88],[info,42,.77]].filter(row=>row[0]);
+  let y=body*H;
+  const available=end-y,units=rows.reduce((n,r)=>n+r[2],0);
+  rows.forEach(([value,size,weight],i)=>{
+    const h=available*weight/units;
+    lettering(value,margin,y,W-margin*2,h,size,ink,i===0&&venue?serif:face,bodyAlign,i===0?700:500);
     y+=h;
-  }
-  rect(margin,end+9,inner,2,rgba(ink,.45));
+  });
+  const align=bodyAlign;
+  rect(margin,end,W-2*margin,2,rgba(ink,.35));
   const pubLogo=selectedLogo('pubLogo'),hostLogo=selectedLogo('hostLogo');
   if(pubLogo===false || hostLogo===false)return false;
   const logoY=H-footH/2,scale=Number(val('posterLogoSize'))/100;
