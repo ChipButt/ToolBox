@@ -1,7 +1,7 @@
 // Static quiz and event promotion posters. All images stay in this browser.
 const q=id=>document.getElementById(id);
 const canvas=q('posterCanvas'),g=canvas.getContext('2d',{alpha:false});
-const fields=['posterFormat','posterLayout','posterVenue','posterHeadline','posterExtra','posterDay','posterTime','posterWhen','posterEntry','posterPrize','posterHost','posterBg','posterInk','posterAccent','posterTextMode','posterPhotoShade','posterPhotoPosition','posterLogoSize'];
+const fields=['posterFormat','posterLayout','posterVenue','posterHeadline','posterExtra','posterDay','posterTime','posterWhen','posterEntry','posterPrize','posterHost','posterBg','posterInk','posterAccent','posterTextMode','posterPhotoShade','posterPhotoPosition','posterLogoSize','posterPubChoice','posterHostChoice'];
 const state={photo:null,pubLogo:null,hostLogo:null};
 const sizes={square:1080,tall:1350,story:1920};
 const layouts={classic:'Classic',bigtime:'Big Time',chalk:'Chalkboard',ticket:'Ticket',photo:'Photo',minimal:'Minimal',question:'Question Mark',calendar:'Calendar'};
@@ -32,9 +32,10 @@ function coverImage(img,W,H,amount=0){
   const limit=(w-W)/2,shift=limit*amount;
   g.drawImage(img,(W-w)/2+shift,(H-h)/2,w,h);
 }
-function imageLogo(image,x,y,maxW,maxH){
+function imageLogo(image,x,y,maxW,maxH,backing){
   if(!image)return false;
   const s=Math.min(maxW/image.naturalWidth,maxH/image.naturalHeight);
+  if(backing)rect(x-image.naturalWidth*s/2-10,y-image.naturalHeight*s/2-6,image.naturalWidth*s+20,image.naturalHeight*s+12,backing,8);
   g.drawImage(image,x-image.naturalWidth*s/2,y-image.naturalHeight*s/2,image.naturalWidth*s,image.naturalHeight*s);
   return true;
 }
@@ -47,14 +48,14 @@ function eventWhen(){
   return [day,time].filter(Boolean).join(' · ').toUpperCase();
 }
 const plates = {
-  classic:  {family:'Georgia, serif', inset:36, align:'center', imageFirst:false},
-  bigtime:  {family:'Impact, "Arial Black", sans-serif', inset:0, align:'left', imageFirst:true},
-  chalk:    {family:'Georgia, serif', inset:28, align:'center', imageFirst:true},
-  ticket:   {family:'Georgia, serif', inset:44, align:'center', imageFirst:false},
-  photo:    {family:'Georgia, serif', inset:0, align:'left', imageFirst:true},
-  minimal:  {family:'Arial, sans-serif', inset:66, align:'left', imageFirst:false},
-  question: {family:'Georgia, serif', inset:0, align:'center', imageFirst:false},
-  calendar: {family:'Arial, sans-serif', inset:28, align:'left', imageFirst:true}
+  classic:  {family:'Georgia, serif', align:'center'},
+  bigtime:  {family:'Impact, "Arial Black", sans-serif', align:'left'},
+  chalk:    {family:'Georgia, serif', align:'center'},
+  ticket:   {family:'Georgia, serif', align:'center'},
+  photo:    {family:'Georgia, serif', align:'left'},
+  minimal:  {family:'Arial, sans-serif', align:'left'},
+  question: {family:'Georgia, serif', align:'center'},
+  calendar: {family:'Arial, sans-serif', align:'left'}
 };
 const artCache = new Map();
 function plateImage(style) {
@@ -96,40 +97,85 @@ function lettering(value,x,y,w,h,size,color,family,align='center',weight=700){
   const anchor=align==='left'?x:x+w/2;
   lines.forEach((line,i)=>g.fillText(line,anchor,y+h/2+(i-(lines.length-1)/2)*size*1.05,w));
 }
+// Flat, two-colour print marks drawn at the final export resolution.
+function printMark(style,x,y,size,accent,bg){
+  g.save();g.translate(x,y);g.scale(size/160,size/160);
+  g.strokeStyle=accent;g.fillStyle=accent;g.lineWidth=8;g.lineCap='round';g.lineJoin='round';
+  function path(points,fill=false){
+    g.beginPath();points.forEach(([x,y],i)=>i?g.lineTo(x,y):g.moveTo(x,y));if(fill){g.closePath();g.fill()}else g.stroke();
+  }
+  function circle(x,y,r){g.beginPath();g.arc(x,y,r,0,Math.PI*2);g.stroke()}
+  if(style==='classic'){
+    // Two overlapping team answer cards.
+    g.rotate(-.14);rect(-62,-47,92,86,accent,8);g.rotate(.24);
+    rect(-28,-28,100,84,bg,8);g.strokeRect(-28,-28,100,84);
+    path([[-9,1],[5,15],[31,-8]]);path([[-7,34],[49,34]]);
+  }else if(style==='bigtime'){
+    circle(0,0,52);path([[0,-33],[0,0],[26,15]]);
+  }else if(style==='chalk'){
+    path([[-43,-43],[32,-43],[23,53],[-32,53],[-43,-43]]);
+    g.beginPath();g.arc(33,-6,21,-Math.PI/2,Math.PI/2);g.stroke();
+    path([[-40,-23],[30,-23]]);path([[-17,-4],[-13,30]]);
+  }else if(style==='ticket'){
+    path([[-33,-42],[33,-42],[26,8],[0,28],[-26,8],[-33,-42]]);
+    path([[-35,-30],[-54,-30],[-48,-4],[-23,8]]);path([[35,-30],[54,-30],[48,-4],[23,8]]);
+    path([[0,28],[0,49]]);path([[-23,51],[23,51]]);
+  }else if(style==='question'){
+    g.textAlign='center';g.textBaseline='middle';g.font='bold 152px Georgia, serif';g.fillText('?',0,14);
+  }else if(style==='calendar'){
+    g.strokeRect(-49,-41,98,95);path([[-49,-16],[49,-16]]);
+    path([[-25,-54],[-25,-31]]);path([[25,-54],[25,-31]]);path([[-17,17],[-4,29],[20,4]]);
+  }else if(style==='minimal'){
+    path([[-55,40],[-40,0],[29,-64],[54,-39],[-15,26]],true);
+  }
+  g.restore();
+}
 function draw(){
   const W=1080,H=sizes[val('posterFormat')]||1350;
   if(canvas.width!==W||canvas.height!==H){canvas.width=W;canvas.height=H}
-  const style=val('posterLayout'),theme=plates[style],image=plateImage(style);
+  const style=val('posterLayout'),theme=plates[style];
   const {bg,accent,ink}=palette();
   rect(0,0,W,H,bg);
   q('posterSize').textContent=W+' × '+H+' px';
-  if(!image)return false;
-  const left=theme.inset, margin=Math.max(68,left+22),align=theme.align;
-  const inner=W-2*margin,headH=Math.round(H*.19),artH=Math.round(H*.43);
-  const top=left,artY=theme.imageFirst?top:headH,headY=theme.imageFirst?top+artH:0;
-  g.save();g.translate(left,artY);
-  const artW=W-left*2;
-  g.beginPath();g.rect(0,0,artW,artH);g.clip();
-  coverImage(image,artW,artH,state.photo?Number(val('posterPhotoPosition'))/100:0);
-  if(state.photo)rect(0,0,artW,artH,rgba(bg,Number(val('posterPhotoShade'))/100));
-  if(style==='calendar' && !state.photo){
-    const scale=Math.max(artW/image.naturalWidth,artH/image.naturalHeight);
-    const scaledH=image.naturalHeight*scale;
-    const pageY=(artH-scaledH)/2+scaledH*.57;
-    lettering(eventWhen(),artW*.28,pageY-scaledH*.07,artW*.28,scaledH*.14,46,'#422f25','Georgia, serif');
+  const margin=76,inner=W-margin*2,align=theme.align;
+  const title=val('posterHeadline')||'QUIZ NIGHT',when=eventWhen();
+  const isPhoto=style==='photo';
+  if(isPhoto||state.photo){
+    const image=plateImage(style);
+    if(!image)return false;
+    const height=isPhoto?H*.36:H;
+    g.save();g.beginPath();g.rect(0,0,W,height);g.clip();
+    coverImage(image,W,height,Number(val('posterPhotoPosition'))/100);
+    if(state.photo)rect(0,0,W,height,rgba(bg,Number(val('posterPhotoShade'))/100));
+    g.restore();
   }
-  g.restore();
-  const title=val('posterHeadline')||'QUIZ NIGHT';
-  lettering(title,margin,headY+8,inner,headH-16,Math.min(154,headH*.72),ink,theme.family,align,800);
-  const start=(theme.imageFirst?top:0)+headH+artH;
-  const footH=Math.round(H*.105),end=H-footH-18;
+  const start=isPhoto?H*.57:H*.52;
+  if(isPhoto){
+    lettering(title,margin,H*.36,inner,H*.20,160,ink,theme.family,align,800);
+  }else{
+    if(style==='chalk'){
+      g.strokeStyle=accent;g.lineWidth=3;g.strokeRect(28,28,W-56,H-56);
+    }
+    const markY=H*.13,markSize=Math.min(176,H*.14);
+    const markX=align==='left'?margin+markSize*.4:W/2;
+    printMark(style,markX,markY,markSize,accent,bg);
+    if(style==='bigtime' && when){
+      lettering(title,margin,H*.21,inner,H*.10,78,ink,theme.family,align,700);
+      const [day,time]=when.split(' · ');
+      lettering(day,margin,H*.31,inner,H*(time ? .105 : .19),142,ink,theme.family,align,800);
+      if(time)lettering(time,margin,H*.412,inner,H*.093,112,ink,theme.family,align,800);
+    }else{
+      lettering(title,margin,H*.23,inner,H*.26,194,ink,theme.family,align,800);
+    }
+  }
+  const footH=Math.round(H*.12),end=H-footH-18;
   if(style==='ticket'){
     g.save();g.setLineDash([10,13]);g.strokeStyle=accent;g.lineWidth=4;
-    g.beginPath();g.moveTo(left,start+4);g.lineTo(W-left,start+4);g.stroke();g.restore();
+    g.beginPath();g.moveTo(margin,start+4);g.lineTo(W-margin,start+4);g.stroke();g.restore();
   }else rect(margin,start+2,align==='left'?106:inner,4,accent);
   const rows=[];
-  const when=eventWhen(),venue=val('posterVenue'),extra=val('posterExtra');
-  if(when && (style!=='calendar'||state.photo))rows.push([when,style==='bigtime'?96:56,1.1]);
+  const venue=val('posterVenue'),extra=val('posterExtra');
+  if(when && style!=='bigtime')rows.push([when,style==='bigtime'?96:56,1.1]);
   if(venue)rows.push([venue,80,1.25]);
   if(extra)rows.push([extra,42,.85]);
   const info=[val('posterEntry'),val('posterPrize')].filter(Boolean).join('   •   ');
@@ -142,11 +188,13 @@ function draw(){
     y+=h;
   }
   rect(margin,end+9,inner,2,rgba(ink,.45));
+  const pubLogo=selectedLogo('pubLogo'),hostLogo=selectedLogo('hostLogo');
+  if(pubLogo===false || hostLogo===false)return false;
   const logoY=H-footH/2,scale=Number(val('posterLogoSize'))/100;
-  if(state.pubLogo)imageLogo(state.pubLogo,margin+125,logoY,156*scale,Math.min(footH-10,64*scale));
-  if(state.hostLogo)imageLogo(state.hostLogo,W-margin-125,logoY,156*scale,Math.min(footH-10,64*scale));
+  if(pubLogo)imageLogo(pubLogo,margin+125,logoY,230*scale,Math.min(footH-10,82*scale),val('posterPubChoice')==='chip' && !light(bg)?'#fff9ec':null);
+  if(hostLogo)imageLogo(hostLogo,W-margin-125,logoY,230*scale,Math.min(footH-10,82*scale),val('posterHostChoice')==='chip' && !light(bg)?'#fff9ec':null);
   else{
-    const x=state.pubLogo?margin+275:margin;
+    const x=pubLogo?margin+275:margin;
     lettering(val('posterHost'),x,H-footH,W-margin-x,footH,34,ink,'Arial, sans-serif',align,600);
   }
   return true;
@@ -174,25 +222,49 @@ q('posterLayout').addEventListener('input',matchStockColours);
 q('posterLayout').addEventListener('change',matchStockColours);
 for(const id of fields)q(id).addEventListener('input',safeDraw);
 for(const id of fields)q(id).addEventListener('change',safeDraw);
+const logoChoices={pubLogo:'posterPubChoice',hostLogo:'posterHostChoice'};
+const logoPaths={chip:'../chip_in_logo.png',quiz:'logos/quiz-in.png'};
+const logoCache=new Map();
+function selectedLogo(key){
+  const choice=val(logoChoices[key]);
+  if(choice==='upload')return state[key];
+  if(!logoPaths[choice])return null;
+  if(!logoCache.has(choice)){
+    const img=new Image();logoCache.set(choice,img);
+    img.onload=safeDraw;
+    img.onerror=()=>{
+      logoCache.delete(choice);
+      if(Object.values(logoChoices).some(id=>val(id)===choice))q('posterStatus').textContent='Logo could not load. Select it again to retry.';
+    };
+    img.src=new URL(logoPaths[choice],import.meta.url);
+  }
+  const img=logoCache.get(choice);
+  return img.complete && img.naturalWidth?img:false;
+}
 function fileUpload(fileId,key,clearId){
-  const field=q(fileId);
+  const field=q(fileId),choiceId=logoChoices[key];
+  let version=0;
+  if(choiceId)q(choiceId).addEventListener('change',()=>{version++});
+  q('posterReset').addEventListener('click',()=>{version++});
   field.addEventListener('change',async()=>{
     const file=field.files?.[0];if(!file)return;
     if(!file.type.startsWith('image/')){q('posterStatus').textContent='Please select an image file.';return}
-    const url=URL.createObjectURL(file),img=new Image();
+    const current=++version,url=URL.createObjectURL(file),img=new Image();
     try{
-      img.src=url;await img.decode();state[key]=img;
+      img.src=url;await img.decode();if(current!==version)return;state[key]=img;
+      if(choiceId){q(choiceId).querySelector('[value=upload]').disabled=false;q(choiceId).value='upload'}
       q(clearId).hidden=false;safeDraw();
     }catch{q('posterStatus').textContent='The image could not be read.'}
     finally{URL.revokeObjectURL(url);field.value=''}
   });
-  q(clearId).addEventListener('click',()=>{state[key]=null;q(clearId).hidden=true;safeDraw()});
+  q(clearId).addEventListener('click',()=>{version++;state[key]=null;if(choiceId){q(choiceId).querySelector('[value=upload]').disabled=true;if(val(choiceId)==='upload')q(choiceId).value='none'};q(clearId).hidden=true;safeDraw()});
 }
 fileUpload('posterPhoto','photo','posterClearPhoto');
 fileUpload('posterPubLogo','pubLogo','posterClearPubLogo');
 fileUpload('posterHostLogo','hostLogo','posterClearHostLogo');
 q('posterSave').onclick=()=>{
   const values=Object.fromEntries(fields.map(id=>[id,q(id).value]));
+  for(const id of Object.values(logoChoices))if(values[id]==='upload')values[id]='none';
   try{localStorage.setItem('chipin.quizposter.settings.v1',JSON.stringify(values));q('posterStatus').textContent='Your text and design settings are saved on this device. Uploaded images are not stored.'}
   catch{q('posterStatus').textContent='Browser storage is unavailable; your current poster is still ready.'}
 };
@@ -200,6 +272,7 @@ q('posterReset').onclick=()=>{
   for(const id of fields){const field=q(id);field.value=field.dataset.original??field.value}
   previousLayout=val('posterLayout');
   for(const k of Object.keys(state))state[k]=null;
+  for(const id of Object.values(logoChoices))q(id).querySelector('[value=upload]').disabled=true;
   ['posterClearPhoto','posterClearPubLogo','posterClearHostLogo'].forEach(id=>q(id).hidden=true);
   try{localStorage.removeItem('chipin.quizposter.settings.v1')}catch{}
   safeDraw();
