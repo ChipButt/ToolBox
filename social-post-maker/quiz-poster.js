@@ -166,18 +166,19 @@ function draw(){
     rect(55,178,970,37,A);
     [220,860].forEach(x=>{rect(x,44,42,78,'#b8c9b9',17);outline(x,44,42,78,'#283f39',7,17)});
     textLine('MARK YOUR CALENDAR',mid,142,900,56,darkInk);
-    const date=val('posterDay')||'QUIZ NIGHT';
+    const whenParts=when.split(' · ');
+    const date=when?whenParts[0]:'QUIZ NIGHT';
     textBlock(date,mid,H*.31,880,110,'#152f2b');
-    textLine(val('posterTime'),mid,H*.44,900,78,'#152f2b');
+    if(whenParts.length>1)textLine(whenParts.slice(1).join(' · '),mid,H*.44,900,78,'#152f2b');
     textBlock(headline,mid,H*.58,940,99,I);
     textBlock(venue,mid,H*.76,920,72,I);
   }
   // Supporting copy stays away from the main headline and gives useful poster details.
   if(extra && ['classic','chalk','photo','minimal','question'].includes(style)){
-    textBlock(extra,style==='photo'||style==='minimal'?80:mid,H*.83,style==='photo'||style==='minimal'?900:850,38,style==='photo'?'#ffffff':I,style==='photo'||style==='minimal'?'left':'center',2,600);
+    textBlock(extra,style==='photo'||style==='minimal'?80:mid,Math.min(H*.81,H-286),style==='photo'||style==='minimal'?900:850,38,style==='photo'?'#ffffff':I,style==='photo'||style==='minimal'?'left':'center',2,600);
   }
-  if(['bigtime','calendar','ticket'].includes(style)&&extra){
-    textBlock(extra,mid,H*.86,850,37,style==='ticket'?(light(I)?'#172a29':'#ffffff'):I,'center',2,550);
+  if(['bigtime','calendar','ticket'].includes(style)&&extra&&H>1080){
+    textBlock(extra,mid,Math.min(H*.85,H-274),850,37,style==='ticket'?(light(I)?'#172a29':'#ffffff'):I,'center',2,550);
   }
   const info=[entry,prize].filter(Boolean).join('  •  ');
   const footerY=H-118;
