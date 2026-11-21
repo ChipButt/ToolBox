@@ -1,0 +1,29 @@
+/* Static poster mode; isolated from the V5 animated editor. */
+.maker-modes{display:flex;gap:9px;margin:4px 0 22px;flex-wrap:wrap}
+.maker-modes button{border:1px solid #c1cfc5;background:#fff;color:#223d35;padding:12px 20px;border-radius:12px;font-size:15px}
+.maker-modes button[aria-pressed="true"]{background:#0d6257;border-color:#0d6257;color:white}
+.poster-workspace{display:grid;grid-template-columns:minmax(0,.95fr) minmax(0,1.05fr);gap:20px;align-items:start}
+.poster-preview{position:sticky;top:10px}
+.poster-stage{background:#122f2b;padding:18px;display:grid;place-items:center;min-height:250px;max-height:73dvh}
+.poster-stage canvas{display:block;width:auto;max-width:100%;max-height:min(68dvh,740px);height:auto;aspect-ratio:auto;box-shadow:0 8px 24px #07171388;background:#16342f}
+.poster-download{background:#fff;color:#33453e;padding:15px;text-align:center}
+.poster-download button{width:100%;border:0;border-radius:10px;background:#0d6257;color:#fff;padding:13px 20px;font-weight:750}
+.poster-download p{font-size:13px;color:#52665e;margin:9px 0 0}
+.poster-controls{border:1px solid #cad0c7;background:#fff;border-radius:16px;padding:22px;overflow:hidden}
+.poster-controls h2{font-size:19px;line-height:1.3;margin:22px 0 9px;padding-bottom:8px;border-bottom:1px solid #e3e8e2}
+.poster-controls h2:first-child{margin-top:0}
+.poster-controls label{display:block;margin:11px 0 4px;font-size:14px;font-weight:700}
+.poster-controls input:not([type="range"]):not([type="color"]):not([type="file"]),.poster-controls select{display:block;width:100%;padding:10px 12px;border:1px solid #b5c2ba;background:#fff;border-radius:8px;font-size:15px;color:#203430}
+.poster-controls input[type="file"]{display:block;width:100%;font-size:13px;max-width:100%;padding:7px;border:1px solid #d3ded6}
+.poster-controls input[type="range"]{display:block;width:100%;accent-color:#0d6257;margin:11px 0}
+.poster-controls input[type="color"]{display:block;width:100%;height:43px;border:1px solid #b5c2ba;background:#fff;border-radius:8px;padding:4px;cursor:pointer}
+.poster-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.poster-swatches{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px}
+.poster-secondary{background:#fff!important;color:#25443b!important;border:1px solid #b5c2ba!important}
+.poster-controls button{font-size:14px;padding:9px 12px;border-radius:8px}
+.poster-actions{display:flex;flex-wrap:wrap;gap:10px;margin:20px 0 10px}
+.poster-actions button:first-child{background:#0d6257;color:#fff;border-color:#0d6257}
+#posterStatus{font-size:13px;color:#53645d;margin:8px 0 0}
+#posterSize{font-size:13px;color:#e8f0e9}
+@media(max-width:800px){.poster-workspace{grid-template-columns:1fr}.poster-preview{position:static}.poster-stage{min-height:0;max-height:55dvh;padding:10px}.poster-stage canvas{max-height:50dvh}.poster-controls{padding:16px}.maker-modes button{flex:1;padding:11px 8px;font-size:14px}}
+@media(max-width:400px){.poster-pair{grid-template-columns:1fr}.poster-swatches{grid-template-columns:1fr 1fr}}
