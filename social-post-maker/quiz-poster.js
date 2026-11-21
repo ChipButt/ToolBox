@@ -232,12 +232,15 @@ q('posterReset').onclick=()=>{
   safeDraw();
 };
 let serial=0;
+try{serial=Math.max(0,Number(localStorage.getItem('chipin.quizposter.export-number'))||0)}catch{}
 q('posterDownload').onclick=()=>{
   try{draw()}catch(e){q('posterStatus').textContent='Could not render: '+e.message;return}
   canvas.toBlob(blob=>{
     if(!blob){q('posterStatus').textContent='Your browser could not create the PNG.';return}
     const url=URL.createObjectURL(blob),a=document.createElement('a');
-    a.href=url;a.download='QuizPoster_'+(layouts[val('posterLayout')]||'Classic').replace(/[^A-Za-z]/g,'')+'_'+String(++serial).padStart(4,'0')+'.png';
+    serial++;
+    try{localStorage.setItem('chipin.quizposter.export-number',String(serial))}catch{}
+    a.href=url;a.download='QuizPoster_'+(layouts[val('posterLayout')]||'Classic').replace(/[^A-Za-z]/g,'')+'_'+String(serial).padStart(4,'0')+'.png';
     a.click();setTimeout(()=>URL.revokeObjectURL(url),30000);
     q('posterStatus').textContent='PNG created at '+canvas.width+' × '+canvas.height+'.';
   },'image/png');
