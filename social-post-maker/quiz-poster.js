@@ -95,7 +95,6 @@ function draw(){
   const onAccent=light(accent)?'#142327':'#fff9ee';
   const title=val('posterHeadline')||'QUIZ NIGHT',when=eventWhen();
   const venue=val('posterVenue'),extra=val('posterExtra');
-  const info=[val('posterEntry'),val('posterPrize')].filter(Boolean).join('   /   ');
   const artwork=['classic','question','ticket','chalk','photo'].includes(style);
   const img=artwork||state.photo?plateImage(style):null;
   q('posterSize').textContent=W+' × '+H+' px';
@@ -198,7 +197,12 @@ function draw(){
     body=time ? .663 : .567;
   }
   const footH=Math.round(H*.105),end=H-footH-10,margin=62;
-  const rows=[[venue,88,1.35],[extra,46,.88],[info,42,.77]].filter(row=>row[0]);
+  const rows=[
+    [venue,88,1.35],
+    [extra,46,.88],
+    [val('posterEntry'),42,.77],
+    [val('posterPrize'),42,.77]
+  ].filter(row=>row[0]);
   let y=body*H;
   const available=end-y,units=rows.reduce((n,r)=>n+r[2],0);
   rows.forEach(([value,size,weight],i)=>{
