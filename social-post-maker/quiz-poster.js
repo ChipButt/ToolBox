@@ -88,6 +88,7 @@ function lettering(value,x,y,w,h,size,color,family,align='center',weight=700){
   lines.forEach((line,i)=>g.fillText(line,anchor,y+h/2+(i-(lines.length-1)/2)*size*1.05,w));
 }
 function draw(){
+  if(pendingImages.size)return false;
   const W=1080,H=sizes[val('posterFormat')]||1350;
   if(canvas.width!==W||canvas.height!==H){canvas.width=W;canvas.height=H}
   const style=val('posterLayout'),{bg,ink,accent}=palette();
@@ -261,27 +262,68 @@ function selectedLogo(key){
   const img=logoCache.get(choice);
   return img.complete && img.naturalWidth?img:false;
 }
+const pendingImages=new Set();
 function fileUpload(fileId,key,clearId){
   const field=q(fileId),choiceId=logoChoices[key];
-  let version=0;
-  if(choiceId)q(choiceId).addEventListener('change',()=>{version++});
-  q('posterReset').addEventListener('click',()=>{version++});
-  field.addEventListener('change',async()=>{
-    const file=field.files?.[0];if(!file)return;
-    if(!file.type.startsWith('image/')){q('posterStatus').textContent='Please select an image file.';return}
-    const current=++version,url=URL.createObjectURL(file),img=new Image();
-    try{
-      img.src=url;await img.decode();if(current!==version)return;state[key]=img;
-      if(choiceId){q(choiceId).querySelector('[value=upload]').disabled=false;q(choiceId).value='upload'}
-      q(clearId).hidden=false;safeDraw();
-    }catch{q('posterStatus').textContent='The image could not be read.'}
-    finally{URL.revokeObjectURL(url);field.value=''}
+  const select=choiceId?q(choiceId):null;
+  let version=0,activeChoice=select?.value;
+  function cancelLoad(){
+    version++;
+    pendingImages.delete(key);
+  }
+  function forgetUpload(){
+    select?.querySelector('option[value="upload"]')?.remove();
+  }
+  if(select)select.addEventListener('change',()=>{
+    cancelLoad();
+    if(select.value==='pick'){
+      select.value=activeChoice;
+      field.click();
+    }else activeChoice=select.value;
+    safeDraw();
   });
-  q(clearId).addEventListener('click',()=>{version++;state[key]=null;if(choiceId){q(choiceId).querySelector('[value=upload]').disabled=true;if(val(choiceId)==='upload')q(choiceId).value='none'};q(clearId).hidden=true;safeDraw()});
+  q('posterReset').addEventListener('click',()=>{
+    cancelLoad();forgetUpload();activeChoice='none';
+  },true);
+  field.addEventListener('change',async()=>{
+    const file=field.files?.[0];
+    if(!file)return;
+    field.value='';
+    const current=++version;
+    pendingImages.add(key);
+    safeDraw();
+    const url=URL.createObjectURL(file),img=new Image();
+    try{
+      await new Promise((resolve,reject)=>{
+        img.onload=resolve;img.onerror=reject;img.src=url;
+      });
+      if(current!==version)return;
+      if(!img.naturalWidth||!img.naturalHeight)throw Error('Empty image');
+      state[key]=img;
+      if(select){
+        forgetUpload();
+        select.add(new Option('Uploaded · '+file.name,'upload'));
+        activeChoice=select.value='upload';
+      }
+      q(clearId).hidden=false;
+      pendingImages.delete(key);
+      safeDraw();
+    }catch{
+      if(current===version){
+        pendingImages.delete(key);safeDraw();
+        q('posterStatus').textContent='Could not open '+file.name+'. Try a PNG, JPEG, WebP or SVG image.';
+      }
+    }finally{URL.revokeObjectURL(url)}
+  });
+  q(clearId).addEventListener('click',()=>{
+    cancelLoad();state[key]=null;
+    if(select){
+      if(activeChoice==='upload')activeChoice=select.value='none';
+      forgetUpload();
+    }
+    q(clearId).hidden=true;safeDraw();
+  });
 }
-fileUpload('posterPhoto','photo','posterClearPhoto');
-fileUpload('posterPubLogo','pubLogo','posterClearPubLogo');
-fileUpload('posterHostLogo','hostLogo','posterClearHostLogo');
 q('posterSave').onclick=()=>{
   const values=Object.fromEntries(fields.map(id=>[id,q(id).value]));
   for(const id of Object.values(logoChoices))if(values[id]==='upload')values[id]='none';
@@ -292,7 +334,6 @@ q('posterReset').onclick=()=>{
   for(const id of fields){const field=q(id);field.value=field.dataset.original??field.value}
   previousLayout=val('posterLayout');
   for(const k of Object.keys(state))state[k]=null;
-  for(const id of Object.values(logoChoices))q(id).querySelector('[value=upload]').disabled=true;
   ['posterClearPhoto','posterClearPubLogo','posterClearHostLogo'].forEach(id=>q(id).hidden=true);
   try{localStorage.removeItem('chipin.quizposter.settings.v1')}catch{}
   safeDraw();
@@ -321,5 +362,8 @@ try{
     el.value=saved[id];
   }
 }catch{}
+fileUpload('posterPhoto','photo','posterClearPhoto');
+fileUpload('posterPubLogo','pubLogo','posterClearPubLogo');
+fileUpload('posterHostLogo','hostLogo','posterClearHostLogo');
 previousLayout=val('posterLayout');
 safeDraw();

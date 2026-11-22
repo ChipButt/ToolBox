@@ -40,7 +40,7 @@
     <h2>Photos and logos</h2>
     <label>Background photograph<input id="posterPhoto" type="file" accept="image/*"></label><button id="posterClearPhoto" type="button" class="poster-secondary" hidden>Remove background photograph</button>
     <div class="poster-pair"><label>Photo colour overlay<input id="posterPhotoShade" type="range" min="0" max="90" value="64"></label><label>Move photo left / right<input id="posterPhotoPosition" type="range" min="-100" max="100" value="0"></label></div>
-    <div class="poster-pair"><div><label>Venue logo<select id="posterPubChoice"><option value="none">None</option><option value="chip">Chip In</option><option value="quiz">Quiz In</option><option value="upload" disabled>Uploaded logo</option></select></label><label>Upload venue logo<input id="posterPubLogo" type="file" accept="image/*"></label><button id="posterClearPubLogo" type="button" class="poster-secondary" hidden>Remove venue logo</button></div><div><label>Quiz company logo<select id="posterHostChoice"><option value="none">None</option><option value="chip">Chip In</option><option value="quiz">Quiz In</option><option value="upload" disabled>Uploaded logo</option></select></label><label>Upload quiz company logo<input id="posterHostLogo" type="file" accept="image/*"></label><button id="posterClearHostLogo" type="button" class="poster-secondary" hidden>Remove company logo</button></div></div>
+    <div class="poster-pair"><div><label>Venue logo<select id="posterPubChoice"><option value="none">None</option><option value="chip">Chip In</option><option value="quiz">Quiz In</option><option value="pick">Upload a logo…</option></select></label><label>Upload venue logo<input id="posterPubLogo" type="file" accept="image/*"></label><button id="posterClearPubLogo" type="button" class="poster-secondary" hidden>Remove venue logo</button></div><div><label>Quiz company logo<select id="posterHostChoice"><option value="none">None</option><option value="chip">Chip In</option><option value="quiz">Quiz In</option><option value="pick">Upload a logo…</option></select></label><label>Upload quiz company logo<input id="posterHostLogo" type="file" accept="image/*"></label><button id="posterClearHostLogo" type="button" class="poster-secondary" hidden>Remove company logo</button></div></div>
     <label>Logo size<input id="posterLogoSize" type="range" min="60" max="160" step="10" value="100"></label>
     <div class="poster-actions"><button id="posterSave" type="button">Save these settings</button><button id="posterReset" type="button" class="poster-secondary">Start fresh</button></div>
     <p role="status" id="posterStatus">Ready to download as PNG.</p>
@@ -48,7 +48,7 @@
 </section></main>
 <dialog id="library"><div class="bar"><h2 id="dialogTitle"></h2><button id="close">Close</button></div><div id="filters"></div><div id="gallery"></div></dialog>
 <script type="module" src="studio.js?v=5.3"></script>
-<script type="module" src="quiz-poster.js?v=4"></script>
+<script type="module" src="quiz-poster.js?v=5"></script>
 <script>
   const modeVideo=document.getElementById('modeAnimated'),modePoster=document.getElementById('modePoster');
   const videoMaker=document.getElementById('animationMaker'),posterMaker=document.getElementById('posterMaker');
