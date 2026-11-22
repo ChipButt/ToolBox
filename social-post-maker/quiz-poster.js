@@ -32,10 +32,9 @@ function coverImage(img,W,H,amount=0){
   const limit=(w-W)/2,shift=limit*amount;
   g.drawImage(img,(W-w)/2+shift,(H-h)/2,w,h);
 }
-function imageLogo(image,x,y,maxW,maxH,backing){
+function imageLogo(image,x,y,maxW,maxH){
   if(!image)return false;
   const s=Math.min(maxW/image.naturalWidth,maxH/image.naturalHeight);
-  if(backing)rect(x-image.naturalWidth*s/2-10,y-image.naturalHeight*s/2-6,image.naturalWidth*s+20,image.naturalHeight*s+12,backing,8);
   g.drawImage(image,x-image.naturalWidth*s/2,y-image.naturalHeight*s/2,image.naturalWidth*s,image.naturalHeight*s);
   return true;
 }
@@ -212,8 +211,8 @@ function draw(){
   const pubLogo=selectedLogo('pubLogo'),hostLogo=selectedLogo('hostLogo');
   if(pubLogo===false || hostLogo===false)return false;
   const logoY=H-footH/2,scale=Number(val('posterLogoSize'))/100;
-  if(pubLogo)imageLogo(pubLogo,margin+125,logoY,230*scale,Math.min(footH-10,82*scale),val('posterPubChoice')==='chip' && !light(bg)?'#fff9ec':null);
-  if(hostLogo)imageLogo(hostLogo,W-margin-125,logoY,230*scale,Math.min(footH-10,82*scale),val('posterHostChoice')==='chip' && !light(bg)?'#fff9ec':null);
+  if(pubLogo)imageLogo(pubLogo,margin+125,logoY,230*scale,Math.min(footH-10,82*scale));
+  if(hostLogo)imageLogo(hostLogo,W-margin-125,logoY,230*scale,Math.min(footH-10,82*scale));
   else{
     const x=pubLogo?margin+275:margin;
     lettering(val('posterHost'),x,H-footH,W-margin-x,footH,34,ink,'Arial, sans-serif',align,600);
