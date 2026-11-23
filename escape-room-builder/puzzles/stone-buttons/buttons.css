@@ -1,0 +1,493 @@
+/* Stone Buttons V1. Photographic limestone is shared with Stone Lock / Stone Logic.
+   No artificial vector strokes, no metallic material, no external image dependency. */
+.sb-mount,.sb-stage{container-type:inline-size;--sb-rock:url('../stone-dial/art/surround-limestone.jpg');--sb-dark:#241b13;--sb-light:#e9d5ae}
+.sb-mount{width:100%}
+.sb-preview{display:block;border:0!important;padding:0!important;background:transparent!important;cursor:zoom-in;width:100%;height:auto;overflow:visible;box-shadow:none!important}
+.sb-preview:disabled{cursor:default}
+.sb-stone{position:relative;isolation:isolate;aspect-ratio:1.36;display:grid;align-content:center;box-sizing:border-box;
+padding:6.5cqw 7cqw 6.5cqw;background:linear-gradient(135deg,#fff4db2c,transparent 38%,#30201266),var(--sb-rock) 45% 54%/155%;
+border-radius:3.5cqw;box-shadow:inset .7cqw .8cqw .65cqw #fff1cdad,inset -.75cqw -.9cqw 1cqw #21150ddd,
+ 0 .38cqw .24cqw #120d08,0 1.45cqw 1.35cqw #0009,0 0 0 .38cqw #9c846389;
+filter:drop-shadow(.16cqw .4cqw .35cqw #0e0b099a);
+color:#32261b}
+.sb-stone:before{content:'';position:absolute;pointer-events:none;inset:2.1cqw;border-radius:2.1cqw;
+box-shadow:inset .3cqw .4cqw .36cqw #2d2115be,inset -.2cqw -.25cqw .32cqw #fbe6bf9f,
+ 0 0 .14cqw #38291ba6}
+.sb-surround{position:relative;height:100%;min-height:46cqw;padding:1.9cqw;border-radius:3.1cqw;
+background:linear-gradient(137deg,#2d2118bd,#56432bc0 24%,#2d2219e0),var(--sb-rock) 60% 50%/230%;
+box-shadow:inset .5cqw .6cqw .65cqw #0f0b08d9,inset -.32cqw -.38cqw .5cqw #c0a77b91,0 .3cqw .6cqw #e2c89b88}
+.sb-bed{position:absolute;inset:2.1cqw;display:grid;place-items:center;overflow:visible;border-radius:2.1cqw;
+background:linear-gradient(143deg,#241a13b5,#765b3d4f 44%,#24190fc2),var(--sb-rock) 52% 48%/240%;
+box-shadow:inset .7cqw .85cqw 1cqw #120b09d8,inset -.3cqw -.42cqw .6cqw #bca48088}
+.sb-buttons{width:100%;height:100%;box-sizing:border-box;display:grid;grid-template-columns:repeat(var(--sb-cols),minmax(0,1fr));
+grid-auto-rows:minmax(0,1fr);gap:1.7cqw;align-items:center;justify-items:center;padding:2.2cqw 2.8cqw}
+.sb-seat{box-sizing:border-box;position:relative;display:grid;place-items:center;aspect-ratio:1;width:100%;max-width:15cqw;
+border-radius:50%;background:radial-gradient(ellipse at 48% 60%,#a98c675c 0%,#4a3627 84%,#23170e 97%);
+box-shadow:inset .42cqw .56cqw .42cqw #110b06df,inset -.17cqw -.18cqw .32cqw #e8ce9d8e,
+ 0 -.14cqw .22cqw #b9a27f9e}
+.sb-button{position:relative;display:grid;place-items:center;box-sizing:border-box;aspect-ratio:1;width:97.5%;height:auto;
+border:0!important;border-radius:50%;padding:0;background:linear-gradient(142deg,#fce6bb43 4%,transparent 39%,#271b1390 94%),var(--sb-rock) center/360%;
+box-shadow:inset .33cqw .33cqw .27cqw #f7ddae88,inset -.27cqw -.32cqw .32cqw #332015a9,
+ 0 .07cqw .06cqw #f4e1b659,0 .17cqw .16cqw .03cqw #170e0ac9,0 .26cqw .22cqw #090705be;
+color:#302219;cursor:pointer;transition:transform 75ms ease-out,box-shadow 85ms ease-out,filter 90ms ease-out}
+.sb-button:before{content:'';position:absolute;inset:8%;border-radius:inherit;pointer-events:none;
+box-shadow:inset .09cqw .1cqw .17cqw #fbe3b865,inset -.09cqw -.12cqw .16cqw #3e2d1ca8}
+.sb-button:not(:disabled):active,.sb-button.sb-held,.sb-button.sb-pulse{
+transform:scale(.991);
+box-shadow:inset .32cqw .36cqw .44cqw #1e110bb8,inset -.11cqw -.18cqw .31cqw #e3c79a96,0 .1cqw .1cqw #140c08bd}
+.sb-button.sb-latched{filter:brightness(.89);box-shadow:inset .3cqw .4cqw .4cqw #20150dcc,0 .16cqw .12cqw #120b09b1}
+.sb-button:focus-visible{outline:.28cqw solid #e6c78e;outline-offset:.4cqw}
+.sb-carved-text{font:small-caps bold clamp(6px,2.4cqw,26px)/1.05 Georgia,serif;max-width:84%;overflow-wrap:anywhere;text-align:center;
+color:#37291c;text-shadow:-.09cqw -.11cqw .05cqw #1c120bc7,.09cqw .12cqw .07cqw #fce7c4c2;letter-spacing:-.02em}
+.sb-carved-symbol{position:relative;display:block;width:66%;height:66%;--sb-inscribe:#342519;filter:none}
+.sb-carved-symbol:before,.sb-carved-symbol:after{content:'';position:absolute;inset:0;mask:var(--sb-mask) no-repeat center/contain;
+-webkit-mask:var(--sb-mask) no-repeat center/contain}
+.sb-carved-symbol:before{background:#fff0c8c7;transform:translate(.11cqw,.16cqw);filter:blur(.03cqw)}
+.sb-carved-symbol:after{background:linear-gradient(145deg,#2b1a10,#57432c);transform:translate(-.09cqw,-.1cqw);
+filter:drop-shadow(.09cqw .08cqw .06cqw #0b0806)}
+.sb-centre-seal{display:none;position:absolute;z-index:2;left:50%;top:50%;width:9%;aspect-ratio:1;transform:translate(-50%,-50%);
+border-radius:50%;background:var(--sb-rock) 40% 40%/470%;
+box-shadow:inset .3cqw .34cqw .4cqw #f4dfb9a5,inset -.23cqw -.3cqw .29cqw #3d2b19,
+0 .3cqw .26cqw #1d130dbd}
+.sb-circle .sb-bed,.sb-custom .sb-bed{border-radius:50%}
+.sb-circle .sb-buttons,.sb-custom .sb-buttons{position:relative;display:block;padding:0}
+.sb-circle .sb-seat,.sb-custom .sb-seat{position:absolute;transform:translate(-50%,-50%);width:21%;max-width:none}
+.sb-circle .sb-surround{min-height:48cqw}
+.sb-circle .sb-centre-seal{display:block}
+.sb-custom .sb-seat{width:21%}
+.sb-square .sb-button,.sb-square .sb-seat,.sb-square .sb-button:before{border-radius:21%}
+.sb-row .sb-surround{min-height:25cqw}.sb-row .sb-stone{aspect-ratio:2.3}
+.sb-column .sb-stone{aspect-ratio:.8}.sb-column .sb-surround{min-height:60cqw}
+.sb-column .sb-seat{max-width:16cqw}
+.sb-progress{position:absolute;left:12%;right:12%;bottom:2cqw;height:1.5cqw;display:flex;gap:.45cqw;justify-content:center;align-items:center}
+.sb-progress-mark{width:1.2cqw;height:.65cqw;border-radius:.2cqw;background:linear-gradient(#180e08bd,#75624bb3);
+box-shadow:inset 0 .12cqw .17cqw #100c09bd,inset 0 -.08cqw .07cqw #d3ad81a8}
+.sb-progress-mark.sb-complete-mark{background:#d0b184;box-shadow:0 0 .3cqw #f4d1a17a}
+.sb-reset{position:absolute;right:4cqw;bottom:1.5cqw;padding:.25cqw .5cqw!important;
+font:italic 1.25cqw Georgia,serif!important;color:#5a3921!important;background:transparent!important;border:0!important;
+box-shadow:none!important;text-decoration:underline dotted;cursor:pointer}
+.sb-solved .sb-stone{filter:drop-shadow(0 0 .7cqw #e6c28d9a)}
+.sb-solved .sb-button{transform:scale(.991);filter:brightness(.95)}
+.sb-dialog{box-sizing:border-box;max-width:100vw;width:min(900px,98vw);max-height:100dvh;margin:auto;
+padding:12px;overflow:auto;border:1px solid #7b694d;border-radius:8px;background:#171914;color:#e8dcc3}
+.sb-dialog::backdrop{background:#080a08ed}
+.sb-back{position:sticky;top:0;z-index:10;min-height:45px;padding:9px 18px!important;
+border-radius:6px;background:#3b362d!important;color:#fff0cf!important;border:1px solid #bca47b!important;
+box-shadow:0 3px 15px #0009!important}
+.sb-stage{width:100%;margin-top:10px}
+.sb-stage .sb-stone{filter:drop-shadow(0 9px 12px #0605049a)}
+@media(max-width:630px){
+ .sb-dialog{padding:8px}
+ .sb-stage .sb-seat{max-width:none}
+ .sb-stage .sb-stone{padding:6.4cqw 6.9cqw 7cqw}
+ .sb-stage .sb-buttons{gap:1.25cqw;padding:2.5cqw}
+ .sb-stage .sb-carved-text{font-size:clamp(8px,2.4cqw,18px)}
+ .sb-stage .sb-button:focus-visible{outline-width:2px}
+ .sb-stage .sb-circle .sb-seat{width:26%}
+ .sb-stage .sb-circle .sb-buttons{min-height:55cqw}
+ .sb-stage .sb-reset{font-size:11px!important}
+}
+@media(prefers-reduced-motion:reduce){.sb-button{transition:none!important}}
+
+/* Press animation survives an immediate puzzle-state redraw. */
+@keyframes sb-physical-press{
+  0%{transform:scale(1);filter:brightness(1)}
+  38%{transform:scale(.982);filter:brightness(.82)}
+  100%{transform:scale(1);filter:brightness(1)}
+}
+.sb-button.sb-pulse:not(.sb-latched){animation:sb-physical-press .19s ease-in-out}
+.sb-button.sb-latched{transform:scale(.991)}
+.sb-solved .sb-stone[data-success="seal"] .sb-centre-seal{
+ display:block;left:50%;top:50%;width:14%;z-index:3;opacity:.96;
+ box-shadow:0 0 1.2cqw #e6c88fa6,inset .3cqw .36cqw .35cqw #fff3ca8c,
+ inset -.27cqw -.3cqw .24cqw #624528;
+}
+.sb-solved .sb-stone[data-success="none"]{filter:none}
+@media(prefers-reduced-motion:reduce){.sb-button.sb-pulse:not(.sb-latched){animation:none}}
+
+/* Keep extreme button counts accessible without compressing their stone sockets. */
+.sb-circle .sb-seat{width:min(21%,calc(175% / var(--sb-count)))}
+.sb-column .sb-surround{min-height:calc(var(--sb-count)*10cqw + 10cqw)}
+@media(max-width:630px){.sb-stage{overflow-x:auto}.sb-stage .sb-row{min-width:max(100%,calc(var(--sb-count)*55px))}}
+
+/* V8.1: seamless engraved photographic stone surface, not a raised image on
+   top of each button. The only gap is the narrow recessed shadow joint. */
+.sb-engraved-art{
+ position:absolute;inset:0;width:100%;height:100%;display:block;
+ object-fit:cover;pointer-events:none;user-select:none;-webkit-user-drag:none;
+ border-radius:inherit;
+}
+.sb-button:before{z-index:2}
+.sb-seat{box-shadow:inset .17cqw .20cqw .21cqw #110b06d9,
+ inset -.09cqw -.10cqw .18cqw #e8ce9d76,0 -.04cqw .08cqw #b9a27f67}
+
+
+/* V8.2 – sculpted round-over profiles, shared by each stone button and its
+   fitted cavity. The photographic limestone stays continuous underneath. */
+.sb-seat{
+ isolation:isolate;
+ background:
+   radial-gradient(circle at 50% 50%,
+     #30231a 0%,#261a13 75%,#775d4188 87%,#ddbf9179 93%,#2c1d14 100%);
+ box-shadow:
+   inset 0 0 .19cqw #140d08ad,
+   inset 0 0 .08cqw #f2dcb35e,
+   0 .045cqw .10cqw #d5ba8e36;
+}
+/* The fixed wall material gently rolls down into the bore; not a line. */
+.sb-seat::after{
+ content:'';
+ position:absolute;
+ inset:-.24cqw;
+ border-radius:50%;
+ z-index:3;
+ pointer-events:none;
+ background:
+   radial-gradient(circle at 50% 50%,
+     transparent 0%,transparent 76%,
+     #160d0812 80%,#21150f5c 87%,
+     #3c291c40 92%,#fae2b75e 96%,
+     transparent 100%);
+ box-shadow:
+   inset 0 0 .15cqw #150e0872,
+   inset 0 0 .045cqw #edd2a551;
+}
+/* Its own stone edge has a rounded shoulder, tapering into the engraved face.
+   This follows the button as it depresses, rather than sitting on the wall. */
+.sb-button{
+ box-shadow:
+   inset .13cqw .20cqw .20cqw #f4e0b67d,
+   inset -.20cqw -.23cqw .27cqw #2b1b1299,
+   0 .06cqw .08cqw #ead1a052,
+   0 .16cqw .13cqw #1e130dd1;
+}
+.sb-button::before{
+ inset:0;
+ border-radius:inherit;
+ z-index:2;
+ background:
+   radial-gradient(circle at 50% 50%,
+     #ffebc618 0%,transparent 67%,
+     #38251a18 79%,#27180f74 94%,#21140d9d 100%),
+   linear-gradient(148deg,#f9ddb422,transparent 40%,#100a0621 88%);
+ box-shadow:
+   inset 0 0 .19cqw #f8e4bd49,
+   inset 0 0 .23cqw #1f150c89;
+}
+.sb-button::after{
+ content:'';
+ pointer-events:none;
+ position:absolute;
+ inset:0;
+ z-index:3;
+ border-radius:inherit;
+ background:radial-gradient(circle at 50% 50%,
+   transparent 0%,transparent 81%,
+   #cfaf8141 87%,#f6d7a96b 92%,#1c130b60 99%,#160d0800 100%);
+}
+/* The square format also has polished, softened stone corners. */
+.sb-square .sb-seat::after{border-radius:21%}
+.sb-square .sb-button::after{border-radius:21%}
+.sb-button.sb-held,.sb-button:not(:disabled):active{
+ box-shadow:inset .23cqw .27cqw .33cqw #130c079c,
+             inset -.14cqw -.17cqw .22cqw #e8d0a480,
+             0 .055cqw .08cqw #190f0ac5;
+}
+
+/* V8.3 – align both visible annular bevels to their shared geometry.
+   Layout and press mechanics stay unchanged; the roundovers have equal
+   thickness around the circumference instead of appearing eccentric. */
+
+/* V8.4: the button, its cavity and its rounded lip must remain coaxial.
+   A pressed button travels into the wall (Z-axis), not downward in the
+   two-dimensional screen. Even after a press or a solve, centres stay fixed. */
+.sb-button.sb-pulse:not(.sb-latched):not(:active):not(.sb-held){
+ transform:none;
+}
+.sb-button.sb-held,.sb-button:not(:disabled):active{
+ transform:scale(.982);
+}
+/* Directional material lighting remains, but cast shadows should not
+   displace the visual centre of the circular contour. */
+.sb-seat{
+ box-shadow:
+   inset 0 0 .19cqw #140d08ad,
+   inset 0 0 .08cqw #f2dcb35e,
+   0 0 .11cqw #d5ba8e3d;
+}
+.sb-button{
+ box-shadow:
+   inset 0 0 .22cqw #f4e0b675,
+   inset 0 0 .29cqw #2b1b1290,
+   0 0 .12cqw #23160ebc;
+}
+.sb-button.sb-held,.sb-button:not(:disabled):active{
+ box-shadow:inset 0 0 .43cqw #130c07ba,inset 0 0 .18cqw #e8d0a480;
+}
+
+
+/* V8.5 – one physical, concentric button/socket edge.
+   Previously the button and wall socket each drew a separate, shaded ring.
+   Those two contours gave the appearance of a misplaced button, even when
+   their DOM bounds were mathematically centred. The new fitted edge is
+   generated on the button itself; no independent ring can drift off-centre.
+   All photographic stone and recessed engraving layers are retained. */
+.sb-stone .sb-seat{
+ background:transparent;
+ box-shadow:none;
+}
+.sb-stone .sb-seat::after{
+ content:none;
+ display:none;
+}
+.sb-stone .sb-button{
+ border:1px solid #2c1d13!important;
+ box-shadow:
+  0 0 0 1.4px #6b5337bd,
+  0 0 2px 2.1px #1b130d65,
+  inset 0 0 4px #271911b4;
+}
+.sb-stone .sb-button::before{
+ inset:0;
+ background:radial-gradient(circle at 50% 50%,
+   transparent 0%,transparent 82%,
+   #e6c49424 89%,#d7b48646 92%,
+   #2c1c0f44 98%,transparent 100%);
+ box-shadow:inset 0 0 2px #2e1c108a;
+}
+.sb-stone .sb-button::after{
+ content:none;
+ display:none;
+}
+/* Depressing a stone changes its depth, not the centre of the shared rim. */
+.sb-stone .sb-button.sb-held,
+.sb-stone .sb-button:active,
+.sb-stone .sb-button.sb-latched{
+ box-shadow:
+  0 0 0 1.4px #6b5337bd,
+  0 0 2px 2.1px #1b130d65,
+  inset 0 0 5px #20140bd9;
+}
+
+
+/* V8.6 — gently weathered hand-carved stone rims.
+   The exact same seeded profile is applied to the button and its matching
+   socket, so the fit cannot accidentally look eccentric again.
+   Other shapes and the engraved photographic material remain untouched. */
+.sb-stone.sb-round .sb-seat{
+ background:#34271c;
+ border-radius:50%;
+ box-shadow:none;
+ filter:drop-shadow(0 .055cqw .075cqw #100b07b3);
+}
+.sb-stone.sb-round .sb-seat::after{display:none!important;content:none!important}
+.sb-stone.sb-round .sb-button{
+ border:0!important;
+ border-radius:50%;
+ box-shadow:inset 0 0 .24cqw #291a11b3,inset 0 0 .10cqw #ffebc25b;
+}
+.sb-stone.sb-round .sb-button::before{
+ inset:0;
+ border-radius:inherit;
+ background:linear-gradient(145deg,#f9dfb51c,transparent 36%,#281a111a 88%);
+ box-shadow:none;
+}
+.sb-stone.sb-round .sb-button::after{display:none!important;content:none!important}
+.sb-stone.sb-round .sb-button.sb-held,
+.sb-stone.sb-round .sb-button:active,
+.sb-stone.sb-round .sb-button.sb-latched{
+ box-shadow:inset 0 0 .37cqw #160d08e3,inset 0 0 .10cqw #e4d2ac69;
+}
+.sb-stone.sb-round .sb-seat:focus-within{
+ filter:drop-shadow(0 0 .28cqw #e0c38c);
+}
+
+
+/* V8.7 — the hand-chipped contour stays, but the surface is rounded in 3D.
+   Clip-path defines the shared uneven edge. Its clipping removes ordinary
+   exterior box-shadows, so material relief is drawn INSIDE the face, while
+   filter:drop-shadow creates depth OUTSIDE the clipped seat. */
+.sb-stone.sb-round .sb-seat {
+  background:#24180f;
+  filter:drop-shadow(0 .19cqw .14cqw #150d09c7)
+         drop-shadow(0 -.055cqw .075cqw #e0c79a70);
+  box-shadow:none;
+}
+.sb-stone.sb-round .sb-button {
+  background:linear-gradient(140deg,#fbe6c030,transparent 40%,#23170b1a 90%),var(--sb-rock) center/360%;
+  box-shadow:
+    inset 0 0 .43cqw #291b10bf,
+    inset .12cqw .15cqw .26cqw #fff2ce99,
+    inset -.13cqw -.19cqw .27cqw #170e06b0;
+}
+.sb-stone.sb-round .sb-button::before {
+  content:'';
+  position:absolute;
+  inset:0;
+  z-index:2;
+  border-radius:50%;
+  pointer-events:none;
+  background:
+    radial-gradient(circle at 50% 50%,transparent 0%,transparent 68%,
+      #fff1c516 75%,#fff0d055 84%,#c5a07129 89%,#412c1b80 97%,#1e130b9c 100%),
+    linear-gradient(140deg,#fae5be38,transparent 32%,transparent 65%,#180d072c);
+  box-shadow:
+    inset .11cqw .12cqw .13cqw #ffebc077,
+    inset -.14cqw -.15cqw .18cqw #2013087d;
+}
+.sb-stone.sb-round .sb-button::after {
+  display:block!important;
+  content:'';
+  position:absolute;
+  inset:0;
+  z-index:3;
+  border-radius:50%;
+  pointer-events:none;
+  background:radial-gradient(circle at 50% 50%,
+    transparent 0%,transparent 77%,#f8dfb41f 82%,
+    #bf95613e 88%,#34231565 96%,#100a075c 100%);
+  mask-image:radial-gradient(circle at 50% 50%,transparent 0 69%,black 83%);
+}
+.sb-stone.sb-round .sb-button.sb-held,
+.sb-stone.sb-round .sb-button:active,
+.sb-stone.sb-round .sb-button.sb-latched {
+  box-shadow:
+    inset 0 0 .62cqw #100906e2,
+    inset .04cqw .05cqw .13cqw #efdab18a;
+  filter:brightness(.89);
+}
+
+
+/* V8.8 — all stone architectural contours are hand-worn, not mathematically
+   perfect rounded rectangles. Rounded corners and the original photographic
+   bevels remain. The deterministic profiles are generated by StoneButtons,
+   reused in edit preview and player close-up. */
+.sb-stone{
+ clip-path:var(--sb-outer-profile);
+}
+.sb-stone::before{
+ clip-path:var(--sb-panel-line-profile);
+}
+.sb-surround{
+ clip-path:var(--sb-surround-profile);
+}
+.sb-bed{
+ clip-path:var(--sb-bed-profile);
+}
+/* Shadows on the parent surfaces preserve the chiseled relief even when their
+   edges are clipped. Stone Buttons' existing dimensional button treatment is
+   deliberately not replaced here. */
+.sb-mount{
+ filter:drop-shadow(0 .25cqw .2cqw #130d08b3);
+}
+.sb-stage{
+ filter:drop-shadow(0 .25cqw .2cqw #130d08a8);
+}
+
+
+/* V8.9 — A real dark stone bore around each loose push-button.
+   V8.6–V8.8 kept the hand-cut profile but visually closed the cavity.
+   Both cutouts still use the SAME seeded rough profile, with the button
+   94% of the socket diameter: a narrow, visible recessed collar.
+   One concentric radial cavity and a lit stone lip replace independent
+   dark outline pseudo-elements (which formerly looked misaligned). */
+.sb-stone.sb-round .sb-seat{
+  background:
+    radial-gradient(circle at 50% 50%,
+      #0c0805f7 0%,#130c07f5 88%,
+      #382519bd 93%,#e6c5933b 97%,#4d332166 100%),
+    conic-gradient(from -30deg at 50% 50%,
+      #1b1009 0deg,#4f3423 70deg,#b9976f 145deg,
+      #be9c72 195deg,#392419 275deg,#1b1009 360deg);
+  box-shadow:none;
+  filter:drop-shadow(0 -.055cqw .05cqw #e9d0a15c)
+         drop-shadow(0 .09cqw .13cqw #100905a8);
+}
+.sb-stone.sb-round .sb-button{
+  width:94%;
+  height:auto;
+  border:0!important;
+  box-shadow:
+    inset .10cqw .13cqw .17cqw #ffe6b066,
+    inset -.14cqw -.16cqw .2cqw #1b1008a6;
+}
+/* Socket depth is part of the parent itself; no second independent
+   circular stroke or offset pseudo-element can be seen around the button. */
+.sb-stone.sb-round .sb-seat::after{
+  display:none!important;
+  content:none!important;
+}
+.sb-stone.sb-round .sb-button:active,
+.sb-stone.sb-round .sb-button.sb-held,
+.sb-stone.sb-round .sb-button.sb-latched{
+  filter:brightness(.83);
+  box-shadow:inset 0 0 .5cqw #170b06d8;
+}
+
+
+/* V9 / art rebuild: the photographic stone frame, recess, floor and real
+   holes are rendered in a single textured height-field canvas. These DOM
+   layers exist only to position accessible, responsive controls. */
+.sb-stone.sb-artwork-mode{
+ background:none!important;
+ border:0!important;
+ box-shadow:none!important;
+ clip-path:none!important;
+ filter:drop-shadow(0 .65cqw .52cqw #090805a5);
+}
+.sb-stone.sb-artwork-mode::before{content:none!important;display:none!important}
+.sb-stone.sb-artwork-mode .sb-panel-art{
+ display:block;position:absolute;inset:0;width:100%;height:100%;
+ z-index:0;pointer-events:none;object-fit:fill;
+}
+.sb-artwork-mode .sb-surround,
+.sb-artwork-mode .sb-bed {
+ position:relative;
+ z-index:1;
+ background:none!important;
+ box-shadow:none!important;
+ filter:none!important;
+ clip-path:none!important;
+ border:0!important;
+}
+.sb-artwork-mode .sb-bed{position:absolute}
+.sb-artwork-mode .sb-seat,
+.sb-stone.sb-round.sb-artwork-mode .sb-seat{
+ background:none!important;
+ box-shadow:none!important;
+ filter:none!important;
+}
+.sb-artwork-mode .sb-seat::after{content:none!important;display:none!important}
+.sb-artwork-mode .sb-button,
+.sb-stone.sb-round.sb-artwork-mode .sb-button{
+ background:none!important;
+ border:0!important;
+ box-shadow:none!important;
+ filter:none;
+}
+.sb-artwork-mode .sb-button::before,
+.sb-artwork-mode .sb-button::after,
+.sb-stone.sb-round.sb-artwork-mode .sb-button::before,
+.sb-stone.sb-round.sb-artwork-mode .sb-button::after{
+ content:none!important;display:none!important;
+}
+.sb-artwork-mode .sb-button .sb-engraved-art{
+ display:block;position:absolute;inset:0;width:100%;height:100%;
+ object-fit:cover;pointer-events:none;border-radius:inherit;
+}
+.sb-artwork-mode .sb-button:focus-visible{
+ outline:.25cqw solid #e4c798!important;
+ outline-offset:.15cqw;
+}
+.sb-artwork-mode .sb-progress,.sb-artwork-mode .sb-reset{z-index:2}
+.sb-artwork-mode .sb-button:active,
+.sb-artwork-mode .sb-button.sb-held,
+.sb-artwork-mode .sb-button.sb-latched{filter:brightness(.78)}
+
+
+/* V9.2 — fitted stone buttons. The photographic bore is calculated from
+   this actual face geometry, leaving a narrow all-round recessed seam rather
+   than a broad annulus of empty socket. */
+.sb-stone.sb-artwork-mode .sb-button {
+  width:98%;
+}

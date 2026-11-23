@@ -1,0 +1,82 @@
+.sl-preview,.sl-stage{container-type:inline-size;--rock:url('../stone-dial/art/surround-limestone.jpg')}
+.sl-preview{display:block;width:100%;background:none;border:0;padding:0;cursor:zoom-in}
+.sl-stone{position:relative;isolation:isolate;display:grid;grid-template-columns:1.08fr 1fr;gap:1.4cqw;padding:4.4cqw 4.8cqw;min-height:46cqw;color:#251d14;text-shadow:0 .1cqw .06cqw #f0d9ae;font:1.7cqw/1.23 Georgia,serif;filter:drop-shadow(.2cqw .7cqw .45cqw #0e0b09b3)}
+.sl-stone:before{content:'';position:absolute;inset:0;z-index:-1;background:url('surround.png') center/100% 100% no-repeat}
+.sl-stone:after{content:'';position:absolute;inset:3.7cqw 4cqw;z-index:-2;background:#3c3025 var(--rock) center/cover;background-blend-mode:multiply}
+.sl-left,.sl-tablet{min-width:0;background:linear-gradient(120deg,#ffedd31c,#47342733),var(--rock) 83% 32%/cover;box-shadow:inset .2cqw .35cqw .3cqw #f1d8b6aa,inset -.2cqw -.3cqw .35cqw #382718,0 .3cqw .45cqw #130d08;padding:1.6cqw}
+.sl-grid{display:grid;grid-template-columns:minmax(0,.97fr) repeat(var(--cols),minmax(0,1fr));grid-template-rows:auto;gap:.66cqw;align-items:stretch}
+.sl-number,.sl-caption,.sl-category{display:grid;align-content:center;text-align:center;overflow-wrap:anywhere}
+.sl-category,.sl-caption{font-variant:small-caps}.sl-number{font-size:2.3cqw}
+.sl-tile{font:inherit;color:inherit;text-shadow:inherit;min-width:0;border:0;border-radius:.45cqw;display:grid;place-items:center;padding:.55cqw;overflow-wrap:anywhere;line-height:1.05;background:linear-gradient(140deg,#fff6ce36,#60493036),var(--rock) center/370%;box-shadow:inset .18cqw .24cqw .25cqw #fff1c5b3,inset -.24cqw -.35cqw .27cqw #463528,.12cqw .25cqw .08cqw .16cqw #392d21}
+.sl-tile[aria-pressed=true],.sl-help [aria-pressed=true]{outline:2px solid #ffe3a2;outline-offset:-2px;filter:brightness(1.18)}.sl-tile[data-marked=true]:after{content:'✓';color:#332519}
+.sl-icon{display:block;width:80%;aspect-ratio:1;background:#392d21;mask:no-repeat center/contain}
+.sl-tablet{display:flex;flex-direction:column;text-align:left;padding:1.8cqw 2.1cqw;background-position:13% 75%}
+.sl-title{font:small-caps 2.5cqw Georgia;margin:0 0 .6cqw;text-align:center}.sl-clues{margin:.4cqw 0; padding-left:2.5cqw;flex:1}.sl-clues li{margin:.65cqw 0;overflow-wrap:anywhere}
+.sl-dialog{width:min(1200px,100%);max-width:100%;max-height:100dvh;padding:14px;background:#151612;color:#e6dfce;border:0;overflow:auto;box-sizing:border-box}.sl-dialog::backdrop{background:#090b09ed}
+.sl-back{position:sticky;top:0;z-index:2;margin-bottom:10px}.sl-help{font:14px/1.4 system-ui;text-align:center;margin:10px}.sl-help button{margin-left:10px}
+@media(max-width:650px){.sl-stage .sl-stone{grid-template-columns:1fr;font-size:clamp(13px,3.65cqw,20px);gap:2cqw;padding:5cqw}.sl-stage .sl-left,.sl-stage .sl-tablet{padding:2.2cqw}.sl-stage .sl-tile{min-height:44px}.sl-stage .sl-number,.sl-stage .sl-title{font-size:5cqw}.sl-stage .sl-arrow{width:44px;height:38px;font-size:24px}.sl-stage .sl-clues{padding-left:5.5cqw}.sl-stage .sl-category,.sl-stage .sl-caption{font-size:3.25cqw}.sl-dialog{padding:8px}}
+
+.sl-left{display:flex;flex-direction:column;justify-content:center}
+.sl-grid{grid-auto-rows:minmax(4.8cqw,auto);gap:.48cqw}
+.sl-number{font-size:1.48cqw;font-weight:bold}.sl-tile,.sl-category,.sl-caption{font-size:1.42cqw}
+.sl-passage{font-size:1.39cqw;line-height:1.31;margin:.34em 0;overflow-wrap:anywhere}
+.sl-instruction{font:italic 1.4cqw/1.25 Georgia;margin:1.3cqw 0 0;text-align:center}
+.sl-preview .sl-stone{min-height:74cqw}
+.sl-preview .sl-passage{font-size:1.12cqw}
+.sl-mark[aria-pressed=true]{outline:2px solid #ffe3a2}
+@media(max-width:700px){
+.sl-stage .sl-stone{grid-template-columns:1fr;padding:5cqw;gap:2cqw}
+.sl-stage .sl-passage,.sl-stage .sl-instruction{font-size:15px}
+.sl-stage .sl-number,.sl-stage .sl-category,.sl-stage .sl-caption,.sl-stage .sl-tile{font-size:clamp(11px,3.1cqw,17px)}
+.sl-stage .sl-title{font-size:22px}.sl-stage .sl-tile{min-height:44px}
+}
+
+
+/* V3: recessed physical sockets and one permanently attached tablet rack.
+   Same photographic limestone material and surround artwork as V2. */
+.sl-stone{grid-template-columns:minmax(0,1.17fr) minmax(0,.93fr);min-height:83cqw;gap:1.4cqw}
+.sl-left{display:flex;flex-direction:column;justify-content:flex-start;gap:.65cqw;min-width:0}
+.sl-grid{grid-auto-rows:minmax(4.6cqw,auto);gap:.55cqw;align-items:stretch}
+.sl-socket{position:relative;min-width:0;min-height:4.35cqw;display:grid;place-items:stretch;border-radius:.38cqw;
+ background:linear-gradient(145deg,#100d09be,#3d3024b5 38%,#5946319c),var(--rock) 36% 63%/330%;
+ box-shadow:inset .25cqw .35cqw .35cqw #171007de,inset -.14cqw -.2cqw .27cqw #bca17e8f,0 .06cqw .12cqw #b4a17d9a;
+ outline:1px solid #24180f8f}
+.sl-socket-depth{position:absolute;inset:20%;border-radius:.15cqw;background:radial-gradient(ellipse,#a88b682b,transparent 78%);pointer-events:none}
+.sl-piece{display:grid;place-items:center;width:100%;height:100%;min-height:4.2cqw;
+ min-width:0;position:relative;z-index:1;border:0;border-radius:.37cqw;padding:.28cqw .22cqw;
+ color:#261a10;text-shadow:0 .06cqw .11cqw #f3e0ba,inset 0 0 1px transparent;
+ font:small-caps 1.15cqw/1.04 Georgia,serif;overflow-wrap:anywhere;
+ background:linear-gradient(145deg,#fff2d336,#b58c5933 32%,#4a352a44 85%),var(--rock) 25% 45%/320%;
+ box-shadow:inset .14cqw .18cqw .21cqw #f8ddb4a8,inset -.18cqw -.22cqw .23cqw #463224a8,.07cqw .24cqw .15cqw .08cqw #21170e9e}
+.sl-piece .sl-engraving{width:100%;text-align:center;overflow-wrap:anywhere;hyphens:auto}
+.sl-piece .sl-icon{width:70%;height:70%;min-height:2cqw;background:#392a1b;filter:drop-shadow(.05cqw .08cqw #cbb28a)}
+.sl-piece.sl-fixed{filter:saturate(.85);cursor:default;box-shadow:inset .13cqw .13cqw .22cqw #f4e0bf89,inset -.18cqw -.2cqw .23cqw #32241c9c,0 .07cqw .06cqw #261a14}
+.sl-socket.sl-locked{background:var(--rock) 50% 50%/350%;outline:1px solid #4736289e}
+.sl-piece.sl-movable{cursor:grab;touch-action:none;transition:filter .12s,box-shadow .12s}
+.sl-piece.sl-movable:hover,.sl-piece.sl-movable:focus-visible{filter:brightness(1.11);outline:2px solid #d1b887}
+.sl-piece.sl-movable[aria-pressed=true]{outline:2px solid #e8ca8e;filter:brightness(1.17);box-shadow:0 0 .5cqw #e5c98c77,inset .13cqw .18cqw .21cqw #f8ddb4a8,.07cqw .25cqw .15cqw #21170edb}
+.sl-socket.sl-available{outline:2px solid #c2a06a;filter:brightness(1.07)}
+.sl-socket.sl-noted:after{content:'×';position:absolute;right:.2cqw;bottom:0;color:#c3a06b;font:bold 2.5cqw Georgia;pointer-events:none}
+.sl-storage{margin-top:.85cqw;position:relative;border:solid .4cqw #655039;border-radius:1.05cqw;padding:.65cqw .7cqw .8cqw;
+ background:linear-gradient(170deg,#14100cd9,#443426df 48%,#654c34bc),var(--rock) center/350%;
+ box-shadow:inset 0 .36cqw .5cqw #120d08ed,inset 0 -.22cqw .25cqw #af8f6e77,0 .23cqw .22cqw #1b120c8a}
+.sl-storage{display:grid;grid-template-columns:repeat(auto-fill,minmax(5.6cqw,1fr));align-content:start;gap:.36cqw .25cqw;min-height:5cqw;padding:1.1cqw 1cqw 1.5cqw;border-bottom-width:.75cqw}
+.sl-storage .sl-piece{min-width:0;min-height:3.3cqw;padding:.18cqw;transform:rotate(var(--tilt));font-size:1.05cqw;box-shadow:.1cqw .26cqw .2cqw #130c08,inset .12cqw .13cqw .13cqw #edcfaa99,inset -.14cqw -.16cqw .14cqw #423021}
+.sl-lifted{opacity:.24}
+.sl-dragging{position:fixed!important;z-index:2147483647!important;pointer-events:none!important;transform:translate(-50%,-50%) scale(1.1);opacity:.95;filter:drop-shadow(0 10px 10px #0c0807)}
+.sl-complete .sl-stone{filter:drop-shadow(0 0 .9cqw #dab97899)}
+.sl-stage .sl-stone{min-height:0}
+.sl-preview .sl-stone{min-height:83cqw}
+.sl-preview .sl-storage{pointer-events:none}
+.sl-dialog .sl-back{min-height:44px;padding:9px 18px;border-radius:5px;color:#f1e1ba;background:#3e382f;border:1px solid #baa17d}
+.sl-dialog .sl-back:focus-visible{outline:3px solid #e8d4ac}
+@media(max-width:700px){
+ .sl-stage .sl-stone{grid-template-columns:1fr;gap:3cqw;min-height:0}
+ .sl-stage .sl-socket{min-height:7.6cqw}
+ .sl-stage .sl-piece{min-height:7.1cqw;font-size:clamp(10px,2.6cqw,16px)}
+ .sl-stage .sl-storage{grid-template-columns:repeat(auto-fill,minmax(14cqw,1fr));gap:1cqw .65cqw;padding:2cqw;min-height:12cqw}
+ .sl-stage .sl-storage .sl-piece{min-height:38px;font-size:clamp(10px,2.7cqw,15px)}
+ .sl-stage .sl-grid{grid-auto-rows:minmax(8cqw,auto)}
+ .sl-stage .sl-icon{min-height:4cqw}
+}
+
