@@ -30,11 +30,65 @@ async function scan(website){
  let robotStatus='Not checked',sitemapStatus='Not checked';
  try{const x=await f('/robots.txt');robotStatus='HTTP '+x.status;checks.push({label:'robots.txt accessible',ok:x.ok,detail:robotStatus})}catch(e){checks.push({label:'robots.txt accessible',ok:false,detail:e.message})}
  try{const x=await f('/sitemap.xml');sitemapStatus='HTTP '+x.status;checks.push({label:'sitemap.xml accessible',ok:x.ok,detail:sitemapStatus})}catch(e){checks.push({label:'sitemap.xml accessible',ok:false,detail:e.message})}
+ const pages=await scanMorePages(base,f,html,r);
+ notes.push('Automatic review covers the homepage plus up to three internal pages linked from it, not every page on the site.');
  notes.push('This is a homepage/technical spot-check, not a full site crawl or Google ranking audit.');
  notes.push('A missing standard /sitemap.xml path does not prove there is no sitemap; check robots.txt and Search Console.');
  notes.push('Passing these checks does not guarantee indexing or rankings.');
- return {website:base,checkedAt:now(),finalUrl:r.url,checks,title,description:desc,canonical,h1s,robots,xrobots,notes};
+ return {website:base,checkedAt:now(),finalUrl:r.url,checks,title,description:desc,canonical,h1s,robots,xrobots,pages,notes};
 }
+
+function siteLinks(html,base){
+ const urls=[],seen=new Set(['/']);
+ const priority=/\/(about|our-story|menu|food|drink|services|contact|events|what.s-on|rooms|venue|gallery|pricing|faq|location)/i;
+ const candidates=[];
+ for(const m of html.matchAll(/<a\b[^>]*\bhref\s*=\s*["']([^"'#]+)["']/gi)){
+  try{
+   const u=new URL(m[1],base);
+   if(u.origin!==base||!['http:','https:'].includes(u.protocol))continue;
+   const p=u.pathname.replace(/\/+/g,'/');
+   if(p==='/'||seen.has(p)||p.length>180||/\.(pdf|jpe?g|png|gif|svg|webp|js|css|xml|zip|json|ico|mp4|webm)$/i.test(p)||/(login|logout|admin|basket|checkout|account|privacy|terms|cookie|search)/i.test(p))continue;
+   seen.add(p);
+   candidates.push({path:p,priority:priority.test(p)?1:0});
+  }catch{}
+  if(candidates.length>=50)break;
+ }
+ candidates.sort((a,b)=>b.priority-a.priority);
+ for(const c of candidates.slice(0,3))urls.push(c.path);
+ return urls;
+}
+function pageSummary(html,r,path){
+ const title=take(html,/<title\b[^>]*>([\s\S]*?)<\/title>/i);
+ const desc=metaTag(html,'name','description');
+ const robots=metaTag(html,'name','robots');
+ const headings=[...html.matchAll(/<h1\b[^>]*>([\s\S]*?)<\/h1>/gi)].map(x=>x[1].replace(/<[^>]*>/g,'').replace(/\s+/g,' ').trim()).slice(0,5);
+ let canonical='';for(const m of html.matchAll(/<link\b[^>]*>/gi)){if(/\bcanonical\b/i.test(attr(m[0],'rel'))){canonical=attr(m[0],'href');break}}
+ const issues=[];
+ if(!r.ok)issues.push('Page returned HTTP '+r.status);
+ if(!title)issues.push('Missing page title');
+ if(!desc)issues.push('No meta description provided');
+ if(headings.length!==1)issues.push('Expected one main heading; found '+headings.length);
+ if(!canonical)issues.push('Canonical address not specified');
+ if(/noindex/i.test(robots+' '+(r.headers.get('x-robots-tag')||'')))issues.push('Page requests noindex; confirm whether this is intentional');
+ return {path,status:r.status,title,description:desc,heading:headings[0]||'',canonical,issues};
+}
+async function scanMorePages(base,f,homepage,r){
+ const pages=[pageSummary(homepage,r,'/')];
+ const selected=siteLinks(homepage,base);
+ for(const path of selected){
+  try{
+   const x=await f(path);
+   if(new URL(x.url).origin!==base){pages.push({path,status:x.status,title:'',description:'',heading:'',canonical:'',issues:['Redirects outside the website; review manually']});continue}
+   const contentType=x.headers.get('content-type')||'';
+   if(!/html/i.test(contentType)){pages.push({path,status:x.status,title:'',description:'',heading:'',canonical:'',issues:['Linked page did not return HTML']});continue}
+   pages.push(pageSummary((await x.text()).slice(0,220000),x,path));
+  }catch(e){pages.push({path,status:null,title:'',description:'',heading:'',canonical:'',issues:['Could not check this page: '+String(e.message).slice(0,90)]})}
+ }
+ const seen=new Map();
+ for(const page of pages){if(!page.title)continue;const k=page.title.toLowerCase().trim();if(seen.has(k)){page.issues.push('Same title as '+seen.get(k));pages.find(z=>z.path===seen.get(k))?.issues.push('Same title as '+page.path)}else seen.set(k,page.path)}
+ return pages;
+}
+
 async function body(request){const s=await request.text();if(s.length>20000)throw Error('Request too large');return JSON.parse(s||'{}')}
 async function client(env,id){return await env.DB.prepare('SELECT id,data,created_at,updated_at FROM clients WHERE id=?').bind(id).first()}
 const html=String.raw`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0c2b5e"><title>Chip In SEO Manager</title><link rel="stylesheet" href="/app.css?v=2"></head><body><div id="app"><main style="padding:3rem;font-family:sans-serif">Loading SEO Manager…</main></div><script src="/app.js?v=2" defer></script></body></html>`;
