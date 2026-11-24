@@ -40,7 +40,7 @@ export default {async fetch(req,env){
  const u=new URL(req.url);
  if(u.hostname!=='seo.chipinworks.co.uk')return new Response('Not found',{status:404});
  if(u.pathname==='/favicon.ico')return new Response(null,{status:204});
- if(u.pathname==='/'&&req.method==='GET')return new Response(html,{headers:{"Content-Type":"text/html; charset=utf-8","Content-Security-Policy":"default-src 'none'; script-src https://chipbutt.github.io; style-src https://chipbutt.github.io 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self'; font-src https://fonts.gstatic.com; base-uri 'none'; form-action 'self'; frame-ancestors 'none';","X-Content-Type-Options":"nosniff","Cache-Control":"no-store"}});
+ if(u.pathname==='/'&&req.method==='GET')return new Response(html,{headers:{"Content-Type":"text/html; charset=utf-8","Content-Security-Policy":"default-src 'none'; script-src https://chipbutt.github.io; style-src https://chipbutt.github.io https://fonts.googleapis.com 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self'; font-src https://fonts.gstatic.com; base-uri 'none'; form-action 'self'; frame-ancestors 'none';","X-Content-Type-Options":"nosniff","Cache-Control":"no-store"}});
  if(!u.pathname.startsWith('/api/'))return new Response('Not found',{status:404});
  if(req.method!=='GET'&&req.headers.get('Origin')!==u.origin)return reply({error:'Invalid request origin'},403);
  try{
