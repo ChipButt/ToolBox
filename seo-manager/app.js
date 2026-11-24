@@ -125,7 +125,21 @@ const a=x.dataset.action;
 if(a==='new'){page='new';render()}else if(['overview','checklist','metrics','report'].includes(a)){tab=a;render()}else if(a==='back'){detail=null;page='clients';await refresh();render()}
 else if(a==='tasks'){tab='checklist';render()}
 else if(a==='copy'){await navigator.clipboard.writeText(intakeText);alertMsg('Onboarding questionnaire copied.')}else if(a==='copy-work'){const prompt='Please help me carry out a proper SEO audit and improvement plan for '+detail.client.name+' ('+detail.client.website+'). I am a complete SEO beginner. Use my connected GitHub/Cloudflare if relevant, research the website and local competitors carefully, and give me ONE action at a time when my involvement is needed. Never invent Search Console figures, claim rankings without evidence, or change a customer website without clear approval.';await navigator.clipboard.writeText(prompt);alertMsg('A detailed ChatGPT instruction has been copied. Paste it into our conversation.')}else if(a==='copy-audit'){const audit=detail.audits[0];if(!audit)throw Error('Run a check first');const prompt='Review the limited Chip In SEO homepage spot-check for '+detail.client.name+' ('+detail.client.website+'). I have no SEO knowledge. These are the items to review: '+audit.checks.filter(x=>!x.ok).map(x=>x.label+': '+x.detail).join('; ')+'. Research before making claims. Explain exactly what to fix and implement safely where you have approved access; do not treat missing /sitemap.xml as proof there is no sitemap.';await navigator.clipboard.writeText(prompt);alertMsg('Audit findings copied as a request for ChatGPT. Paste them into our conversation.')}
-else if(a==='delete-client'){if(!window.confirm('Permanently delete '+detail.client.name+' and ALL SEO records? This cannot be undone.'))return;await api('/api/clients/'+detail.id,'DELETE');detail=null;await refresh();page='clients';alertMsg('Client and associated data permanently removed.')}else if(a==='print'){tab='report';render();window.print()}
+else if(a==='copy-task'){
+ const task=tasks.find(t=>t[0]===x.dataset.taskKey);
+ if(!task)throw Error('Could not identify the task');
+ const prompt='Help me with this SEO task for '+detail.client.name+' at '+detail.client.website+'. Task: '+task[1]+'. Description: '+(TASK_HELP[task[0]]||'Investigate and complete the task.')+'. I have no SEO experience. Research the website and facts, propose what to do, and use connected tools for permitted code changes. Where I must take action, give me one small exact step at a time. Do not claim completion unless verified.';
+ await navigator.clipboard.writeText(prompt);
+ alertMsg('Instructions copied. Paste them into our ChatGPT conversation.');
+}else if(a==='copy-audit'){
+ const audit=detail.audits[0];
+ if(!audit)throw Error('Run an automatic website check first.');
+ const flags=audit.checks.filter(z=>!z.ok);
+ const findings=flags.length?flags.map(z=>z.label+': '+z.detail).join('; '):'No issues flagged by the limited automated check.';
+ const prompt='Please investigate these SEO homepage spot-check results for '+detail.client.name+' at '+detail.client.website+': '+findings+'. I am an SEO beginner. Research carefully before making changes; distinguish potential issues from real errors. Do not assume a missing /sitemap.xml means no sitemap exists. Help fix verified problems using available tools with suitable approval and explain required manual steps one at a time.';
+ await navigator.clipboard.writeText(prompt);
+ alertMsg('Website findings copied. Paste into ChatGPT for analysis and help.');
+}else if(a==='delete-client'){if(!window.confirm('Permanently delete '+detail.client.name+' and ALL SEO records? This cannot be undone.'))return;await api('/api/clients/'+detail.id,'DELETE');detail=null;await refresh();page='clients';alertMsg('Client and associated data permanently removed.')}else if(a==='print'){tab='report';render();window.print()}
 else if(a==='audit'){if(busy)return;busy=true;render();try{await api('/api/clients/'+detail.id+'/audit','POST',{});await open(detail.id,'audit');alertMsg('Technical audit saved.')}finally{busy=false}}
 else if(a==='backup'){const data=await api('/api/export');const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),link=document.createElement('a');link.href=URL.createObjectURL(blob);link.download='chipin-seo-backup-'+today+'.json';link.click();setTimeout(()=>URL.revokeObjectURL(link.href),5000);alertMsg('Private JSON backup downloaded.')}
 }catch(e){busy=false;alertMsg(e.message,'error')}});
