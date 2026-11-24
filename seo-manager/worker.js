@@ -115,6 +115,10 @@ async function gscAccessToken(env){
   return j.access_token;
  }finally{clearTimeout(timeout)}
 }
+async function saveGscState(env,id,status,lastError='',property='',importedMonths=0){
+ await env.DB.prepare("INSERT INTO gsc_connections(client_id,last_attempt,status,last_error,property,imported_months) VALUES(?,?,?,?,?,?) ON CONFLICT(client_id) DO UPDATE SET last_attempt=excluded.last_attempt,status=excluded.status,last_error=excluded.last_error,property=CASE WHEN excluded.property='' THEN gsc_connections.property ELSE excluded.property END,imported_months=excluded.imported_months")
+ .bind(id,now(),status,lastError,property,importedMonths).run();
+}
 async function syncSearchConsole(env,clientId,website,months=1){
  const token=await gscAccessToken(env),auth={Authorization:'Bearer '+token};
  const host=new URL(safeUrl(website)).hostname;
@@ -174,8 +178,8 @@ export default {async fetch(req,env){
   if(!section&&req.method==='PUT'){const d=cleanData(await body(req));if(!d.name||!d.website)throw Error('Business name and website are required');safeUrl(d.website);await env.DB.prepare('UPDATE clients SET data=?,updated_at=? WHERE id=?').bind(JSON.stringify(d),now(),id).run();return reply({ok:true})}
   if(section==='tasks'&&req.method==='PUT'){const x=await body(req);if(!/^[a-z0-9-]{2,80}$/.test(x.key||'')||!['todo','doing','done','na'].includes(x.status))throw Error('Invalid task');await env.DB.prepare('INSERT INTO tasks(client_id,task_key,status,notes,updated_at) VALUES(?,?,?,?,?) ON CONFLICT(client_id,task_key) DO UPDATE SET status=excluded.status,notes=excluded.notes,updated_at=excluded.updated_at').bind(id,x.key,x.status,String(x.notes||'').slice(0,1500),now()).run();return reply({ok:true})}
   if(section==='metrics'&&req.method==='PUT'){const x=await body(req);if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(x.month||''))throw Error('Select a month');const vals=[num(x.clicks),num(x.impressions),num(x.position,100),num(x.gbp_website),num(x.gbp_calls),num(x.gbp_directions),num(x.enquiries)];if(vals.some((n,i)=>n!==null&&((i===2&&n>100)||n<0)))throw Error('Invalid metrics');await env.DB.prepare('INSERT INTO metrics(client_id,month,clicks,impressions,position,gbp_website,gbp_calls,gbp_directions,enquiries,notes,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(client_id,month) DO UPDATE SET clicks=excluded.clicks,impressions=excluded.impressions,position=excluded.position,gbp_website=excluded.gbp_website,gbp_calls=excluded.gbp_calls,gbp_directions=excluded.gbp_directions,enquiries=excluded.enquiries,notes=excluded.notes,updated_at=excluded.updated_at').bind(id,x.month,...vals,String(x.notes||'').slice(0,2000),now()).run();return reply({ok:true})}
-  if(section==='gsc'&&req.method==='GET'){let email='';if(env.GSC_SERVICE_ACCOUNT_JSON)try{email=JSON.parse(env.GSC_SERVICE_ACCOUNT_JSON).client_email||''}catch{}return reply({configured:!!env.GSC_SERVICE_ACCOUNT_JSON,serviceAccountEmail:email,source:'Google Search Console API',cost:'Free API, subject to quota',propertyAccess:'Not verified until a successful import'})}
-  if(section==='gsc'&&p[3]==='sync'&&req.method==='POST'){const d=JSON.parse(c.data),result=await syncSearchConsole(env,id,d.website,6);return reply({ok:true,result})}
+  if(section==='gsc'&&req.method==='GET'){let email='';if(env.GSC_SERVICE_ACCOUNT_JSON)try{email=JSON.parse(env.GSC_SERVICE_ACCOUNT_JSON).client_email||''}catch{}const state=await env.DB.prepare('SELECT last_attempt,status,last_error,property,imported_months FROM gsc_connections WHERE client_id=?').bind(id).first();return reply({configured:!!env.GSC_SERVICE_ACCOUNT_JSON,serviceAccountEmail:email,source:'Google Search Console API',cost:'Free API, subject to quota',connection:state||{status:'not_tested'}})}
+  if(section==='gsc'&&p[3]==='sync'&&req.method==='POST'){try{const d=JSON.parse(c.data),result=await syncSearchConsole(env,id,d.website,6);await saveGscState(env,id,'connected','',result.property,result.months.filter(x=>x.status==='imported').length);return reply({ok:true,result})}catch(e){const msg=String(e.message||e).slice(0,240);await saveGscState(env,id,'error',msg);return reply({error:msg},400)}}
   if(section==='audit'&&req.method==='POST'){const d=JSON.parse(c.data),r=await scan(d.website);r.trigger='on-demand';await env.DB.prepare('INSERT INTO audits(client_id,run_at,data) VALUES (?,?,?)').bind(id,now(),JSON.stringify(r)).run();return reply({audit:r})}
   return reply({error:'Method not allowed'},405);
  }catch(err){return reply({error:String(err.message||err).slice(0,300)},400)}
@@ -191,6 +195,11 @@ export default {async fetch(req,env){
    await env.DB.prepare('INSERT INTO audits(client_id,run_at,data) VALUES (?,?,?)').bind(c.id,now(),JSON.stringify(r)).run();
    await env.DB.prepare('DELETE FROM audits WHERE client_id = ? AND id NOT IN (SELECT id FROM audits WHERE client_id = ? ORDER BY id DESC LIMIT 12)').bind(c.id,c.id).run();
   }catch(e){console.error('SEO scheduled audit failed:',String(e.message||e).slice(0,180))}
-  if(env.GSC_SERVICE_ACCOUNT_JSON)try{await syncSearchConsole(env,c.id,JSON.parse(c.data).website,1)}catch(e){console.error('GSC scheduled sync failed:',String(e.message||e).slice(0,180))}
+  if(env.GSC_SERVICE_ACCOUNT_JSON){let target=c;
+  const queued=await env.DB.prepare("SELECT c.id,c.data FROM clients c JOIN gsc_connections g ON c.id=g.client_id WHERE g.status='queued' LIMIT 1").first();
+  if(queued)target=queued;
+  try{const results=await syncSearchConsole(env,target.id,JSON.parse(target.data).website,queued?6:1);await saveGscState(env,target.id,'connected','',results.property,results.months.filter(m=>m.status==='imported').length)}
+  catch(e){const msg=String(e.message||e).slice(0,240);await saveGscState(env,target.id,'error',msg);console.error('GSC scheduled sync failed:',msg)}
+ }
  })());
 }};
