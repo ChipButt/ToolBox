@@ -1,4 +1,4 @@
-# Chip In SEO Manager V2 — Guided setup
+# Chip In SEO Manager — automated foundation (V2.1)
 
 Private, owner-only SEO delivery system, linked from the Chip In ToolBox dashboard.
 
@@ -10,6 +10,24 @@ Private, owner-only SEO delivery system, linked from the Chip In ToolBox dashboa
 - Database: separate EU-region Cloudflare D1 `chipin-seo-manager`. Business records are not stored in this public GitHub repository.
 - The workers.dev and Worker preview URLs are disabled.
 
+
+
+## No paid SEO tool is required for the current foundation
+
+- The Cloudflare Worker performs **read-only public website checks** on the homepage and up to three internal linked pages. It records missing metadata, main headings, canonical addresses, noindex indicators, HTTP responses and repeated page titles as **review flags**, not definitive rankings issues.
+- A free Cloudflare Cron Trigger (`0 */6 * * *`, UTC) rotates through non-archived clients, scanning one client per run. The site check is independent of a user's browser; do not assume every client will be checked every day as the client list grows. Cloudflare Free CPU/request/D1 quotas apply.
+- Google Search Console has a **free API**. A read-only importer is implemented with Google service-account authorisation, but it is **not live until** the owner configures a Google Cloud service account, enables Search Console API, stores the credential securely as the Cloudflare Worker secret `GSC_SERVICE_ACCOUNT_JSON`, and gives the service account appropriate Search Console property access. Never put the private key in GitHub, client notes or ChatGPT.
+- When configured, the private `/api/clients/:id/gsc/sync` API can import the previous six completed calendar months of Search Console clicks, impressions and average position. Scheduled runs attempt the last completed month for the selected client. Missing data is not replaced with invented zeros.
+- The Google Business Profile Performance API requires a **separate Google approval**. That integration is not implemented, and the dashboard does not claim otherwise.
+- Customer-side authentication and verification, content accuracy, SEO judgement, changes to third-party client websites and genuine conversion tracking remain actions that require authorised access and review.
+- This does **not** provide automatically verified arbitrary competitor rankings or a paid SEO data provider's proprietary backlink and keyword database.
+- Reports automatically use imported figures when available, but must still be reviewed before sale to customers. A technical check is not proof of a ranking lift or a booking.
+
+### Operational safeguards and costs
+
+The current setup does not depend on OpenSEO or other subscriptions, but **zero cost at any scale cannot be guaranteed**: Cloudflare's free-tier limits and Google's quotas apply. Watch resource usage if clients increase. Cloudflare Access still protects the admin UI; the credentials remain a Cloudflare Worker secret if added.
+
+The dashboard's manual metric fields are a fallback, not the intended ongoing operating process.
 
 ## V2 beginner experience
 
