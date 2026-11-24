@@ -1,4 +1,4 @@
-# Chip In SEO Manager V1
+# Chip In SEO Manager V2 — Guided setup
 
 Private, owner-only SEO delivery system, linked from the Chip In ToolBox dashboard.
 
@@ -9,6 +9,22 @@ Private, owner-only SEO delivery system, linked from the Chip In ToolBox dashboa
 - Hosting: Cloudflare Worker `chipin-seo-manager` with Cloudflare Access protecting `seo.chipinworks.co.uk`.
 - Database: separate EU-region Cloudflare D1 `chipin-seo-manager`. Business records are not stored in this public GitHub repository.
 - The workers.dev and Worker preview URLs are disabled.
+
+
+## V2 beginner experience
+
+The home page is now a **Start Here** workflow. Opening a client displays one recommended action at a time, with clear explanations and a four-step overview. The original detailed dashboard remains available under `Detailed view`.
+
+- Start with **The Bulls Head** or **Chip In** practice client.
+- The first recommended action is **Run the website check**. This public-homepage read-only check does **not** modify the website.
+- Results explain each pass/review flag in plain English. A check is not a complete SEO audit or Google ranking report.
+- The Google figures screen explains where to find **real** Search Console and Business Profile data. Google APIs are **not** connected yet.
+- Checklist entries offer **What does this job mean?** plus a copyable, task-specific prompt to continue the real SEO work with ChatGPT.
+- The client report stays blank until actual figures are recorded, rather than making up statistics.
+
+### Important deployment detail
+
+The Cloudflare Worker now serves its own `/app.js` and `/app.css` from bundled source at the private hostname. This avoids relying on GitHub Pages build status or a cross-origin static asset server for the admin screen. The separate `app.js` and `app.css` are still the maintainable source files. **When editing them, rebundle their complete contents into the Worker source and redeploy the Worker as well**; merely updating the files on GitHub does not update the private application.
 
 ## What is working
 
