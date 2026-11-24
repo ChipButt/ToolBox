@@ -46,3 +46,23 @@
 .check-summary p{font-size:13px;line-height:1.5;margin:7px 0 12px}
 .check-summary .button{margin:3px 0}
 @media print{.check-summary .button{display:none!important}}
+
+/* One-time Google Search Console connection walkthrough */
+.google-connection{border-color:#c6d9ee}
+.google-connection>p{line-height:1.6}
+.google-connection-status{padding:13px 15px;background:#f5f8fd;border:1px solid #dae5f3;border-radius:10px;margin:18px 0 22px}
+.google-connection-status .hint{margin:8px 0 0}
+.google-step{border:1px solid #d5e0ec;border-radius:11px;background:#fff;margin:10px 0;overflow:hidden}
+.google-step[open]{border-color:#aabfd9;box-shadow:0 4px 18px #0c2f650d}
+.google-step summary{cursor:pointer;display:flex;align-items:center;gap:12px;padding:15px;font-size:14px;list-style:none}
+.google-step summary::-webkit-details-marker{display:none}
+.google-step summary:after{content:'+';margin-left:auto;color:#0b2c60;font-size:24px;line-height:1}
+.google-step[open] summary:after{content:'−'}
+.google-step-number{flex:0 0 30px;width:30px;height:30px;display:grid;place-items:center;background:#123c77;color:white;border-radius:50%;font-weight:800}
+.google-step-content{padding:2px 20px 16px 57px}
+.google-step-content p{line-height:1.65;margin:8px 0}
+.google-step-content code{display:inline-block;padding:2px 6px;background:#eaf0f8;border-radius:5px;overflow-wrap:anywhere;word-break:break-word;white-space:normal}
+.google-step-content .button{vertical-align:middle;margin:5px 0}
+.google-actions{display:flex;gap:9px;flex-wrap:wrap;margin:20px 0 15px}
+@media(max-width:680px){.google-step-content{padding:2px 14px 15px 14px}.google-step summary{padding:12px}.google-step .google-step-number{flex-basis:28px;width:28px;height:28px}.google-actions .button{width:100%}}
+@media print{.google-connection{display:none!important}}
