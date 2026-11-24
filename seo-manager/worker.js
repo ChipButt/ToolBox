@@ -35,7 +35,7 @@ async function scan(website){
 }
 async function body(request){const s=await request.text();if(s.length>20000)throw Error('Request too large');return JSON.parse(s||'{}')}
 async function client(env,id){return await env.DB.prepare('SELECT id,data,created_at,updated_at FROM clients WHERE id=?').bind(id).first()}
-const html=String.raw`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0c2b5e"><title>Chip In SEO Manager</title><link rel="stylesheet" href="https://chipbutt.github.io/ToolBox/seo-manager/app.css?v=1"></head><body><div id="app"><main style="padding:3rem;font-family:sans-serif">Loading SEO Manager…</main></div><script src="https://chipbutt.github.io/ToolBox/seo-manager/app.js?v=1" defer></script></body></html>`;
+const html=String.raw`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0c2b5e"><title>Chip In SEO Manager</title><link rel="stylesheet" href="https://chipbutt.github.io/ToolBox/seo-manager/app.css?v=2"></head><body><div id="app"><main style="padding:3rem;font-family:sans-serif">Loading SEO Manager…</main></div><script src="https://chipbutt.github.io/ToolBox/seo-manager/app.js?v=2" defer></script></body></html>`;
 export default {async fetch(req,env){
  const u=new URL(req.url);
  if(u.hostname!=='seo.chipinworks.co.uk')return new Response('Not found',{status:404});
