@@ -121,7 +121,20 @@ export default {async fetch(req,env){
   if(!section&&req.method==='PUT'){const d=cleanData(await body(req));if(!d.name||!d.website)throw Error('Business name and website are required');safeUrl(d.website);await env.DB.prepare('UPDATE clients SET data=?,updated_at=? WHERE id=?').bind(JSON.stringify(d),now(),id).run();return reply({ok:true})}
   if(section==='tasks'&&req.method==='PUT'){const x=await body(req);if(!/^[a-z0-9-]{2,80}$/.test(x.key||'')||!['todo','doing','done','na'].includes(x.status))throw Error('Invalid task');await env.DB.prepare('INSERT INTO tasks(client_id,task_key,status,notes,updated_at) VALUES(?,?,?,?,?) ON CONFLICT(client_id,task_key) DO UPDATE SET status=excluded.status,notes=excluded.notes,updated_at=excluded.updated_at').bind(id,x.key,x.status,String(x.notes||'').slice(0,1500),now()).run();return reply({ok:true})}
   if(section==='metrics'&&req.method==='PUT'){const x=await body(req);if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(x.month||''))throw Error('Select a month');const vals=[num(x.clicks),num(x.impressions),num(x.position,100),num(x.gbp_website),num(x.gbp_calls),num(x.gbp_directions),num(x.enquiries)];if(vals.some((n,i)=>n!==null&&((i===2&&n>100)||n<0)))throw Error('Invalid metrics');await env.DB.prepare('INSERT INTO metrics(client_id,month,clicks,impressions,position,gbp_website,gbp_calls,gbp_directions,enquiries,notes,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(client_id,month) DO UPDATE SET clicks=excluded.clicks,impressions=excluded.impressions,position=excluded.position,gbp_website=excluded.gbp_website,gbp_calls=excluded.gbp_calls,gbp_directions=excluded.gbp_directions,enquiries=excluded.enquiries,notes=excluded.notes,updated_at=excluded.updated_at').bind(id,x.month,...vals,String(x.notes||'').slice(0,2000),now()).run();return reply({ok:true})}
-  if(section==='audit'&&req.method==='POST'){const d=JSON.parse(c.data),r=await scan(d.website);await env.DB.prepare('INSERT INTO audits(client_id,run_at,data) VALUES (?,?,?)').bind(id,now(),JSON.stringify(r)).run();return reply({audit:r})}
+  if(section==='audit'&&req.method==='POST'){const d=JSON.parse(c.data),r=await scan(d.website);r.trigger='on-demand';await env.DB.prepare('INSERT INTO audits(client_id,run_at,data) VALUES (?,?,?)').bind(id,now(),JSON.stringify(r)).run();return reply({audit:r})}
   return reply({error:'Method not allowed'},405);
  }catch(err){return reply({error:String(err.message||err).slice(0,300)},400)}
+},async scheduled(event,env,ctx){
+ ctx.waitUntil((async()=>{
+  const active=await env.DB.prepare("SELECT COUNT(*) AS total FROM clients WHERE COALESCE(json_extract(data,'$.status'),'') <> 'archived'").first();
+  const total=active?.total||0;if(!total)return;
+  const slot=Math.floor(Date.now()/(6*60*60*1000))%total;
+  const c=await env.DB.prepare("SELECT id,data FROM clients WHERE COALESCE(json_extract(data,'$.status'),'') <> 'archived' ORDER BY id LIMIT 1 OFFSET ?").bind(slot).first();
+  if(!c)return;
+  try{
+   const r=await scan(JSON.parse(c.data).website);r.trigger='scheduled';
+   await env.DB.prepare('INSERT INTO audits(client_id,run_at,data) VALUES (?,?,?)').bind(c.id,now(),JSON.stringify(r)).run();
+   await env.DB.prepare('DELETE FROM audits WHERE client_id = ? AND id NOT IN (SELECT id FROM audits WHERE client_id = ? ORDER BY id DESC LIMIT 12)').bind(c.id,c.id).run();
+  }catch(e){console.error('SEO scheduled audit failed:',String(e.message||e).slice(0,180))}
+ })());
 }};
