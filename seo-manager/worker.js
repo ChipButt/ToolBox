@@ -190,7 +190,7 @@ export default {async fetch(req,env){
    const r=await scan(JSON.parse(c.data).website);r.trigger='scheduled';
    await env.DB.prepare('INSERT INTO audits(client_id,run_at,data) VALUES (?,?,?)').bind(c.id,now(),JSON.stringify(r)).run();
    await env.DB.prepare('DELETE FROM audits WHERE client_id = ? AND id NOT IN (SELECT id FROM audits WHERE client_id = ? ORDER BY id DESC LIMIT 12)').bind(c.id,c.id).run();
-   if(env.GSC_SERVICE_ACCOUNT_JSON)try{await syncSearchConsole(env,c.id,JSON.parse(c.data).website,1)}catch(e){console.error('GSC scheduled sync failed:',String(e.message||e).slice(0,180))}
   }catch(e){console.error('SEO scheduled audit failed:',String(e.message||e).slice(0,180))}
+  if(env.GSC_SERVICE_ACCOUNT_JSON)try{await syncSearchConsole(env,c.id,JSON.parse(c.data).website,1)}catch(e){console.error('GSC scheduled sync failed:',String(e.message||e).slice(0,180))}
  })());
 }};
