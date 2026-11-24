@@ -40,3 +40,9 @@
 .beginner-hero,.next-action,.guide-step,.task-explain,.audit-help{display:none!important}
 .guide-steps{border:0;background:transparent}
 }
+
+.check-summary{border:1px solid #b9d9c6;background:#edf8f0;padding:17px 19px;border-radius:12px;margin:16px 0 20px}
+.check-summary strong{color:#155b3c;font-size:15px}
+.check-summary p{font-size:13px;line-height:1.5;margin:7px 0 12px}
+.check-summary .button{margin:3px 0}
+@media print{.check-summary .button{display:none!important}}
