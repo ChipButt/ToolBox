@@ -89,6 +89,59 @@ async function scanMorePages(base,f,homepage,r){
  return pages;
 }
 
+
+function b64url(input){
+ const bytes=input instanceof Uint8Array?input:new TextEncoder().encode(input);
+ let binary='';for(const b of bytes)binary+=String.fromCharCode(b);
+ return btoa(binary).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
+}
+async function gscAccessToken(env){
+ if(!env.GSC_SERVICE_ACCOUNT_JSON)throw Error('Google Search Console is not configured yet. One-time Google Cloud service account setup is required.');
+ let c;try{c=JSON.parse(env.GSC_SERVICE_ACCOUNT_JSON)}catch{throw Error('Google service account configuration is invalid')}
+ if(!c.client_email||!c.private_key)throw Error('Google service account is missing its email or private key');
+ const pem=c.private_key.replace(/-----BEGIN PRIVATE KEY-----|-----END PRIVATE KEY-----|\s/g,'');
+ const bits=Uint8Array.from(atob(pem),v=>v.charCodeAt(0));
+ const key=await crypto.subtle.importKey('pkcs8',bits,{name:'RSASSA-PKCS1-v1_5',hash:'SHA-256'},false,['sign']);
+ const t=Math.floor(Date.now()/1000);
+ const header=b64url(JSON.stringify({alg:'RS256',typ:'JWT'}));
+ const payload=b64url(JSON.stringify({iss:c.client_email,scope:'https://www.googleapis.com/auth/webmasters.readonly',aud:'https://oauth2.googleapis.com/token',iat:t,exp:t+3300}));
+ const unsigned=header+'.'+payload;
+ const sig=await crypto.subtle.sign('RSASSA-PKCS1-v1_5',key,new TextEncoder().encode(unsigned));
+ const assertion=unsigned+'.'+b64url(new Uint8Array(sig));
+ const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),10000);
+ try{
+  const r=await fetch('https://oauth2.googleapis.com/token',{method:'POST',signal:controller.signal,headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({grant_type:'urn:ietf:params:oauth:grant-type:jwt-bearer',assertion}).toString()});
+  const j=await r.json();if(!r.ok||!j.access_token)throw Error('Google service account token request failed: '+String(j.error||r.status));
+  return j.access_token;
+ }finally{clearTimeout(timeout)}
+}
+async function syncSearchConsole(env,clientId,website,months=1){
+ const token=await gscAccessToken(env),auth={Authorization:'Bearer '+token};
+ const host=new URL(safeUrl(website)).hostname;
+ const sitesResponse=await fetch('https://www.googleapis.com/webmasters/v3/sites',{headers:auth});
+ if(!sitesResponse.ok)throw Error('Could not read Search Console properties (HTTP '+sitesResponse.status+')');
+ const available=(await sitesResponse.json()).siteEntry||[];
+ const wanted=['https://'+host+'/', 'http://'+host+'/', 'sc-domain:'+host.replace(/^www\./,'')];
+ const property=wanted.find(q=>available.some(a=>a.siteUrl===q));
+ if(!property)throw Error('No permitted Search Console property found for '+host+'. The website owner must grant access to the service account.');
+ const nowDate=new Date(),finished=[],limit=Math.min(Math.max(1,months),6);
+ for(let offset=limit;offset>=1;offset--){
+  const start=new Date(Date.UTC(nowDate.getUTCFullYear(),nowDate.getUTCMonth()-offset,1));
+  const end=new Date(Date.UTC(nowDate.getUTCFullYear(),nowDate.getUTCMonth()-offset+1,0));
+  const ymd=d=>d.toISOString().slice(0,10),month=ymd(start).slice(0,7);
+  const endpoint='https://www.googleapis.com/webmasters/v3/sites/'+encodeURIComponent(property)+'/searchAnalytics/query';
+  const response=await fetch(endpoint,{method:'POST',headers:{...auth,'Content-Type':'application/json'},body:JSON.stringify({startDate:ymd(start),endDate:ymd(end),rowLimit:1})});
+  if(!response.ok)throw Error('Search Console query failed for '+month+' (HTTP '+response.status+')');
+  const payload=await response.json(),row=payload.rows?.[0];
+  if(!row){finished.push({month,status:'no-data'});continue}
+  const note='Search clicks, impressions and position imported from Google Search Console API on '+now().slice(0,10)+'; property '+property;
+  await env.DB.prepare('INSERT INTO metrics(client_id,month,clicks,impressions,position,notes,updated_at) VALUES(?,?,?,?,?,?,?) ON CONFLICT(client_id,month) DO UPDATE SET clicks=excluded.clicks,impressions=excluded.impressions,position=excluded.position,updated_at=excluded.updated_at,notes=CASE WHEN instr(metrics.notes,\'Google Search Console API\')>0 THEN excluded.notes WHEN metrics.notes=\'\' THEN excluded.notes ELSE metrics.notes || \' | \' || excluded.notes END')
+   .bind(clientId,month,Math.round(row.clicks||0),Math.round(row.impressions||0),Number(row.position||0),note,now()).run();
+  finished.push({month,status:'imported'});
+ }
+ return {property,months:finished};
+}
+
 async function body(request){const s=await request.text();if(s.length>20000)throw Error('Request too large');return JSON.parse(s||'{}')}
 async function client(env,id){return await env.DB.prepare('SELECT id,data,created_at,updated_at FROM clients WHERE id=?').bind(id).first()}
 const html=String.raw`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0c2b5e"><title>Chip In SEO Manager</title><link rel="stylesheet" href="/app.css?v=2"></head><body><div id="app"><main style="padding:3rem;font-family:sans-serif">Loading SEO Manager…</main></div><script src="/app.js?v=2" defer></script></body></html>`;
@@ -107,7 +160,7 @@ export default {async fetch(req,env){
   if(u.pathname==='/api/clients'&&req.method==='GET'){let x=await env.DB.prepare('SELECT id,data,created_at,updated_at FROM clients ORDER BY updated_at DESC LIMIT 300').all();return reply({clients:x.results.map(r=>({id:r.id,...JSON.parse(r.data),createdAt:r.created_at,updatedAt:r.updated_at}))})}
   if(u.pathname==='/api/clients'&&req.method==='POST'){const d=cleanData(await body(req));if(!d.name||!d.website)throw Error('Business name and website are required');safeUrl(d.website);let id=crypto.randomUUID(),time=now();await env.DB.prepare('INSERT INTO clients (id,created_at,updated_at,data) VALUES (?,?,?,?)').bind(id,time,time,JSON.stringify(d)).run();return reply({id,client:d},201)}
   if(u.pathname==='/api/export'&&req.method==='GET'){const [c,t,m,a]=await Promise.all(['clients','tasks','metrics','audits'].map(table=>env.DB.prepare('SELECT * FROM '+table).all()));return reply({format:'chipin-seo-backup',version:1,exportedAt:now(),clients:c.results,tasks:t.results,metrics:m.results,audits:a.results})}
-  const p=u.pathname.match(/^\/api\/clients\/([a-f0-9-]{36})(?:\/(tasks|metrics|audit))?$/);if(!p)return reply({error:'Not found'},404);
+  const p=u.pathname.match(/^\/api\/clients\/([a-f0-9-]{36})(?:\/(tasks|metrics|audit|gsc)(?:\/(sync))?)?$/);if(!p)return reply({error:'Not found'},404);
   const id=p[1],section=p[2]||'',c=await client(env,id);if(!c)return reply({error:'Client not found'},404);
   if(!section&&req.method==='GET'){
     const [tasks,metrics,audits]=await Promise.all([
@@ -121,6 +174,8 @@ export default {async fetch(req,env){
   if(!section&&req.method==='PUT'){const d=cleanData(await body(req));if(!d.name||!d.website)throw Error('Business name and website are required');safeUrl(d.website);await env.DB.prepare('UPDATE clients SET data=?,updated_at=? WHERE id=?').bind(JSON.stringify(d),now(),id).run();return reply({ok:true})}
   if(section==='tasks'&&req.method==='PUT'){const x=await body(req);if(!/^[a-z0-9-]{2,80}$/.test(x.key||'')||!['todo','doing','done','na'].includes(x.status))throw Error('Invalid task');await env.DB.prepare('INSERT INTO tasks(client_id,task_key,status,notes,updated_at) VALUES(?,?,?,?,?) ON CONFLICT(client_id,task_key) DO UPDATE SET status=excluded.status,notes=excluded.notes,updated_at=excluded.updated_at').bind(id,x.key,x.status,String(x.notes||'').slice(0,1500),now()).run();return reply({ok:true})}
   if(section==='metrics'&&req.method==='PUT'){const x=await body(req);if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(x.month||''))throw Error('Select a month');const vals=[num(x.clicks),num(x.impressions),num(x.position,100),num(x.gbp_website),num(x.gbp_calls),num(x.gbp_directions),num(x.enquiries)];if(vals.some((n,i)=>n!==null&&((i===2&&n>100)||n<0)))throw Error('Invalid metrics');await env.DB.prepare('INSERT INTO metrics(client_id,month,clicks,impressions,position,gbp_website,gbp_calls,gbp_directions,enquiries,notes,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(client_id,month) DO UPDATE SET clicks=excluded.clicks,impressions=excluded.impressions,position=excluded.position,gbp_website=excluded.gbp_website,gbp_calls=excluded.gbp_calls,gbp_directions=excluded.gbp_directions,enquiries=excluded.enquiries,notes=excluded.notes,updated_at=excluded.updated_at').bind(id,x.month,...vals,String(x.notes||'').slice(0,2000),now()).run();return reply({ok:true})}
+  if(section==='gsc'&&req.method==='GET')return reply({configured:!!env.GSC_SERVICE_ACCOUNT_JSON,source:'Google Search Console API',cost:'Free API, subject to quota',propertyAccess:'Website owner must authorise the service account once'});
+  if(section==='gsc'&&p[3]==='sync'&&req.method==='POST'){const d=JSON.parse(c.data),result=await syncSearchConsole(env,id,d.website,6);return reply({ok:true,result})}
   if(section==='audit'&&req.method==='POST'){const d=JSON.parse(c.data),r=await scan(d.website);r.trigger='on-demand';await env.DB.prepare('INSERT INTO audits(client_id,run_at,data) VALUES (?,?,?)').bind(id,now(),JSON.stringify(r)).run();return reply({audit:r})}
   return reply({error:'Method not allowed'},405);
  }catch(err){return reply({error:String(err.message||err).slice(0,300)},400)}
@@ -135,6 +190,7 @@ export default {async fetch(req,env){
    const r=await scan(JSON.parse(c.data).website);r.trigger='scheduled';
    await env.DB.prepare('INSERT INTO audits(client_id,run_at,data) VALUES (?,?,?)').bind(c.id,now(),JSON.stringify(r)).run();
    await env.DB.prepare('DELETE FROM audits WHERE client_id = ? AND id NOT IN (SELECT id FROM audits WHERE client_id = ? ORDER BY id DESC LIMIT 12)').bind(c.id,c.id).run();
+   if(env.GSC_SERVICE_ACCOUNT_JSON)try{await syncSearchConsole(env,c.id,JSON.parse(c.data).website,1)}catch(e){console.error('GSC scheduled sync failed:',String(e.message||e).slice(0,180))}
   }catch(e){console.error('SEO scheduled audit failed:',String(e.message||e).slice(0,180))}
  })());
 }};
