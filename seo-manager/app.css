@@ -134,3 +134,20 @@
 .intake-email-actions .button{min-height:42px;white-space:normal;max-width:100%}
 .intake-admin .card h3{margin-top:19px}
 @media(max-width:680px){.intake-email-actions{flex-direction:column}.intake-email-actions .button{width:100%}}
+
+/* SEO Manager V4.5 — one-time owner Gmail authorisation */
+.gmail-setup{border:1px solid #d9e3ef;background:#f9fbfe;border-radius:12px;padding:20px;margin:15px 0}
+.gmail-setup h3{margin:0 0 10px}
+.gmail-setup p{max-width:760px}
+.gmail-steps{padding-left:24px;margin:14px 0;color:#394f6c;line-height:1.6}
+.gmail-steps li{margin:0 0 13px}
+.gmail-steps a{color:#165b9c;text-decoration:underline;text-underline-offset:2px}
+.gmail-uri{margin:8px 0;padding:10px;border:1px solid #d4e0ee;border-radius:8px;background:#f2f6fb;overflow-wrap:anywhere}
+.gmail-uri code{font-size:12px;white-space:normal;overflow-wrap:anywhere}
+.gmail-setup-form{display:grid;gap:13px;margin-top:20px}
+.gmail-setup-form .field{display:flex;flex-direction:column;gap:5px}
+.gmail-setup-form .field label{font-weight:750;font-size:13px}
+.gmail-setup-form .field input{border:1px solid #bfcede;border-radius:8px;min-height:42px;padding:11px 12px;font-size:14px;max-width:100%;background:#fff}
+.gmail-setup-form .field input:focus-visible{outline:2px solid #6295cb}
+.gmail-setup-form .button{justify-self:start;min-height:44px}
+@media(max-width:680px){.gmail-setup{padding:16px}.gmail-setup-form .button{width:100%}}
