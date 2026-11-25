@@ -128,3 +128,9 @@
 .intake-responses p{font-size:14px;line-height:1.6;margin:5px 0 0;white-space:pre-wrap}
 @media(max-width:720px){.intake-responses{grid-template-columns:1fr}}
 @media print{.intake-admin .button,.intake-link{display:none!important}}
+
+/* V4.1 — customer onboarding email actions */
+.intake-email-actions{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0}
+.intake-email-actions .button{min-height:42px;white-space:normal;max-width:100%}
+.intake-admin .card h3{margin-top:19px}
+@media(max-width:680px){.intake-email-actions{flex-direction:column}.intake-email-actions .button{width:100%}}
