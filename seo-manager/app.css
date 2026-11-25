@@ -97,3 +97,19 @@
 @media(max-width:1150px){.result-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:680px){.result-grid{grid-template-columns:1fr}.result-kpi{padding:15px}.evidence-entry{display:block}.evidence-entry a{display:inline-block;margin-top:9px}.search-term-table th,.search-term-table td{font-size:10px;padding:8px 5px}}
 @media print{.results-hero,.results-main{background:#fff}.result-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.result-kpi{padding:12px}.result-number{font-size:24px}.results-report .card{break-inside:avoid}.evidence-entry{break-inside:avoid}.evidence-entry a{white-space:normal}}
+
+/* Clear customer-focused verdict and metric definitions (V3.1) */
+.seo-verdict{border:1px solid #c8d7e8;background:#fff;break-inside:avoid}
+.seo-verdict h2{font-size:clamp(23px,2.6vw,30px);margin:7px 0 12px;color:#143766}
+.seo-verdict>p{font-size:14px;line-height:1.65;max-width:880px}
+.verdict-row{display:grid;grid-template-columns:minmax(150px,260px) 1fr;gap:16px;border-top:1px solid #e0e8f0;padding:15px 0;align-items:start}
+.verdict-row strong{font-size:13px;color:#15345a}
+.verdict-row span{font-size:14px;line-height:1.55;color:#3b5169}
+.verdict-context{padding:14px 16px;border-left:4px solid #a7bcd2;background:#f3f6fa;color:#244664;font-size:14px}
+.figures-explained{break-inside:avoid}
+.figures-explained>p{color:#53667a}
+.figure-definition{padding:13px 0;border-top:1px solid #e1e8f0;display:grid;grid-template-columns:minmax(160px,240px) minmax(0,1fr);gap:16px;align-items:start}
+.figure-definition strong{color:#143b6b}
+.figure-definition p{margin:0;color:#465c72;font-size:13px;line-height:1.6}
+@media(max-width:700px){.verdict-row,.figure-definition{grid-template-columns:1fr;gap:5px}.verdict-row{padding:13px 0}.figure-definition{padding:12px 0}}
+@media print{.seo-verdict,.figures-explained{break-inside:avoid}.verdict-row{grid-template-columns:170px 1fr}.figure-definition{grid-template-columns:150px 1fr}}
