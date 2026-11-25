@@ -239,41 +239,64 @@ async function client(env,id){return await env.DB.prepare('SELECT id,data,create
 
 const GMAIL_REDIRECT='https://seo.chipinworks.co.uk/api/gmail/callback';
 const GMAIL_ADDRESS='jamesbutt.chipin@gmail.com';
-function gmailReady(env){return !!(env.GMAIL_OAUTH_CLIENT_ID&&env.GMAIL_OAUTH_CLIENT_SECRET&&env.SEO_GMAIL_TOKEN_KEY)}
+async function gmailConfig(env){
+ if(!env.SEO_GMAIL_TOKEN_KEY)return null;
+ if(env.GMAIL_OAUTH_CLIENT_ID&&env.GMAIL_OAUTH_CLIENT_SECRET){
+  return {clientId:String(env.GMAIL_OAUTH_CLIENT_ID),clientSecret:String(env.GMAIL_OAUTH_CLIENT_SECRET)};
+ }
+ const row=await env.DB.prepare("SELECT client_id,encrypted_client_secret FROM seo_gmail_app_config WHERE account_key='owner'").first();
+ if(!row?.client_id||!row.encrypted_client_secret)return null;
+ const clientSecret=await gmailDecrypt(env,row.encrypted_client_secret);
+ return {clientId:row.client_id,clientSecret};
+}
+async function saveGmailClient(env,input){
+ if(!env.SEO_GMAIL_TOKEN_KEY)throw Error('Encrypted Gmail connection storage is unavailable');
+ const clientId=String(input?.client_id||'').trim(),clientSecret=String(input?.client_secret||'').trim();
+ if(!/^[0-9]+-[a-z0-9_-]{10,}\.apps\.googleusercontent\.com$/.test(clientId))throw Error('Enter the Web application Client ID from Google Cloud (ending in .apps.googleusercontent.com)');
+ if(!/^[A-Za-z0-9_\-]{15,200}$/.test(clientSecret))throw Error('Enter the Client secret from Google Cloud');
+ const encrypted=await gmailEncrypt(env,clientSecret);
+ await env.DB.prepare("INSERT INTO seo_gmail_app_config(account_key,client_id,encrypted_client_secret,created_at,updated_at) VALUES('owner',?,?,?,?) ON CONFLICT(account_key) DO UPDATE SET client_id=excluded.client_id,encrypted_client_secret=excluded.encrypted_client_secret,updated_at=excluded.updated_at")
+   .bind(clientId,encrypted,now(),now()).run();
+ return {ok:true,configured:true,message:'Google app details securely saved. Next, choose Sign in with Google.'};
+}
+
 function b64u(bytes){let v='';for(const b of bytes)v+=String.fromCharCode(b);return btoa(v).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
 async function hashForGoogle(input){const h=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(input));return bytesHex(new Uint8Array(h))}
 async function gmailEncrypt(env,str){const iv=crypto.getRandomValues(new Uint8Array(12));const data=await crypto.subtle.encrypt({name:'AES-GCM',iv},env.SEO_GMAIL_TOKEN_KEY,new TextEncoder().encode(str));return bytesHex(iv)+':'+bytesHex(new Uint8Array(data))}
 async function gmailDecrypt(env,secret){const parts=String(secret||'').split(':');if(parts.length!==2)throw Error('Stored Gmail authorisation is invalid');const plain=await crypto.subtle.decrypt({name:'AES-GCM',iv:hexBytes(parts[0])},env.SEO_GMAIL_TOKEN_KEY,hexBytes(parts[1]));return new TextDecoder().decode(plain)}
 async function gmailAccessToken(env){
- if(!gmailReady(env))throw Error('Gmail integration is not configured yet');
+ const config=await gmailConfig(env);
+ if(!config)throw Error('Gmail integration is not configured yet');
  const old=await env.DB.prepare("SELECT encrypted_refresh_token FROM seo_gmail_connections WHERE account_key='owner'").first();
  if(!old?.encrypted_refresh_token)throw Error('Connect Chip In Gmail before creating formatted drafts');
  const refresh=await gmailDecrypt(env,old.encrypted_refresh_token);
- const p=new URLSearchParams({client_id:env.GMAIL_OAUTH_CLIENT_ID,client_secret:env.GMAIL_OAUTH_CLIENT_SECRET,refresh_token:refresh,grant_type:'refresh_token'});
+ const p=new URLSearchParams({client_id:config.clientId,client_secret:config.clientSecret,refresh_token:refresh,grant_type:'refresh_token'});
  const res=await fetch('https://oauth2.googleapis.com/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:p.toString()});
  const x=await res.json();if(!res.ok||!x.access_token)throw Error('Gmail connection needs to be authorised again: '+String(x.error||res.status));
  return x.access_token;
 }
 function gmailResponse(msg,status=200){return reply({error:msg},status)}
 async function beginGmailAuth(env){
- if(!gmailReady(env))return gmailResponse('Gmail requires a one-time Google OAuth app connection. The Google client ID and secret have not been configured for SEO Manager.',409);
+ const config=await gmailConfig(env);
+ if(!config)return gmailResponse('Gmail authorisation is not configured. Complete the one-time Google app setup in SEO Manager first.',409);
  const state=bytesHex(crypto.getRandomValues(new Uint8Array(32))),hash=await hashForGoogle(state);
  const exp=new Date(Date.now()+10*60000).toISOString();
  await env.DB.prepare('INSERT INTO seo_gmail_oauth_states(state_hash,created_at,expires_at) VALUES(?,?,?)').bind(hash,now(),exp).run();
- const p=new URLSearchParams({client_id:env.GMAIL_OAUTH_CLIENT_ID,redirect_uri:GMAIL_REDIRECT,response_type:'code',scope:'openid email https://www.googleapis.com/auth/gmail.compose',access_type:'offline',prompt:'consent',state,login_hint:GMAIL_ADDRESS});
+ const p=new URLSearchParams({client_id:config.clientId,redirect_uri:GMAIL_REDIRECT,response_type:'code',scope:'openid email https://www.googleapis.com/auth/gmail.compose',access_type:'offline',prompt:'consent',state,login_hint:GMAIL_ADDRESS});
  return reply({authorization_url:'https://accounts.google.com/o/oauth2/v2/auth?'+p.toString()});
 }
 async function finishGmailAuth(req,env,u){
  const safePage=(title,detail)=>new Response('<!doctype html><html lang="en-GB"><head><meta charset="utf-8"><meta name="robots" content="noindex"><title>'+escGmail(title)+'</title></head><body style="font:16px/1.6 system-ui;max-width:600px;margin:50px auto;padding:20px"><h1>'+escGmail(title)+'</h1><p>'+escGmail(detail)+'</p><p><a href="https://seo.chipinworks.co.uk/">Return to SEO Manager</a></p></body></html>',{headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'"}});
  try{
-  if(!gmailReady(env))return safePage('Gmail connection unavailable','Google authorisation has not yet been configured for this site.');
+  const config=await gmailConfig(env);
+  if(!config)return safePage('Gmail connection unavailable','Google authorisation has not yet been configured for this site.');
   const code=u.searchParams.get('code'),state=u.searchParams.get('state');
   if(!code||!state||!(/^[a-f0-9]{64}$/.test(state)))return safePage('Gmail connection cancelled','No valid authorisation was returned from Google.');
   const hash=await hashForGoogle(state);
   const used=await env.DB.prepare('SELECT state_hash,expires_at FROM seo_gmail_oauth_states WHERE state_hash=?').bind(hash).first();
   if(!used||Date.parse(used.expires_at)<Date.now())return safePage('Gmail invitation expired','Try connecting Gmail again from SEO Manager.');
   await env.DB.prepare('DELETE FROM seo_gmail_oauth_states WHERE state_hash=?').bind(hash).run();
-  const payload=new URLSearchParams({client_id:env.GMAIL_OAUTH_CLIENT_ID,client_secret:env.GMAIL_OAUTH_CLIENT_SECRET,code,redirect_uri:GMAIL_REDIRECT,grant_type:'authorization_code'});
+  const payload=new URLSearchParams({client_id:config.clientId,client_secret:config.clientSecret,code,redirect_uri:GMAIL_REDIRECT,grant_type:'authorization_code'});
   const res=await fetch('https://oauth2.googleapis.com/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:payload.toString()});
   const result=await res.json();if(!res.ok||!result.access_token||!result.refresh_token)return safePage('Gmail connection failed','Google did not return the authorisation needed for ongoing draft creation.');
   const who=await fetch('https://openidconnect.googleapis.com/v1/userinfo',{headers:{Authorization:'Bearer '+result.access_token}});
@@ -299,7 +322,7 @@ function gmailDraftText(firstName,company,link){
  return {plain,html};
 }
 async function createGmailDraft(env,x){
- if(!gmailReady(env))return gmailResponse('Gmail needs a one-time connection before formatted drafts can be created.',409);
+ if(!(await gmailConfig(env)))return gmailResponse('Gmail needs one-time Google setup before formatted drafts can be created.',409);
  const cid=String(x?.clientId||'');
  if(!idOK(cid))return gmailResponse('Select a valid SEO client',400);
  const record=await client(env,cid);if(!record)return gmailResponse('Client not found',404);
@@ -343,10 +366,11 @@ export default {async fetch(req,env){
  try{
   
   if(u.pathname==='/api/gmail/status'&&req.method==='GET'){
-    const configured=gmailReady(env);
+    const configured=!!(await gmailConfig(env));
     const row=await env.DB.prepare("SELECT connected_email,connected_at FROM seo_gmail_connections WHERE account_key='owner'").first();
     return reply({configured,connected:!!(configured&&row),connectedEmail:row?.connected_email||null});
   }
+  if(u.pathname==='/api/gmail/setup'&&req.method==='POST'){try{return reply(await saveGmailClient(env,await body(req)))}catch(err){return gmailResponse(String(err?.message||err),400)}}
   if(u.pathname==='/api/gmail/connect'&&req.method==='POST')return beginGmailAuth(env);
   if(u.pathname==='/api/gmail/draft'&&req.method==='POST')return createGmailDraft(env,await body(req));
   if(u.pathname==='/api/health'&&req.method==='GET'){await env.DB.prepare('SELECT 1 AS ok').first();return reply({ok:true,version:'1.0.0'})}
