@@ -308,6 +308,7 @@ async function finishGmailAuth(req,env,u){
  }catch(e){console.error('SEO Gmail authorisation failed',String(e?.message||e).slice(0,120));return safePage('Gmail connection failed','Please return to SEO Manager and try again. No emails were sent.')}
 }
 function escGmail(x){return String(x||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function gmailBase64Mime(str){const b=btoa(String.fromCharCode(...new TextEncoder().encode(str)));return (b.match(/.{1,76}/g)||[]).join('\r\n')}
 function gmailDraftText(firstName,company,link){
  const greeting='Hello '+firstName+',';
  const intro='Thank you for choosing Chip In to help more customers find '+company+' online.';
@@ -341,8 +342,8 @@ async function createGmailDraft(env,x){
  const letter=gmailDraftText(firstName,String(c.name||'your business'),link);
  const marker='chipin'+bytesHex(crypto.getRandomValues(new Uint8Array(9)));
  const raw='To: '+to+'\r\nSubject: '+subject+'\r\nMIME-Version: 1.0\r\nContent-Type: multipart/alternative; boundary="'+marker+'"\r\n\r\n'+
- '--'+marker+'\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n'+btoa(String.fromCharCode(...new TextEncoder().encode(letter.plain)))+'\r\n'+
- '--'+marker+'\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n'+btoa(String.fromCharCode(...new TextEncoder().encode(letter.html)))+'\r\n--'+marker+'--';
+ '--'+marker+'\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n'+gmailBase64Mime(letter.plain)+'\r\n'+
+ '--'+marker+'\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n'+gmailBase64Mime(letter.html)+'\r\n--'+marker+'--';
  const gmailToken=await gmailAccessToken(env);
  const replyRes=await fetch('https://gmail.googleapis.com/gmail/v1/users/me/drafts',{method:'POST',headers:{Authorization:'Bearer '+gmailToken,'Content-Type':'application/json'},body:JSON.stringify({message:{raw:b64u(new TextEncoder().encode(raw))}})});
  const out=await replyRes.json();
