@@ -242,6 +242,36 @@ function report(){const m=detail.metrics,first=m[0],last=m.at(-1),a=detail.audit
 const intakeText=['CHIP IN — SEO CLIENT ONBOARDING','Business name and website:','Trading address and phone:','Main contact and email:','Opening hours:','Main services/products:','Areas served:','Top three commercial priorities:','Known local competitors:','Website booking or enquiry process:','Seasonal services, menus and photographs:','Who manages website/hosting/domain:','Who owns Google Business Profile:','Who can invite us to Search Console and analytics:','Approval to perform an audit and agreed technical changes:','','ACCESS: Grant appropriate roles through official tools. Never share passwords, tokens or recovery codes.'].join('\n');
 function intake(){return '<div class="card"><h2>Client onboarding questionnaire</h2><p>Copy the questions to your existing Client Project Hub or send them to the business contact.</p><textarea readonly id="questionnaire" style="min-height:360px">'+esc(intakeText)+'</textarea><p>'+btn('Copy questionnaire','copy','gold')+'</p><p class="hint">This is a private admin system, not a public client submission form.</p></div>'}
 
+
+function onboardingEmailDetails(link){
+ const c=detail.client||{},submitted=detail.intake?.submission?.data||{};
+ const recipient=String(c.email||submitted.contact_email||'').trim();
+ const company=String(c.name||'your business').trim();
+ const subject='Your SEO onboarding with Chip In';
+ const intro="Thank you for choosing Chip In to help more customers find "+company+" online.";
+ const task="Before we begin, please complete the short, secure setup form below. It explains what we'll do, asks a few questions about your business and helps us arrange access to your existing website and Google search reports.";
+ const reassurance="You don't need to be technical, and you should never share your passwords. If you're unsure about anything, just choose 'Not sure - please help me' and we'll guide you.";
+ const signoff="Kind regards,\nChip In";
+ const label='Click to Begin SEO Onboarding';
+ const plaintext="Hello,\n\n"+intro+"\n\n"+task+"\n\n"+label+":\n"+link+"\n\n"+reassurance+"\n\n"+signoff;
+ const html='<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.65;color:#26384b">'+
+ '<p>Hello,</p><p>'+esc(intro)+'</p><p>'+esc(task)+'</p>'+
+ '<p><a href="'+esc(link)+'" style="color:#115ea8;text-decoration:underline;font-weight:700">'+esc(label)+'</a></p>'+
+ '<p>'+esc(reassurance)+'</p><p>Kind regards,<br>Chip In</p></div>';
+ return {recipient,subject,plaintext,html,label};
+}
+async function ensureOnboardingEmailLink(){
+ if(detail.intakeLinkUrl)return detail.intakeLinkUrl;
+ const old=detail.intake?.link;
+ const active=old&&!old.revoked&&Date.parse(old.expiresAt)>Date.now();
+ if(active&&!window.confirm('An onboarding link has already been created for this customer. Making a new one will DISABLE the previous link, including any link already emailed. Continue?'))return '';
+ const issued=await api('/api/clients/'+detail.id+'/intake','POST',{});
+ if(!issued.url||!/^https:\/\/onboard\.chipinworks\.co\.uk\/i\/[0-9a-f]{64}$/.test(issued.url))throw Error('Could not create a valid onboarding link.');
+ detail.intakeLinkUrl=issued.url;
+ detail.intake=await api('/api/clients/'+detail.id+'/intake');
+ return issued.url;
+}
+
 function clientIntake(){
  const c=detail.client||{},x=detail.intake||{},sent=x.submission,link=x.link;
  const access={invited:'Invitation reported as sent',will_invite:'Not invited yet',need_help:'Needs help',no_access:'Client cannot access the site',exists:'Account exists, not yet shared',not_set_up:'Not yet configured',not_applicable:'Not applicable',unknown:'Client is unsure',access:'Access reported',no:'No'};
@@ -256,7 +286,7 @@ function clientIntake(){
  ['Access or approval notes',result.access_notes],['Website change permission',result.permission_level==='non_visible'?'Non-visible SEO changes allowed after access is verified; visible changes require approval':result.permission_level==='ask_each'?'Ask the client before ANY changes':'Not provided']
  ];
  return '<section class="card intake-admin"><div class="eyebrow">CLIENT ONBOARDING · PRIVATE INVITATION</div><h2>Invite '+esc(c.name)+' to complete their SEO setup</h2><p>Send a unique link explaining the service and asking for business details, website platform, Google access and approval boundaries. No account passwords are requested or stored.</p>'+
- '<div class="grid2"><div class="card"><h3>1. Create the client link</h3><p>Only the named client should receive this invitation. It expires after 30 days. Creating a new invitation replaces the earlier link.</p>'+
+ '<div class="grid2"><div class="card"><h3>1. Email the invitation</h3><p>Open a ready-written email with this customer’s personal onboarding link. The email is <strong>not sent automatically</strong> — you can review and send it yourself.</p>'+ '<div class="intake-email-actions">'+btn('Open onboarding email','email-intake','gold')+btn('Gmail: clickable text version','gmail-intake','alt')+'</div>'+ '<p class="hint">The first button opens your normal email app with the message filled in. Gmail’s formatted option opens Gmail and copies the email with a real <strong>Click to Begin SEO Onboarding</strong> link: paste into the message using Ctrl+V / ⌘V. HTML links cannot be placed directly into a standard email-compose link.</p>'+ (!c.email&&!result.contact_email?'<p class="hint"><strong>No client email recorded.</strong> Add the address in Client details, or type it into the email draft before sending.</p>':'')+ '<h3>Private onboarding link</h3><p>Each invitation expires after 30 days. Creating a new link replaces the earlier one.</p>'+
  btn(link?'Generate a replacement link':'Create a secure client link','issue-intake','gold')+
  (detail.intakeLinkUrl?'<div class="intake-link"><label>Copy and send this private link</label><input readonly id="intakeInviteLink" value="'+esc(detail.intakeLinkUrl)+'"><div class="row">'+btn('Copy client link','copy-intake','gold')+' <a href="'+esc(detail.intakeLinkUrl)+'" target="_blank" rel="noopener noreferrer">Open client form</a></div></div>':'<p class="hint">Links are shown only when generated. If you have lost a link, create a new one; the previous link will stop working.</p>')+
  (link?'<p class="hint">Most recent invitation created '+date(link.createdAt)+'. Expiry '+date(link.expiresAt)+'.</p>':'')+'</div>'+
@@ -269,7 +299,7 @@ function clientIntake(){
 
 function clientScreen(){const c=detail.client,links=[['intake','Client onboarding'],['results','Results & progress'],['work','Work done'],['report','Customer report'],['guide','Setup'],['audit','Website check'],['metrics','Google connection'],['checklist','Work checklist'],['overview','Technical detail'],['edit','Client details']];return '<div class="top"><div><div class="eyebrow">Client project</div><h1>'+esc(c.name)+'</h1><p class="muted">'+esc(c.website)+'</p></div><div class="toolbar">'+btn('All clients','back')+btn('Print report','print','gold')+'</div></div><div class="tabs">'+links.map(x=>'<button data-tab="'+x[0]+'" class="'+(tab===x[0]?'active':'')+'">'+x[1]+'</button>').join('')+'</div>'+(tab==='intake'?clientIntake():tab==='results'?resultsOverview():tab==='work'?workRecord():tab==='guide'?guide():tab==='overview'?summary():tab==='checklist'?checklist():tab==='audit'?audit():tab==='metrics'?metrics():tab==='report'?clientReport():'<div class="card"><h2>Client details</h2>'+form(true)+'<div style="margin-top:25px;padding-top:20px;border-top:1px solid #eee"><h3>Remove client data</h3><p class="hint">Permanently deletes the client record, metrics, checklists and audit history. Download a private backup first if you need one.</p>'+btn('Permanently delete this client','delete-client','alt')+'</div></div>')}
 function render(){let content=page==='client'&&detail?clientScreen():page==='new'?'<div class="top"><h1>New SEO client</h1></div><div class="card">'+form(false)+'</div>':page==='intake'?'<div class="top"><h1>Client onboarding</h1></div>'+intake():home();
-app.innerHTML='<div class="layout"><aside class="sidebar"><div class="brand">CHIP <em>IN</em><small>SEO MANAGER V4</small></div><nav class="nav"><button data-nav="clients" class="'+(page==='clients'?'active':'')+'">Clients</button><button data-nav="new" class="'+(page==='new'?'active':'')+'">New client</button><button data-nav="intake" class="'+(page==='intake'?'active':'')+'">Onboarding</button>'+(detail?'<button data-nav="client" class="'+(page==='client'?'active':'')+'">Current client</button>':'')+'</nav><div class="aside">Cloudflare Access · EU-region storage<br>Chip In SEO Manager</div></aside><main class="main">'+message+content+'</main></div>';message=''}
+app.innerHTML='<div class="layout"><aside class="sidebar"><div class="brand">CHIP <em>IN</em><small>SEO MANAGER V4.1</small></div><nav class="nav"><button data-nav="clients" class="'+(page==='clients'?'active':'')+'">Clients</button><button data-nav="new" class="'+(page==='new'?'active':'')+'">New client</button><button data-nav="intake" class="'+(page==='intake'?'active':'')+'">Onboarding</button>'+(detail?'<button data-nav="client" class="'+(page==='client'?'active':'')+'">Current client</button>':'')+'</nav><div class="aside">Cloudflare Access · EU-region storage<br>Chip In SEO Manager</div></aside><main class="main">'+message+content+'</main></div>';message=''}
 app.addEventListener('click',async ev=>{const x=ev.target.closest('[data-nav],[data-tab],[data-open],[data-action]');if(!x)return;try{
 if(x.dataset.nav){page=x.dataset.nav;render();return}
 if(x.dataset.tab){tab=x.dataset.tab;render();return}
@@ -286,6 +316,40 @@ else if(a==='issue-intake'){
    detail.intake=await api('/api/clients/'+detail.id+'/intake');
    tab='intake';alertMsg('Private client link created. Copy it and send to the business owner.');
  }finally{busy=false;render()}
+}
+
+else if(a==='email-intake'){
+ if(busy)return;
+ busy=true;render();
+ try{
+  const link=await ensureOnboardingEmailLink();
+  if(!link)return;
+  const draft=onboardingEmailDetails(link);
+  const href='mailto:'+encodeURIComponent(draft.recipient)+'?subject='+encodeURIComponent(draft.subject)+'&body='+encodeURIComponent(draft.plaintext);
+  window.location.href=href;
+  alertMsg('Your email app has been asked to open a draft. Check the recipient and wording before sending.');
+ }finally{busy=false;render()}
+}
+else if(a==='gmail-intake'){
+ if(busy)return;
+ // Reserve the tab immediately inside the click so popup blockers do not prevent opening Gmail after the API call.
+ const mailWindow=window.open('about:blank','_blank');
+ if(!mailWindow)throw Error('Your browser blocked the Gmail window. Allow pop-ups for SEO Manager and try again.');
+ busy=true;render();
+ try{
+  const link=await ensureOnboardingEmailLink();
+  if(!link){mailWindow.close();return}
+  const draft=onboardingEmailDetails(link);
+  if(!navigator.clipboard?.write||typeof ClipboardItem==='undefined'){
+   mailWindow.close();throw Error('Your browser cannot copy formatted email. Use "Open onboarding email" instead.');
+  }
+  const rich=new ClipboardItem({'text/html':new Blob([draft.html],{type:'text/html'}),'text/plain':new Blob([draft.plaintext],{type:'text/plain'})});
+  await navigator.clipboard.write([rich]);
+  const gmail='https://mail.google.com/mail/?view=cm&fs=1&to='+encodeURIComponent(draft.recipient)+'&su='+encodeURIComponent(draft.subject);
+  mailWindow.location.replace(gmail);
+  alertMsg('Gmail is opening with the recipient and subject. Click the message body and press Ctrl+V (Windows) or ⌘V (Mac). The copied message includes the real clickable "Click to Begin SEO Onboarding" link.');
+ }catch(e){try{mailWindow.close()}catch{}throw e}
+ finally{busy=false;render()}
 }
 else if(a==='copy-intake'){
  if(!detail.intakeLinkUrl)throw Error('Generate a private client link first.');
