@@ -207,7 +207,7 @@ async function savedGscInsights(env,id,clientData,force=false){
 }
 
 
-const INTAKE_BASE='https://chipin-seo-onboarding.goldplushighdefinition.workers.dev';
+const INTAKE_BASE='https://onboard.chipinworks.co.uk';
 async function intakeHash(token){
  const bytes=new TextEncoder().encode(token);
  const hashed=await crypto.subtle.digest('SHA-256',bytes);
