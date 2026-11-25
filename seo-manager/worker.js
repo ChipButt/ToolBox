@@ -347,8 +347,12 @@ async function createGmailDraft(env,x){
  const replyRes=await fetch('https://gmail.googleapis.com/gmail/v1/users/me/drafts',{method:'POST',headers:{Authorization:'Bearer '+gmailToken,'Content-Type':'application/json'},body:JSON.stringify({message:{raw:b64u(new TextEncoder().encode(raw))}})});
  const out=await replyRes.json();
  if(!replyRes.ok||!out.id)return gmailResponse('Gmail could not create the formatted draft: '+String(out.error?.message||replyRes.status).slice(0,150),502);
- // Gmail does not document stable compose URLs for API-created drafts; use the Drafts folder as a reliable fallback.
- return reply({ok:true,draftId:out.id,open_url:'https://mail.google.com/mail/u/0/#drafts',recipient:to,subject,firstName,linkText:'Click to Begin SEO Onboarding'});
+ // Open the new draft directly using the message ID, matching the Gmail link shape returned by the connected Gmail draft tool.
+ const msgId=String(out.message?.id||'');
+ const directUrl=/^[a-f0-9]+$/i.test(msgId)
+  ?'https://mail.google.com/mail/u/?authuser='+encodeURIComponent(GMAIL_ADDRESS)+'#all/'+msgId
+  :'https://mail.google.com/mail/u/?authuser='+encodeURIComponent(GMAIL_ADDRESS)+'#drafts';
+ return reply({ok:true,draftId:out.id,open_url:directUrl,recipient:to,subject,firstName,linkText:'Click to Begin SEO Onboarding'});
 }
 
 const html=String.raw`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0c2b5e"><title>Chip In SEO Manager</title><link rel="stylesheet" href="/app.css?v=2"></head><body><div id="app"><main style="padding:3rem;font-family:sans-serif">Loading SEO Manager…</main></div><script src="/app.js?v=2" defer></script></body></html>`;
