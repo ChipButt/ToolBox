@@ -236,10 +236,103 @@ async function intakeHash(token){
 
 async function body(request){const s=await request.text();if(s.length>20000)throw Error('Request too large');return JSON.parse(s||'{}')}
 async function client(env,id){return await env.DB.prepare('SELECT id,data,created_at,updated_at FROM clients WHERE id=?').bind(id).first()}
+
+const GMAIL_REDIRECT='https://seo.chipinworks.co.uk/api/gmail/callback';
+const GMAIL_ADDRESS='jamesbutt.chipin@gmail.com';
+function gmailReady(env){return !!(env.GMAIL_OAUTH_CLIENT_ID&&env.GMAIL_OAUTH_CLIENT_SECRET&&env.SEO_GMAIL_TOKEN_KEY)}
+function b64u(bytes){let v='';for(const b of bytes)v+=String.fromCharCode(b);return btoa(v).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
+async function hashForGoogle(input){const h=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(input));return bytesHex(new Uint8Array(h))}
+async function gmailEncrypt(env,str){const iv=crypto.getRandomValues(new Uint8Array(12));const data=await crypto.subtle.encrypt({name:'AES-GCM',iv},env.SEO_GMAIL_TOKEN_KEY,new TextEncoder().encode(str));return bytesHex(iv)+':'+bytesHex(new Uint8Array(data))}
+async function gmailDecrypt(env,secret){const parts=String(secret||'').split(':');if(parts.length!==2)throw Error('Stored Gmail authorisation is invalid');const plain=await crypto.subtle.decrypt({name:'AES-GCM',iv:hexBytes(parts[0])},env.SEO_GMAIL_TOKEN_KEY,hexBytes(parts[1]));return new TextDecoder().decode(plain)}
+async function gmailAccessToken(env){
+ if(!gmailReady(env))throw Error('Gmail integration is not configured yet');
+ const old=await env.DB.prepare("SELECT encrypted_refresh_token FROM seo_gmail_connections WHERE account_key='owner'").first();
+ if(!old?.encrypted_refresh_token)throw Error('Connect Chip In Gmail before creating formatted drafts');
+ const refresh=await gmailDecrypt(env,old.encrypted_refresh_token);
+ const p=new URLSearchParams({client_id:env.GMAIL_OAUTH_CLIENT_ID,client_secret:env.GMAIL_OAUTH_CLIENT_SECRET,refresh_token:refresh,grant_type:'refresh_token'});
+ const res=await fetch('https://oauth2.googleapis.com/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:p.toString()});
+ const x=await res.json();if(!res.ok||!x.access_token)throw Error('Gmail connection needs to be authorised again: '+String(x.error||res.status));
+ return x.access_token;
+}
+function gmailResponse(msg,status=200){return reply({error:msg},status)}
+async function beginGmailAuth(env){
+ if(!gmailReady(env))return gmailResponse('Gmail requires a one-time Google OAuth app connection. The Google client ID and secret have not been configured for SEO Manager.',409);
+ const state=bytesHex(crypto.getRandomValues(new Uint8Array(32))),hash=await hashForGoogle(state);
+ const exp=new Date(Date.now()+10*60000).toISOString();
+ await env.DB.prepare('INSERT INTO seo_gmail_oauth_states(state_hash,created_at,expires_at) VALUES(?,?,?)').bind(hash,now(),exp).run();
+ const p=new URLSearchParams({client_id:env.GMAIL_OAUTH_CLIENT_ID,redirect_uri:GMAIL_REDIRECT,response_type:'code',scope:'openid email https://www.googleapis.com/auth/gmail.compose',access_type:'offline',prompt:'consent',state,login_hint:GMAIL_ADDRESS});
+ return reply({authorization_url:'https://accounts.google.com/o/oauth2/v2/auth?'+p.toString()});
+}
+async function finishGmailAuth(req,env,u){
+ const safePage=(title,detail)=>new Response('<!doctype html><html lang="en-GB"><head><meta charset="utf-8"><meta name="robots" content="noindex"><title>'+escGmail(title)+'</title></head><body style="font:16px/1.6 system-ui;max-width:600px;margin:50px auto;padding:20px"><h1>'+escGmail(title)+'</h1><p>'+escGmail(detail)+'</p><p><a href="https://seo.chipinworks.co.uk/">Return to SEO Manager</a></p></body></html>',{headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'"}});
+ try{
+  if(!gmailReady(env))return safePage('Gmail connection unavailable','Google authorisation has not yet been configured for this site.');
+  const code=u.searchParams.get('code'),state=u.searchParams.get('state');
+  if(!code||!state||!(/^[a-f0-9]{64}$/.test(state)))return safePage('Gmail connection cancelled','No valid authorisation was returned from Google.');
+  const hash=await hashForGoogle(state);
+  const used=await env.DB.prepare('SELECT state_hash,expires_at FROM seo_gmail_oauth_states WHERE state_hash=?').bind(hash).first();
+  if(!used||Date.parse(used.expires_at)<Date.now())return safePage('Gmail invitation expired','Try connecting Gmail again from SEO Manager.');
+  await env.DB.prepare('DELETE FROM seo_gmail_oauth_states WHERE state_hash=?').bind(hash).run();
+  const payload=new URLSearchParams({client_id:env.GMAIL_OAUTH_CLIENT_ID,client_secret:env.GMAIL_OAUTH_CLIENT_SECRET,code,redirect_uri:GMAIL_REDIRECT,grant_type:'authorization_code'});
+  const res=await fetch('https://oauth2.googleapis.com/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:payload.toString()});
+  const result=await res.json();if(!res.ok||!result.access_token||!result.refresh_token)return safePage('Gmail connection failed','Google did not return the authorisation needed for ongoing draft creation.');
+  const who=await fetch('https://openidconnect.googleapis.com/v1/userinfo',{headers:{Authorization:'Bearer '+result.access_token}});
+  const user=await who.json();
+  if(!who.ok||!user.email_verified||String(user.email||'').toLowerCase()!==GMAIL_ADDRESS)return safePage('Wrong Gmail account','Please connect '+GMAIL_ADDRESS+' rather than another Google account.');
+  const encrypted=await gmailEncrypt(env,result.refresh_token);
+  await env.DB.prepare("INSERT INTO seo_gmail_connections(account_key,connected_email,encrypted_refresh_token,connected_at,updated_at) VALUES('owner',?,?,?,?) ON CONFLICT(account_key) DO UPDATE SET connected_email=excluded.connected_email,encrypted_refresh_token=excluded.encrypted_refresh_token,updated_at=excluded.updated_at").bind(GMAIL_ADDRESS,encrypted,now(),now()).run();
+  return safePage('Gmail connected','You can now return to SEO Manager and open formatted onboarding drafts with a real clickable link.');
+ }catch(e){console.error('SEO Gmail authorisation failed',String(e?.message||e).slice(0,120));return safePage('Gmail connection failed','Please return to SEO Manager and try again. No emails were sent.')}
+}
+function escGmail(x){return String(x||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function gmailDraftText(firstName,company,link){
+ const greeting='Hello '+firstName+',';
+ const intro='Thank you for choosing Chip In to help more customers find '+company+' online.';
+ const info="Before we begin, please complete the short, secure setup form below. It explains what we'll do, asks a few questions about your business and helps us arrange access to your website and Google search reports.";
+ const note="You don't need to be technical, and you should never share your passwords. If you're unsure about anything, just choose 'Not sure - please help me' and we'll guide you.";
+ const ending='Kind regards,\nJames Butt\nChip In';
+ const plain=[greeting,intro,info,'Click to Begin SEO Onboarding: '+link,note,ending].join('\n\n');
+ const html='<div style="font:15px/1.65 Arial,Helvetica,sans-serif;color:#22354a">'+
+ '<p>'+escGmail(greeting)+'</p><p>'+escGmail(intro)+'</p><p>'+escGmail(info)+'</p>'+
+ '<p><a href="'+escGmail(link)+'" style="color:#165fa0;text-decoration:underline;font-weight:700">Click to Begin SEO Onboarding</a></p>'+
+ '<p>'+escGmail(note)+'</p><p>Kind regards,<br>James Butt<br>Chip In</p></div>';
+ return {plain,html};
+}
+async function createGmailDraft(env,x){
+ if(!gmailReady(env))return gmailResponse('Gmail needs a one-time connection before formatted drafts can be created.',409);
+ const cid=String(x?.clientId||'');
+ if(!idOK(cid))return gmailResponse('Select a valid SEO client',400);
+ const record=await client(env,cid);if(!record)return gmailResponse('Client not found',404);
+ const intake=await env.DB.prepare('SELECT encrypted_token,expires_at,revoked_at FROM seo_intake_links WHERE client_id=?').bind(cid).first();
+ if(!intake||intake.revoked_at||Date.parse(intake.expires_at)<Date.now())return gmailResponse('Generate a current onboarding invitation first',409);
+ const token=await unsealIntakeToken(env,intake.encrypted_token);
+ if(!token)return gmailResponse('Older invitation cannot be retrieved: generate a replacement link with approval first.',409);
+ const c=JSON.parse(record.data);
+ const response=await env.DB.prepare('SELECT data FROM seo_intake_submissions WHERE client_id=?').bind(cid).first();
+ const answers=response?.data?JSON.parse(response.data):{};
+ const to=String(c.email||answers.contact_email||'').trim();
+ const firstName=String(c.contact||answers.contact_name||'').trim().split(/\s+/)[0];
+ if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to))return gmailResponse('Add a valid customer email address in Client details first',400);
+ if(!firstName)return gmailResponse('Add the contact’s first name in Client details before creating the email',400);
+ const subject='Your SEO onboarding with Chip In',link=INTAKE_BASE+'/i/'+token;
+ const letter=gmailDraftText(firstName,String(c.name||'your business'),link);
+ const marker='chipin'+bytesHex(crypto.getRandomValues(new Uint8Array(9)));
+ const raw='To: '+to+'\r\nSubject: '+subject+'\r\nMIME-Version: 1.0\r\nContent-Type: multipart/alternative; boundary="'+marker+'"\r\n\r\n'+
+ '--'+marker+'\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n'+btoa(String.fromCharCode(...new TextEncoder().encode(letter.plain)))+'\r\n'+
+ '--'+marker+'\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n'+btoa(String.fromCharCode(...new TextEncoder().encode(letter.html)))+'\r\n--'+marker+'--';
+ const gmailToken=await gmailAccessToken(env);
+ const replyRes=await fetch('https://gmail.googleapis.com/gmail/v1/users/me/drafts',{method:'POST',headers:{Authorization:'Bearer '+gmailToken,'Content-Type':'application/json'},body:JSON.stringify({message:{raw:b64u(new TextEncoder().encode(raw))}})});
+ const out=await replyRes.json();
+ if(!replyRes.ok||!out.id)return gmailResponse('Gmail could not create the formatted draft: '+String(out.error?.message||replyRes.status).slice(0,150),502);
+ // Gmail does not document stable compose URLs for API-created drafts; use the Drafts folder as a reliable fallback.
+ return reply({ok:true,draftId:out.id,open_url:'https://mail.google.com/mail/u/0/#drafts',recipient:to,subject,firstName,linkText:'Click to Begin SEO Onboarding'});
+}
+
 const html=String.raw`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0c2b5e"><title>Chip In SEO Manager</title><link rel="stylesheet" href="/app.css?v=2"></head><body><div id="app"><main style="padding:3rem;font-family:sans-serif">Loading SEO Manager…</main></div><script src="/app.js?v=2" defer></script></body></html>`;
 export default {async fetch(req,env){
  const u=new URL(req.url);
  if(u.hostname!=='seo.chipinworks.co.uk')return new Response('Not found',{status:404});
+ if(u.pathname==='/api/gmail/callback'&&req.method==='GET')return finishGmailAuth(req,env,u);
  if(u.pathname==='/favicon.ico')return new Response(null,{status:204});
  if(u.pathname==='/app.js'&&req.method==='GET')return new Response(BUNDLED_JS,{headers:{'Content-Type':'application/javascript; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
  if(u.pathname==='/app.css'&&req.method==='GET')return new Response(BUNDLED_CSS,{headers:{'Content-Type':'text/css; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
@@ -248,6 +341,14 @@ export default {async fetch(req,env){
  if(!u.pathname.startsWith('/api/'))return new Response('Not found',{status:404});
  if(req.method!=='GET'&&req.headers.get('Origin')!==u.origin)return reply({error:'Invalid request origin'},403);
  try{
+  
+  if(u.pathname==='/api/gmail/status'&&req.method==='GET'){
+    const configured=gmailReady(env);
+    const row=await env.DB.prepare("SELECT connected_email,connected_at FROM seo_gmail_connections WHERE account_key='owner'").first();
+    return reply({configured,connected:!!(configured&&row),connectedEmail:row?.connected_email||null});
+  }
+  if(u.pathname==='/api/gmail/connect'&&req.method==='POST')return beginGmailAuth(env);
+  if(u.pathname==='/api/gmail/draft'&&req.method==='POST')return createGmailDraft(env,await body(req));
   if(u.pathname==='/api/health'&&req.method==='GET'){await env.DB.prepare('SELECT 1 AS ok').first();return reply({ok:true,version:'1.0.0'})}
   if(u.pathname==='/api/clients'&&req.method==='GET'){let x=await env.DB.prepare('SELECT id,data,created_at,updated_at FROM clients ORDER BY updated_at DESC LIMIT 300').all();return reply({clients:x.results.map(r=>({id:r.id,...JSON.parse(r.data),createdAt:r.created_at,updatedAt:r.updated_at}))})}
   if(u.pathname==='/api/clients'&&req.method==='POST'){const d=cleanData(await body(req));if(!d.name||!d.website)throw Error('Business name and website are required');safeUrl(d.website);let id=crypto.randomUUID(),time=now();await env.DB.prepare('INSERT INTO clients (id,created_at,updated_at,data) VALUES (?,?,?,?)').bind(id,time,time,JSON.stringify(d)).run();return reply({id,client:d},201)}
