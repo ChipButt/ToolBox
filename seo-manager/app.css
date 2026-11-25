@@ -66,3 +66,34 @@
 .google-actions{display:flex;gap:9px;flex-wrap:wrap;margin:20px 0 15px}
 @media(max-width:680px){.google-step-content{padding:2px 14px 15px 14px}.google-step summary{padding:12px}.google-step .google-step-number{flex-basis:28px;width:28px;height:28px}.google-actions .button{width:100%}}
 @media print{.google-connection{display:none!important}}
+
+/* SEO Manager V3: clear, evidence-led customer performance reporting */
+.results-main{display:grid;gap:18px}
+.results-hero{background:linear-gradient(135deg,#ffffff 0%,#f0f5fb 100%);border-color:#cddced}
+.results-hero h2{font-size:clamp(24px,3vw,33px);line-height:1.17;margin:7px 0 12px;color:#0c326c}
+.results-hero p{max-width:850px}
+.results-period{font-size:13px;font-weight:700;color:#294d79;background:#edf3fa;padding:10px 12px;border-radius:8px;display:inline-block;line-height:1.6}
+.results-hero .row{display:flex;flex-wrap:wrap;gap:9px;margin-top:8px}
+.result-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:15px}
+.result-kpi{background:#fff;border:1px solid #dbe4ef;border-radius:13px;padding:20px 19px;min-width:0;break-inside:avoid}
+.result-number{display:block;font:700 clamp(21px,3vw,36px) Fredoka,Inter,sans-serif;color:#0b2c60;margin:7px 0 3px;line-height:1.1}
+.result-change{font-size:12px;font-weight:750;color:#375d7f;margin-bottom:8px}
+.result-kpi p{font-size:12px;line-height:1.55;color:#677a90;margin-bottom:0}
+.result-error{border-left:3px solid #c15b42;padding:10px 14px;background:#fff1ed;font-size:13px}
+.search-term-table{width:100%;table-layout:auto}
+.search-term-table th:first-child,.search-term-table td:first-child{text-align:left;max-width:340px;overflow-wrap:anywhere}
+.search-term-table td:not(:first-child),.search-term-table th:not(:first-child){text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.search-term-table th{font-size:11px}
+.search-term-table td{font-size:12px}
+.evidence-list{display:grid;gap:0}
+.evidence-entry{display:flex;align-items:start;justify-content:space-between;gap:16px;border-top:1px solid #e5edf4;padding:15px 0}
+.evidence-entry:first-child{border-top:0}
+.evidence-entry strong{display:block;font-size:14px;margin-bottom:3px}
+.evidence-entry small{display:block;font-size:11px;color:#637b90;margin-bottom:7px}
+.evidence-entry p{font-size:12px;color:#39516a;line-height:1.6;margin:0}
+.evidence-entry a{font-size:12px;white-space:nowrap;font-weight:700}
+.results-report{display:grid;gap:18px}
+.results-report .result-kpi{border:1px solid #dce5ed}
+@media(max-width:920px){.result-grid{grid-template-columns:1fr}}
+@media(max-width:680px){.result-grid{grid-template-columns:1fr}.result-kpi{padding:15px}.evidence-entry{display:block}.evidence-entry a{display:inline-block;margin-top:9px}.search-term-table th,.search-term-table td{font-size:10px;padding:8px 5px}}
+@media print{.results-hero,.results-main{background:#fff}.result-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.result-kpi{padding:12px}.result-number{font-size:24px}.results-report .card{break-inside:avoid}.evidence-entry{break-inside:avoid}.evidence-entry a{white-space:normal}}
