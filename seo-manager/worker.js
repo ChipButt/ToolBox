@@ -150,6 +150,58 @@ async function syncSearchConsole(env,clientId,website,months=1){
  return {property,months:finished};
 }
 
+
+async function refreshGscInsights(env,clientId,clientData){
+ const previous=await env.DB.prepare('SELECT property FROM gsc_connections WHERE client_id=?').bind(clientId).first();
+ if(!previous?.property)throw Error('Connect Google Search Console to this website first.');
+ const property=previous.property,token=await gscAccessToken(env);
+ const endpoint='https://www.googleapis.com/webmasters/v3/sites/'+encodeURIComponent(property)+'/searchAnalytics/query';
+ const day=d=>d.toISOString().slice(0,10);
+ const utcDay=(date,delta)=>new Date(Date.UTC(date.getUTCFullYear(),date.getUTCMonth(),date.getUTCDate()+delta));
+ const end=utcDay(new Date(),-3),start=utcDay(end,-27),prevEnd=utcDay(start,-1),prevStart=utcDay(prevEnd,-27);
+ async function query(from,to,dimensions=[],limit=1){
+  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),14000);
+  try{
+   const resp=await fetch(endpoint,{method:'POST',signal:controller.signal,headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({startDate:day(from),endDate:day(to),dimensions,rowLimit:limit,type:'web'})});
+   if(!resp.ok)throw Error('Search Console performance query failed (HTTP '+resp.status+').');
+   const out=await resp.json();return out.rows||[];
+  }finally{clearTimeout(timer)}
+ }
+ const [currentRows,previousRows,queryRows,pageRows]=await Promise.all([
+  query(start,end),query(prevStart,prevEnd),query(start,end,['query'],250),query(start,end,['page'],100)
+ ]);
+ const clean=r=>r?{clicks:Math.round(r.clicks||0),impressions:Math.round(r.impressions||0),ctr:Number(r.ctr||0),position:Number(r.position||0)}:null;
+ const business=String(clientData.name||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+ const brandBase=business.replace(/^the /,'');
+ const significant=brandBase.split(' ').filter(x=>x.length>2);
+ const isBrand=q=>{const n=String(q||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();return (brandBase.length>=6&&n.includes(brandBase))||(significant.length>=2&&significant.every(word=>n.includes(word)))};
+ const terms=queryRows.map(r=>({term:String(r.keys?.[0]||'').slice(0,140),...clean(r),branded:isBrand(r.keys?.[0])})).filter(r=>r.term);
+ const pages=pageRows.map(r=>({url:String(r.keys?.[0]||''),...clean(r)})).filter(x=>x.url&&x.url.startsWith('https://'));
+ const opportunities=terms.filter(t=>!t.branded&&t.impressions>=4&&t.position>3).sort((a,b)=>b.impressions-a.impressions).slice(0,8);
+ const data={property,source:'Google Search Console API',updatedAt:now(),period:{from:day(start),to:day(end),days:28},previousPeriod:{from:day(prevStart),to:day(prevEnd),days:28},
+  current:clean(currentRows[0]),previous:clean(previousRows[0]),
+  brandedQueries:terms.filter(t=>t.branded).sort((a,b)=>b.clicks-a.clicks).slice(0,12),
+  discoveryQueries:terms.filter(t=>!t.branded).sort((a,b)=>b.clicks-a.clicks||b.impressions-a.impressions).slice(0,20),
+  opportunities,pages:pages.sort((a,b)=>b.clicks-a.clicks).slice(0,12),
+  caveats:['This report compares two equal 28-day periods ending three days ago to allow for Google processing delays.','Search terms may omit anonymised queries and are not a complete traffic breakdown.','A search-result click is not proof of a sale, booking, call or visit.','Average position varies by search and does not indicate ranking for every keyword.']};
+ await env.DB.prepare("INSERT INTO gsc_insights(client_id,updated_at,payload,last_error) VALUES(?,?,?,'') ON CONFLICT(client_id) DO UPDATE SET updated_at=excluded.updated_at,payload=excluded.payload,last_error=''").bind(clientId,now(),JSON.stringify(data)).run();
+ return data;
+}
+async function savedGscInsights(env,id,clientData,force=false){
+ let old=await env.DB.prepare('SELECT updated_at,payload,last_error FROM gsc_insights WHERE client_id=?').bind(id).first();
+ const connected=await env.DB.prepare('SELECT status FROM gsc_connections WHERE client_id=?').bind(id).first();
+ const stale=!old||Date.now()-Date.parse(old.updated_at)>20*3600000;
+ if(connected?.status==='connected'&&env.GSC_SERVICE_ACCOUNT_JSON&&(force||stale)){
+  try{const data=await refreshGscInsights(env,id,clientData);return {data,updatedAt:data.updatedAt,error:''}}
+  catch(e){const msg=String(e.message||e).slice(0,230);
+   await env.DB.prepare("INSERT INTO gsc_insights(client_id,updated_at,payload,last_error) VALUES(?,?,?,?) ON CONFLICT(client_id) DO UPDATE SET last_error=excluded.last_error").bind(id,now(),old?.payload||'{}',msg).run();
+   old=await env.DB.prepare('SELECT updated_at,payload,last_error FROM gsc_insights WHERE client_id=?').bind(id).first();
+  }
+ }
+ let data;try{data=JSON.parse(old?.payload||'{}')}catch{data={}}
+ return {data:Object.keys(data).length?data:null,updatedAt:old?.updated_at||null,error:old?.last_error||(!connected||connected.status!=='connected'?'Google Search Console is not connected for this client.':'')};
+}
+
 async function body(request){const s=await request.text();if(s.length>20000)throw Error('Request too large');return JSON.parse(s||'{}')}
 async function client(env,id){return await env.DB.prepare('SELECT id,data,created_at,updated_at FROM clients WHERE id=?').bind(id).first()}
 const html=String.raw`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0c2b5e"><title>Chip In SEO Manager</title><link rel="stylesheet" href="/app.css?v=2"></head><body><div id="app"><main style="padding:3rem;font-family:sans-serif">Loading SEO Manager…</main></div><script src="/app.js?v=2" defer></script></body></html>`;
@@ -167,8 +219,8 @@ export default {async fetch(req,env){
   if(u.pathname==='/api/health'&&req.method==='GET'){await env.DB.prepare('SELECT 1 AS ok').first();return reply({ok:true,version:'1.0.0'})}
   if(u.pathname==='/api/clients'&&req.method==='GET'){let x=await env.DB.prepare('SELECT id,data,created_at,updated_at FROM clients ORDER BY updated_at DESC LIMIT 300').all();return reply({clients:x.results.map(r=>({id:r.id,...JSON.parse(r.data),createdAt:r.created_at,updatedAt:r.updated_at}))})}
   if(u.pathname==='/api/clients'&&req.method==='POST'){const d=cleanData(await body(req));if(!d.name||!d.website)throw Error('Business name and website are required');safeUrl(d.website);let id=crypto.randomUUID(),time=now();await env.DB.prepare('INSERT INTO clients (id,created_at,updated_at,data) VALUES (?,?,?,?)').bind(id,time,time,JSON.stringify(d)).run();return reply({id,client:d},201)}
-  if(u.pathname==='/api/export'&&req.method==='GET'){const [c,t,m,a]=await Promise.all(['clients','tasks','metrics','audits'].map(table=>env.DB.prepare('SELECT * FROM '+table).all()));return reply({format:'chipin-seo-backup',version:1,exportedAt:now(),clients:c.results,tasks:t.results,metrics:m.results,audits:a.results})}
-  const p=u.pathname.match(/^\/api\/clients\/([a-f0-9-]{36})(?:\/(tasks|metrics|audit|gsc)(?:\/(sync))?)?$/);if(!p)return reply({error:'Not found'},404);
+  if(u.pathname==='/api/export'&&req.method==='GET'){const [c,t,m,a,w,i]=await Promise.all(['clients','tasks','metrics','audits','seo_work','gsc_insights'].map(table=>env.DB.prepare('SELECT * FROM '+table).all()));return reply({format:'chipin-seo-backup',version:1,exportedAt:now(),clients:c.results,tasks:t.results,metrics:m.results,audits:a.results,completedWork:w.results,searchInsights:i.results})}
+  const p=u.pathname.match(/^\/api\/clients\/([a-f0-9-]{36})(?:\/(tasks|metrics|audit|gsc|insights|work)(?:\/(sync))?)?$/);if(!p)return reply({error:'Not found'},404);
   const id=p[1],section=p[2]||'',c=await client(env,id);if(!c)return reply({error:'Client not found'},404);
   if(!section&&req.method==='GET'){
     const [tasks,metrics,audits]=await Promise.all([
@@ -178,10 +230,28 @@ export default {async fetch(req,env){
     ]);
     return reply({id,client:JSON.parse(c.data),createdAt:c.created_at,updatedAt:c.updated_at,tasks:tasks.results,metrics:metrics.results,audits:audits.results.map(x=>({id:x.id,runAt:x.run_at,...JSON.parse(x.data)}))});
   }
-  if(!section&&req.method==='DELETE'){await env.DB.batch([env.DB.prepare('DELETE FROM audits WHERE client_id=?').bind(id),env.DB.prepare('DELETE FROM metrics WHERE client_id=?').bind(id),env.DB.prepare('DELETE FROM tasks WHERE client_id=?').bind(id),env.DB.prepare('DELETE FROM clients WHERE id=?').bind(id)]);return reply({ok:true})}
+  if(!section&&req.method==='DELETE'){await env.DB.batch([env.DB.prepare('DELETE FROM audits WHERE client_id=?').bind(id),env.DB.prepare('DELETE FROM metrics WHERE client_id=?').bind(id),env.DB.prepare('DELETE FROM tasks WHERE client_id=?').bind(id),env.DB.prepare('DELETE FROM seo_work WHERE client_id=?').bind(id),env.DB.prepare('DELETE FROM gsc_insights WHERE client_id=?').bind(id),env.DB.prepare('DELETE FROM gsc_connections WHERE client_id=?').bind(id),env.DB.prepare('DELETE FROM clients WHERE id=?').bind(id)]);return reply({ok:true})}
   if(!section&&req.method==='PUT'){const d=cleanData(await body(req));if(!d.name||!d.website)throw Error('Business name and website are required');safeUrl(d.website);await env.DB.prepare('UPDATE clients SET data=?,updated_at=? WHERE id=?').bind(JSON.stringify(d),now(),id).run();return reply({ok:true})}
   if(section==='tasks'&&req.method==='PUT'){const x=await body(req);if(!/^[a-z0-9-]{2,80}$/.test(x.key||'')||!['todo','doing','done','na'].includes(x.status))throw Error('Invalid task');await env.DB.prepare('INSERT INTO tasks(client_id,task_key,status,notes,updated_at) VALUES(?,?,?,?,?) ON CONFLICT(client_id,task_key) DO UPDATE SET status=excluded.status,notes=excluded.notes,updated_at=excluded.updated_at').bind(id,x.key,x.status,String(x.notes||'').slice(0,1500),now()).run();return reply({ok:true})}
   if(section==='metrics'&&req.method==='PUT'){const x=await body(req);if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(x.month||''))throw Error('Select a month');const vals=[num(x.clicks),num(x.impressions),num(x.position,100),num(x.gbp_website),num(x.gbp_calls),num(x.gbp_directions),num(x.enquiries)];if(vals.some((n,i)=>n!==null&&((i===2&&n>100)||n<0)))throw Error('Invalid metrics');await env.DB.prepare('INSERT INTO metrics(client_id,month,clicks,impressions,position,gbp_website,gbp_calls,gbp_directions,enquiries,notes,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(client_id,month) DO UPDATE SET clicks=excluded.clicks,impressions=excluded.impressions,position=excluded.position,gbp_website=excluded.gbp_website,gbp_calls=excluded.gbp_calls,gbp_directions=excluded.gbp_directions,enquiries=excluded.enquiries,notes=excluded.notes,updated_at=excluded.updated_at').bind(id,x.month,...vals,String(x.notes||'').slice(0,2000),now()).run();return reply({ok:true})}
+
+  if(section==='insights'&&req.method==='GET')return reply(await savedGscInsights(env,id,JSON.parse(c.data)));
+  if(section==='insights'&&p[3]==='sync'&&req.method==='POST')return reply(await savedGscInsights(env,id,JSON.parse(c.data),true));
+  if(section==='work'&&req.method==='GET'){
+   const x=await env.DB.prepare('SELECT id,completed_at,title,detail,source_url,revision,evidence_status FROM seo_work WHERE client_id=? ORDER BY completed_at DESC,id DESC LIMIT 120').bind(id).all();
+   return reply({work:x.results});
+  }
+  if(section==='work'&&req.method==='POST'){
+   const x=await body(req),title=String(x.title||'').trim().slice(0,150),detail=String(x.detail||'').trim().slice(0,1200);
+   if(!title||!detail)throw Error('Describe the completed work and what changed.');
+   const source=String(x.source_url||'').trim();
+   if(source&&(!/^https:\/\//i.test(source)||source.length>700))throw Error('Use a valid HTTPS evidence URL.');
+   const date=String(x.completed_at||now().slice(0,10));
+   if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||date>now().slice(0,10))throw Error('Use a valid completion date, not a future date.');
+   await env.DB.prepare('INSERT INTO seo_work(client_id,completed_at,title,detail,source_url,revision,evidence_status,created_at) VALUES(?,?,?,?,?,?,?,?)')
+    .bind(id,date,title,detail,source,String(x.revision||'').slice(0,120),source?'documented':'recorded',now()).run();
+   return reply({ok:true},201);
+  }
   if(section==='gsc'&&req.method==='GET'){let email='';if(env.GSC_SERVICE_ACCOUNT_JSON)try{email=JSON.parse(env.GSC_SERVICE_ACCOUNT_JSON).client_email||''}catch{}let state=await env.DB.prepare('SELECT last_attempt,status,last_error,property,imported_months FROM gsc_connections WHERE client_id=?').bind(id).first();if(env.GSC_SERVICE_ACCOUNT_JSON&&(!state||state.status==='queued')){try{const result=await syncSearchConsole(env,id,JSON.parse(c.data).website,6);await saveGscState(env,id,'connected','',result.property,result.months.filter(m=>m.status==='imported'||m.status==='partial-imported').length)}catch(e){await saveGscState(env,id,'error',String(e.message||e).slice(0,240))}state=await env.DB.prepare('SELECT last_attempt,status,last_error,property,imported_months FROM gsc_connections WHERE client_id=?').bind(id).first()}return reply({configured:!!env.GSC_SERVICE_ACCOUNT_JSON,serviceAccountEmail:email,source:'Google Search Console API',cost:'Free API, subject to quota',connection:state||{status:'not_tested'}})}
   if(section==='gsc'&&p[3]==='sync'&&req.method==='POST'){try{const d=JSON.parse(c.data),result=await syncSearchConsole(env,id,d.website,6);await saveGscState(env,id,'connected','',result.property,result.months.filter(x=>x.status==='imported').length);return reply({ok:true,result})}catch(e){const msg=String(e.message||e).slice(0,240);await saveGscState(env,id,'error',msg);return reply({error:msg},400)}}
   if(section==='audit'&&req.method==='POST'){const d=JSON.parse(c.data),r=await scan(d.website);r.trigger='on-demand';await env.DB.prepare('INSERT INTO audits(client_id,run_at,data) VALUES (?,?,?)').bind(id,now(),JSON.stringify(r)).run();return reply({audit:r})}
@@ -204,6 +274,10 @@ export default {async fetch(req,env){
   if(queued)target=queued;
   try{const results=await syncSearchConsole(env,target.id,JSON.parse(target.data).website,queued?6:1);await saveGscState(env,target.id,'connected','',results.property,results.months.filter(m=>m.status==='imported'||m.status==='partial-imported').length)}
   catch(e){const msg=String(e.message||e).slice(0,240);await saveGscState(env,target.id,'error',msg);console.error('GSC scheduled sync failed:',msg)}
+  try{
+   const cached=await env.DB.prepare('SELECT updated_at FROM gsc_insights WHERE client_id=?').bind(target.id).first();
+   if(!cached||Date.now()-Date.parse(cached.updated_at)>20*3600000)await savedGscInsights(env,target.id,JSON.parse(target.data));
+  }catch(e){console.error('SEO performance refresh failed:',String(e.message||e).slice(0,180))}
  }
  })());
 }};
