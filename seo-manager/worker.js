@@ -208,6 +208,26 @@ async function savedGscInsights(env,id,clientData,force=false){
 
 
 const INTAKE_BASE='https://onboard.chipinworks.co.uk';
+
+function bytesHex(bytes){return Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('')}
+function hexBytes(hex){if(!/^(?:[0-9a-f]{2})+$/i.test(hex))throw Error('Invalid encoded invitation');const out=new Uint8Array(hex.length/2);for(let i=0;i<out.length;i++)out[i]=parseInt(hex.slice(i*2,i*2+2),16);return out}
+async function sealIntakeToken(env,token){
+ if(!env.SEO_INTAKE_LINK_KEY)throw Error('Secure invitation storage has not been configured');
+ const iv=crypto.getRandomValues(new Uint8Array(12));
+ const data=new TextEncoder().encode(token);
+ const encrypted=await crypto.subtle.encrypt({name:'AES-GCM',iv},env.SEO_INTAKE_LINK_KEY,data);
+ return bytesHex(iv)+':'+bytesHex(new Uint8Array(encrypted));
+}
+async function unsealIntakeToken(env,cipher){
+ if(!env.SEO_INTAKE_LINK_KEY||typeof cipher!=='string'||!cipher.includes(':'))return null;
+ const [ivHex,bodyHex]=cipher.split(':');
+ try{
+  const text=await crypto.subtle.decrypt({name:'AES-GCM',iv:hexBytes(ivHex)},env.SEO_INTAKE_LINK_KEY,hexBytes(bodyHex));
+  const token=new TextDecoder().decode(text);
+  return /^[0-9a-f]{64}$/.test(token)?token:null;
+ }catch{return null}
+}
+
 async function intakeHash(token){
  const bytes=new TextEncoder().encode(token);
  const hashed=await crypto.subtle.digest('SHA-256',bytes);
@@ -250,10 +270,13 @@ export default {async fetch(req,env){
 
   if(section==='intake'&&req.method==='GET'){
     const [link,submitted]=await Promise.all([
-      env.DB.prepare('SELECT created_at,expires_at,revoked_at,google_email,invited_email FROM seo_intake_links WHERE client_id=?').bind(id).first(),
+      env.DB.prepare('SELECT created_at,expires_at,revoked_at,google_email,invited_email,encrypted_token FROM seo_intake_links WHERE client_id=?').bind(id).first(),
       env.DB.prepare('SELECT submitted_at,data FROM seo_intake_submissions WHERE client_id=?').bind(id).first()
     ]);
-    return reply({link:link?{createdAt:link.created_at,expiresAt:link.expires_at,revoked:!!link.revoked_at}:null,
+    const active=link&&!link.revoked_at&&Date.parse(link.expires_at)>Date.now();
+    const decrypted=active&&link.encrypted_token?await unsealIntakeToken(env,link.encrypted_token):null;
+    return reply({link:link?{createdAt:link.created_at,expiresAt:link.expires_at,revoked:!!link.revoked_at,
+       recoverable:!!decrypted,url:decrypted?INTAKE_BASE+'/i/'+decrypted:null}:null,
       submission:submitted?{submittedAt:submitted.submitted_at,data:JSON.parse(submitted.data)}:null,
       inviteEmail:link?.invited_email||'jamesbutt.chipin@gmail.com',
       googleEmail:link?.google_email||''});
@@ -262,12 +285,13 @@ export default {async fetch(req,env){
     const raw=crypto.getRandomValues(new Uint8Array(32));
     const token=Array.from(raw,b=>b.toString(16).padStart(2,'0')).join('');
     const digest=await intakeHash(token);
+    const encrypted=await sealIntakeToken(env,token);
     const t=new Date(),end=new Date(t.getTime()+30*86400000);
     let googleEmail='';
     try{googleEmail=String(JSON.parse(env.GSC_SERVICE_ACCOUNT_JSON||'{}').client_email||'').slice(0,180)}catch{}
     const inviteEmail='jamesbutt.chipin@gmail.com';
-    await env.DB.prepare("INSERT INTO seo_intake_links(client_id,token_hash,created_at,expires_at,revoked_at,google_email,invited_email) VALUES(?,?,?,?,NULL,?,?) ON CONFLICT(client_id) DO UPDATE SET token_hash=excluded.token_hash,created_at=excluded.created_at,expires_at=excluded.expires_at,revoked_at=NULL,google_email=excluded.google_email,invited_email=excluded.invited_email")
-     .bind(id,digest,t.toISOString(),end.toISOString(),googleEmail,inviteEmail).run();
+    await env.DB.prepare("INSERT INTO seo_intake_links(client_id,token_hash,created_at,expires_at,revoked_at,google_email,invited_email,encrypted_token) VALUES(?,?,?,?,NULL,?,?,?) ON CONFLICT(client_id) DO UPDATE SET token_hash=excluded.token_hash,created_at=excluded.created_at,expires_at=excluded.expires_at,revoked_at=NULL,google_email=excluded.google_email,invited_email=excluded.invited_email,encrypted_token=excluded.encrypted_token")
+     .bind(id,digest,t.toISOString(),end.toISOString(),googleEmail,inviteEmail,encrypted).run();
     return reply({url:INTAKE_BASE+'/i/'+token,expiresAt:end.toISOString(),inviteEmail,googleEmail,warning:'This is the only time this private link is shown. Keep it safe and send only to the business owner.'});
   }
   if(section==='insights'&&req.method==='GET')return reply(await savedGscInsights(env,id,JSON.parse(c.data)));
