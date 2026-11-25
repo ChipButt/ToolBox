@@ -247,18 +247,21 @@ function onboardingEmailDetails(link){
  const c=detail.client||{},submitted=detail.intake?.submission?.data||{};
  const recipient=String(c.email||submitted.contact_email||'').trim();
  const company=String(c.name||'your business').trim();
+ const fullName=String(c.contact||submitted.contact_name||'').trim();
+ const firstName=fullName.split(/\s+/)[0]||'';
+ const greeting='Hello'+(firstName?' '+firstName:'')+',';
  const subject='Your SEO onboarding with Chip In';
  const intro="Thank you for choosing Chip In to help more customers find "+company+" online.";
  const task="Before we begin, please complete the short, secure setup form below. It explains what we'll do, asks a few questions about your business and helps us arrange access to your existing website and Google search reports.";
  const reassurance="You don't need to be technical, and you should never share your passwords. If you're unsure about anything, just choose 'Not sure - please help me' and we'll guide you.";
- const signoff="Kind regards,\nChip In";
+ const signoff="Kind regards,\nJames Butt\nChip In";
  const label='Click to Begin SEO Onboarding';
- const plaintext="Hello,\n\n"+intro+"\n\n"+task+"\n\n"+label+":\n"+link+"\n\n"+reassurance+"\n\n"+signoff;
+ const plaintext=greeting+"\n\n"+intro+"\n\n"+task+"\n\n"+label+":\n"+link+"\n\n"+reassurance+"\n\n"+signoff;
  const html='<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.65;color:#26384b">'+
- '<p>Hello,</p><p>'+esc(intro)+'</p><p>'+esc(task)+'</p>'+
+ '<p>'+esc(greeting)+'</p><p>'+esc(intro)+'</p><p>'+esc(task)+'</p>'+
  '<p><a href="'+esc(link)+'" style="color:#115ea8;text-decoration:underline;font-weight:700">'+esc(label)+'</a></p>'+
- '<p>'+esc(reassurance)+'</p><p>Kind regards,<br>Chip In</p></div>';
- return {recipient,subject,plaintext,html,label};
+ '<p>'+esc(reassurance)+'</p><p>Kind regards,<br>James Butt<br>Chip In</p></div>';
+ return {recipient,subject,plaintext,html,label,firstName};
 }
 async function ensureOnboardingEmailLink(){
  if(detail.intakeLinkUrl)return detail.intakeLinkUrl;
