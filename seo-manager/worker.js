@@ -206,6 +206,14 @@ async function savedGscInsights(env,id,clientData,force=false){
  return {data:Object.keys(data).length?data:null,updatedAt:old?.updated_at||null,error:old?.last_error||(!connected||connected.status!=='connected'?'Google Search Console is not connected for this client.':'')};
 }
 
+
+const INTAKE_BASE='https://chipin-seo-onboarding.goldplushighdefinition.workers.dev';
+async function intakeHash(token){
+ const bytes=new TextEncoder().encode(token);
+ const hashed=await crypto.subtle.digest('SHA-256',bytes);
+ return [...new Uint8Array(hashed)].map(x=>x.toString(16).padStart(2,'0')).join('');
+}
+
 async function body(request){const s=await request.text();if(s.length>20000)throw Error('Request too large');return JSON.parse(s||'{}')}
 async function client(env,id){return await env.DB.prepare('SELECT id,data,created_at,updated_at FROM clients WHERE id=?').bind(id).first()}
 const html=String.raw`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0c2b5e"><title>Chip In SEO Manager</title><link rel="stylesheet" href="/app.css?v=2"></head><body><div id="app"><main style="padding:3rem;font-family:sans-serif">Loading SEO Manager…</main></div><script src="/app.js?v=2" defer></script></body></html>`;
@@ -223,8 +231,8 @@ export default {async fetch(req,env){
   if(u.pathname==='/api/health'&&req.method==='GET'){await env.DB.prepare('SELECT 1 AS ok').first();return reply({ok:true,version:'1.0.0'})}
   if(u.pathname==='/api/clients'&&req.method==='GET'){let x=await env.DB.prepare('SELECT id,data,created_at,updated_at FROM clients ORDER BY updated_at DESC LIMIT 300').all();return reply({clients:x.results.map(r=>({id:r.id,...JSON.parse(r.data),createdAt:r.created_at,updatedAt:r.updated_at}))})}
   if(u.pathname==='/api/clients'&&req.method==='POST'){const d=cleanData(await body(req));if(!d.name||!d.website)throw Error('Business name and website are required');safeUrl(d.website);let id=crypto.randomUUID(),time=now();await env.DB.prepare('INSERT INTO clients (id,created_at,updated_at,data) VALUES (?,?,?,?)').bind(id,time,time,JSON.stringify(d)).run();return reply({id,client:d},201)}
-  if(u.pathname==='/api/export'&&req.method==='GET'){const [c,t,m,a,w,i]=await Promise.all(['clients','tasks','metrics','audits','seo_work','gsc_insights'].map(table=>env.DB.prepare('SELECT * FROM '+table).all()));return reply({format:'chipin-seo-backup',version:1,exportedAt:now(),clients:c.results,tasks:t.results,metrics:m.results,audits:a.results,completedWork:w.results,searchInsights:i.results})}
-  const p=u.pathname.match(/^\/api\/clients\/([a-f0-9-]{36})(?:\/(tasks|metrics|audit|gsc|insights|work)(?:\/(sync))?)?$/);if(!p)return reply({error:'Not found'},404);
+  if(u.pathname==='/api/export'&&req.method==='GET'){const [c,t,m,a,w,i,il,is]=await Promise.all(['clients','tasks','metrics','audits','seo_work','gsc_insights','seo_intake_links','seo_intake_submissions'].map(table=>env.DB.prepare('SELECT * FROM '+table).all()));return reply({format:'chipin-seo-backup',version:1,exportedAt:now(),clients:c.results,tasks:t.results,metrics:m.results,audits:a.results,completedWork:w.results,searchInsights:i.results,intakeLinks:il.results,intakeSubmissions:is.results})}
+  const p=u.pathname.match(/^\/api\/clients\/([a-f0-9-]{36})(?:\/(tasks|metrics|audit|gsc|insights|work|intake)(?:\/(sync))?)?$/);if(!p)return reply({error:'Not found'},404);
   const id=p[1],section=p[2]||'',c=await client(env,id);if(!c)return reply({error:'Client not found'},404);
   if(!section&&req.method==='GET'){
     const [tasks,metrics,audits]=await Promise.all([
@@ -234,11 +242,34 @@ export default {async fetch(req,env){
     ]);
     return reply({id,client:JSON.parse(c.data),createdAt:c.created_at,updatedAt:c.updated_at,tasks:tasks.results,metrics:metrics.results,audits:audits.results.map(x=>({id:x.id,runAt:x.run_at,...JSON.parse(x.data)}))});
   }
-  if(!section&&req.method==='DELETE'){await env.DB.batch([env.DB.prepare('DELETE FROM audits WHERE client_id=?').bind(id),env.DB.prepare('DELETE FROM metrics WHERE client_id=?').bind(id),env.DB.prepare('DELETE FROM tasks WHERE client_id=?').bind(id),env.DB.prepare('DELETE FROM seo_work WHERE client_id=?').bind(id),env.DB.prepare('DELETE FROM gsc_insights WHERE client_id=?').bind(id),env.DB.prepare('DELETE FROM gsc_connections WHERE client_id=?').bind(id),env.DB.prepare('DELETE FROM clients WHERE id=?').bind(id)]);return reply({ok:true})}
+  if(!section&&req.method==='DELETE'){await env.DB.batch([env.DB.prepare('DELETE FROM audits WHERE client_id=?').bind(id),env.DB.prepare('DELETE FROM metrics WHERE client_id=?').bind(id),env.DB.prepare('DELETE FROM tasks WHERE client_id=?').bind(id),env.DB.prepare('DELETE FROM seo_work WHERE client_id=?').bind(id),env.DB.prepare('DELETE FROM gsc_insights WHERE client_id=?').bind(id),env.DB.prepare('DELETE FROM gsc_connections WHERE client_id=?').bind(id),env.DB.prepare('DELETE FROM seo_intake_links WHERE client_id=?').bind(id),env.DB.prepare('DELETE FROM seo_intake_submissions WHERE client_id=?').bind(id),env.DB.prepare('DELETE FROM clients WHERE id=?').bind(id)]);return reply({ok:true})}
   if(!section&&req.method==='PUT'){const d=cleanData(await body(req));if(!d.name||!d.website)throw Error('Business name and website are required');safeUrl(d.website);await env.DB.prepare('UPDATE clients SET data=?,updated_at=? WHERE id=?').bind(JSON.stringify(d),now(),id).run();return reply({ok:true})}
   if(section==='tasks'&&req.method==='PUT'){const x=await body(req);if(!/^[a-z0-9-]{2,80}$/.test(x.key||'')||!['todo','doing','done','na'].includes(x.status))throw Error('Invalid task');await env.DB.prepare('INSERT INTO tasks(client_id,task_key,status,notes,updated_at) VALUES(?,?,?,?,?) ON CONFLICT(client_id,task_key) DO UPDATE SET status=excluded.status,notes=excluded.notes,updated_at=excluded.updated_at').bind(id,x.key,x.status,String(x.notes||'').slice(0,1500),now()).run();return reply({ok:true})}
   if(section==='metrics'&&req.method==='PUT'){const x=await body(req);if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(x.month||''))throw Error('Select a month');const vals=[num(x.clicks),num(x.impressions),num(x.position,100),num(x.gbp_website),num(x.gbp_calls),num(x.gbp_directions),num(x.enquiries)];if(vals.some((n,i)=>n!==null&&((i===2&&n>100)||n<0)))throw Error('Invalid metrics');await env.DB.prepare('INSERT INTO metrics(client_id,month,clicks,impressions,position,gbp_website,gbp_calls,gbp_directions,enquiries,notes,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(client_id,month) DO UPDATE SET clicks=excluded.clicks,impressions=excluded.impressions,position=excluded.position,gbp_website=excluded.gbp_website,gbp_calls=excluded.gbp_calls,gbp_directions=excluded.gbp_directions,enquiries=excluded.enquiries,notes=excluded.notes,updated_at=excluded.updated_at').bind(id,x.month,...vals,String(x.notes||'').slice(0,2000),now()).run();return reply({ok:true})}
 
+
+  if(section==='intake'&&req.method==='GET'){
+    const [link,submitted]=await Promise.all([
+      env.DB.prepare('SELECT created_at,expires_at,revoked_at,google_email,invited_email FROM seo_intake_links WHERE client_id=?').bind(id).first(),
+      env.DB.prepare('SELECT submitted_at,data FROM seo_intake_submissions WHERE client_id=?').bind(id).first()
+    ]);
+    return reply({link:link?{createdAt:link.created_at,expiresAt:link.expires_at,revoked:!!link.revoked_at}:null,
+      submission:submitted?{submittedAt:submitted.submitted_at,data:JSON.parse(submitted.data)}:null,
+      inviteEmail:link?.invited_email||'jamesbutt.chipin@gmail.com',
+      googleEmail:link?.google_email||''});
+  }
+  if(section==='intake'&&req.method==='POST'){
+    const raw=crypto.getRandomValues(new Uint8Array(32));
+    const token=Array.from(raw,b=>b.toString(16).padStart(2,'0')).join('');
+    const digest=await intakeHash(token);
+    const t=new Date(),end=new Date(t.getTime()+30*86400000);
+    let googleEmail='';
+    try{googleEmail=String(JSON.parse(env.GSC_SERVICE_ACCOUNT_JSON||'{}').client_email||'').slice(0,180)}catch{}
+    const inviteEmail='jamesbutt.chipin@gmail.com';
+    await env.DB.prepare("INSERT INTO seo_intake_links(client_id,token_hash,created_at,expires_at,revoked_at,google_email,invited_email) VALUES(?,?,?,?,NULL,?,?) ON CONFLICT(client_id) DO UPDATE SET token_hash=excluded.token_hash,created_at=excluded.created_at,expires_at=excluded.expires_at,revoked_at=NULL,google_email=excluded.google_email,invited_email=excluded.invited_email")
+     .bind(id,digest,t.toISOString(),end.toISOString(),googleEmail,inviteEmail).run();
+    return reply({url:INTAKE_BASE+'/i/'+token,expiresAt:end.toISOString(),inviteEmail,googleEmail,warning:'This is the only time this private link is shown. Keep it safe and send only to the business owner.'});
+  }
   if(section==='insights'&&req.method==='GET')return reply(await savedGscInsights(env,id,JSON.parse(c.data)));
   if(section==='insights'&&p[3]==='sync'&&req.method==='POST')return reply(await savedGscInsights(env,id,JSON.parse(c.data),true));
   if(section==='work'&&req.method==='GET'){
