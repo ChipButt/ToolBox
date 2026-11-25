@@ -21,7 +21,7 @@ function btn(t,a,c='alt'){return '<button class="button '+c+'" data-action="'+a+
 function alertMsg(s,kind='success'){message='<div class="'+kind+'">'+esc(s)+'</div>';render()}
 async function api(path,method='GET',payload){const r=await fetch(path,{method,credentials:'same-origin',headers:payload===undefined?{}:{'Content-Type':'application/json'},body:payload===undefined?undefined:JSON.stringify(payload)});let j;try{j=await r.json()}catch{throw Error('Server returned an unexpected response. Your login may have expired.')}if(!r.ok)throw Error(j.error||'Request failed');return j}
 async function refresh(){clients=(await api('/api/clients')).clients||[]}
-async function open(id,newtab='results'){detail=await api('/api/clients/'+id);const [g,i,w,invite]=await Promise.allSettled([api('/api/clients/'+id+'/gsc'),api('/api/clients/'+id+'/insights'),api('/api/clients/'+id+'/work'),api('/api/clients/'+id+'/intake')]);detail.gsc=g.status==='fulfilled'?g.value:{configured:false};detail.insights=i.status==='fulfilled'?i.value:{data:null,error:'Could not load Google results.'};detail.work=w.status==='fulfilled'?w.value.work:[];detail.intake=invite.status==='fulfilled'?invite.value:{link:null,submission:null};page='client';tab=newtab;render()}
+async function open(id,newtab='results'){detail=await api('/api/clients/'+id);const [g,i,w,invite]=await Promise.allSettled([api('/api/clients/'+id+'/gsc'),api('/api/clients/'+id+'/insights'),api('/api/clients/'+id+'/work'),api('/api/clients/'+id+'/intake')]);detail.gsc=g.status==='fulfilled'?g.value:{configured:false};detail.insights=i.status==='fulfilled'?i.value:{data:null,error:'Could not load Google results.'};detail.work=w.status==='fulfilled'?w.value.work:[];detail.intake=invite.status==='fulfilled'?invite.value:{link:null,submission:null};detail.intakeLinkUrl=detail.intake?.link?.url||null;page='client';tab=newtab;render()}
 function status(key){const k=key.startsWith('m-')?'monthly-'+workMonth+'-'+key.slice(2):key;return detail.tasks.find(t=>t.task_key===k)||{status:'todo',notes:''}}
 function progress(monthly=false){const t=tasks.filter(x=>x[0].startsWith('m-')===monthly),done=t.filter(x=>['done','na'].includes(status(x[0]).status)).length;return {done,total:t.length,pc:Math.round(100*done/t.length)}}
 function field(key,label,value='',type='text',full=false){return '<div class="field '+(full?'full':'')+'"><label>'+label+'</label><input name="'+key+'" type="'+type+'" value="'+esc(value)+'"></div>'}
@@ -262,9 +262,11 @@ function onboardingEmailDetails(link){
 }
 async function ensureOnboardingEmailLink(){
  if(detail.intakeLinkUrl)return detail.intakeLinkUrl;
- const old=detail.intake?.link;
- const active=old&&!old.revoked&&Date.parse(old.expiresAt)>Date.now();
- if(active&&!window.confirm('An onboarding link has already been created for this customer. Making a new one will DISABLE the previous link, including any link already emailed. Continue?'))return '';
+ if(detail.intake?.link?.url){
+  detail.intakeLinkUrl=detail.intake.link.url;
+  return detail.intakeLinkUrl;
+ }
+ // The caller checks for old, non-recoverable invitations before opening Gmail.
  const issued=await api('/api/clients/'+detail.id+'/intake','POST',{});
  if(!issued.url||!/^https:\/\/onboard\.chipinworks\.co\.uk\/i\/[0-9a-f]{64}$/.test(issued.url))throw Error('Could not create a valid onboarding link.');
  detail.intakeLinkUrl=issued.url;
@@ -293,7 +295,7 @@ function clientIntake(){
  '<h3>Private onboarding link</h3><p>Each invitation expires after 30 days. Creating a new link replaces the earlier one.</p>'+
  btn(link?'Generate a replacement link':'Create a secure client link','issue-intake','gold')+
  (detail.intakeLinkUrl?'<div class="intake-link"><label>Copy and send this private link</label><input readonly id="intakeInviteLink" value="'+esc(detail.intakeLinkUrl)+'"><div class="row">'+btn('Copy client link','copy-intake','gold')+' <a href="'+esc(detail.intakeLinkUrl)+'" target="_blank" rel="noopener noreferrer">Open client form</a></div></div>':'<p class="hint">Links are shown only when generated. If you have lost a link, create a new one; the previous link will stop working.</p>')+
- (link?'<p class="hint">Most recent invitation created '+date(link.createdAt)+'. Expiry '+date(link.expiresAt)+'.</p>':'')+'</div>'+
+ (link?'<p class="hint">Most recent invitation created '+date(link.createdAt)+'. Expiry '+date(link.expiresAt)+'.</p>':'')+(link&&!link.recoverable&&!link.revoked&&Date.parse(link.expiresAt)>Date.now()?'<p class="hint"><strong>This is an earlier invitation created before links could be securely recovered.</strong> To email it from here, you will need to generate one replacement link once. If you have already sent the old link, it will stop working after replacement.</p>':'')+'</div>'+
  '<div class="card"><h3>2. Have they completed it?</h3>'+
  (sent?'<p class="intake-received"><strong>Form received</strong><br>Submitted '+esc(date(sent.submittedAt))+'</p><p>Review the answers below. Access reported by a client must still be independently confirmed.</p>':'<p><strong>No form submitted yet.</strong></p><p>Send the personal link to the business owner or someone authorised to arrange website and Google access.</p>')+
  '<p class="hint">Google and Wix access use collaborator invitations, not shared passwords. The client remains the owner of their accounts.</p></div></div>'+
@@ -303,7 +305,7 @@ function clientIntake(){
 
 function clientScreen(){const c=detail.client,links=[['intake','Client onboarding'],['results','Results & progress'],['work','Work done'],['report','Customer report'],['guide','Setup'],['audit','Website check'],['metrics','Google connection'],['checklist','Work checklist'],['overview','Technical detail'],['edit','Client details']];return '<div class="top"><div><div class="eyebrow">Client project</div><h1>'+esc(c.name)+'</h1><p class="muted">'+esc(c.website)+'</p></div><div class="toolbar">'+btn('All clients','back')+btn('Print report','print','gold')+'</div></div><div class="tabs">'+links.map(x=>'<button data-tab="'+x[0]+'" class="'+(tab===x[0]?'active':'')+'">'+x[1]+'</button>').join('')+'</div>'+(tab==='intake'?clientIntake():tab==='results'?resultsOverview():tab==='work'?workRecord():tab==='guide'?guide():tab==='overview'?summary():tab==='checklist'?checklist():tab==='audit'?audit():tab==='metrics'?metrics():tab==='report'?clientReport():'<div class="card"><h2>Client details</h2>'+form(true)+'<div style="margin-top:25px;padding-top:20px;border-top:1px solid #eee"><h3>Remove client data</h3><p class="hint">Permanently deletes the client record, metrics, checklists and audit history. Download a private backup first if you need one.</p>'+btn('Permanently delete this client','delete-client','alt')+'</div></div>')}
 function render(){let content=page==='client'&&detail?clientScreen():page==='new'?'<div class="top"><h1>New SEO client</h1></div><div class="card">'+form(false)+'</div>':page==='intake'?'<div class="top"><h1>Client onboarding</h1></div>'+intake():home();
-app.innerHTML='<div class="layout"><aside class="sidebar"><div class="brand">CHIP <em>IN</em><small>SEO MANAGER V4.2</small></div><nav class="nav"><button data-nav="clients" class="'+(page==='clients'?'active':'')+'">Clients</button><button data-nav="new" class="'+(page==='new'?'active':'')+'">New client</button><button data-nav="intake" class="'+(page==='intake'?'active':'')+'">Onboarding</button>'+(detail?'<button data-nav="client" class="'+(page==='client'?'active':'')+'">Current client</button>':'')+'</nav><div class="aside">Cloudflare Access · EU-region storage<br>Chip In SEO Manager</div></aside><main class="main">'+message+content+'</main></div>';message=''}
+app.innerHTML='<div class="layout"><aside class="sidebar"><div class="brand">CHIP <em>IN</em><small>SEO MANAGER V4.3</small></div><nav class="nav"><button data-nav="clients" class="'+(page==='clients'?'active':'')+'">Clients</button><button data-nav="new" class="'+(page==='new'?'active':'')+'">New client</button><button data-nav="intake" class="'+(page==='intake'?'active':'')+'">Onboarding</button>'+(detail?'<button data-nav="client" class="'+(page==='client'?'active':'')+'">Current client</button>':'')+'</nav><div class="aside">Cloudflare Access · EU-region storage<br>Chip In SEO Manager</div></aside><main class="main">'+message+content+'</main></div>';message=''}
 app.addEventListener('click',async ev=>{const x=ev.target.closest('[data-nav],[data-tab],[data-open],[data-action]');if(!x)return;try{
 if(x.dataset.nav){page=x.dataset.nav;render();return}
 if(x.dataset.tab){tab=x.dataset.tab;render();return}
@@ -313,12 +315,15 @@ if(a==='new'){page='new';render()}else if(['overview','checklist','metrics','rep
 else if(a==='tasks'){tab='checklist';render()}
 else if(a==='copy'){await navigator.clipboard.writeText(intakeText);alertMsg('Onboarding questionnaire copied.')}else if(a==='copy-work'){const prompt='Please help me carry out a proper SEO audit and improvement plan for '+detail.client.name+' ('+detail.client.website+'). I am a complete SEO beginner. Use my connected GitHub/Cloudflare if relevant, research the website and local competitors carefully, and give me ONE action at a time when my involvement is needed. Never invent Search Console figures, claim rankings without evidence, or change a customer website without clear approval.';await navigator.clipboard.writeText(prompt);alertMsg('A detailed ChatGPT instruction has been copied. Paste it into our conversation.')}
 else if(a==='issue-intake'){
- if(busy)return;busy=true;render();
+ if(busy)return;
+ const prior=detail.intake?.link;
+ if(prior&&!prior.revoked&&Date.parse(prior.expiresAt)>Date.now()&&!window.confirm('This will REPLACE the existing invitation link. Any previous link you emailed will stop working. Create a replacement?'))return;
+ busy=true;render();
  try{
    const issued=await api('/api/clients/'+detail.id+'/intake','POST',{});
    detail.intakeLinkUrl=issued.url;
    detail.intake=await api('/api/clients/'+detail.id+'/intake');
-   tab='intake';alertMsg('Private client link created. Copy it and send to the business owner.');
+   tab='intake';alertMsg('Private client link created. You can now open the prefilled Gmail draft.');
  }finally{busy=false;render()}
 }
 
@@ -326,21 +331,40 @@ else if(a==='gmail-intake'){
  if(busy)return;
  const recipient=String(detail.client?.email||detail.intake?.submission?.data?.contact_email||'').trim();
  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient))throw Error('Add a valid customer email address in Client details before opening the Gmail draft.');
- // Open the tab directly from the button click, like the Chip In HQ quotation email.
+ const current=detail.intake?.link;
+ // Existing legacy links cannot be reconstructed from their stored hash. Warn BEFORE opening any tab.
+ if(current&&!current.revoked&&Date.parse(current.expiresAt)>Date.now()&&!current.url&&!detail.intakeLinkUrl){
+  if(!window.confirm('This customer already has an older invitation link, but it cannot be retrieved after a reload. To open the Gmail email, create a NEW link. The old link will stop working. Continue?'))return;
+ }
+ // For securely saved links, navigate straight to Gmail in the click handler (no blank-tab flash).
+ const prepared=detail.intakeLinkUrl||detail.intake?.link?.url;
+ if(prepared){
+  const draft=onboardingEmailDetails(prepared);
+  const url='https://mail.google.com/mail/?view=cm&fs=1&to='+encodeURIComponent(recipient)+
+   '&su='+encodeURIComponent(draft.subject)+'&body='+encodeURIComponent(draft.plaintext);
+  const tab=window.open(url,'_blank');
+  if(!tab)throw Error('Your browser blocked the Gmail tab. Allow pop-ups for SEO Manager and try again.');
+  try{tab.opener=null}catch{}
+  alertMsg('Gmail draft opened in a new tab. Review it and press Send.');
+  return;
+ }
+ // For brand-new clients (or a one-time legacy replacement), reserve the tab synchronously.
  const tab=window.open('about:blank','_blank');
  if(!tab)throw Error('Your browser blocked the Gmail tab. Allow pop-ups for SEO Manager and try again.');
  busy=true;render();
  try{
   const link=await ensureOnboardingEmailLink();
-  if(!link){tab.close();return}
   const draft=onboardingEmailDetails(link);
   const url='https://mail.google.com/mail/?view=cm&fs=1&to='+encodeURIComponent(recipient)+
-    '&su='+encodeURIComponent(draft.subject)+'&body='+encodeURIComponent(draft.plaintext);
+   '&su='+encodeURIComponent(draft.subject)+'&body='+encodeURIComponent(draft.plaintext);
   tab.location.replace(url);
   try{tab.opener=null}catch{}
-  alertMsg('Gmail draft opened in a new tab, with the customer, subject and full message prefilled. Review and press Send in Gmail.');
- }catch(err){try{tab.close()}catch{}throw err}
- finally{busy=false;render()}
+  alertMsg('Gmail draft opened with the customer, subject and full message prefilled. Review and press Send.');
+ }catch(err){
+  // Don't close a tab immediately after opening it: that causes the reported "flash".
+  try{tab.document.body.textContent='Could not prepare your onboarding email. Return to SEO Manager to see the error. No email was sent.'}catch{}
+  throw err;
+ }finally{busy=false;render()}
 }
 else if(a==='copy-intake'){
  if(!detail.intakeLinkUrl)throw Error('Generate a private client link first.');
