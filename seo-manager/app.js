@@ -325,7 +325,7 @@ else if(a==='issue-intake'){
 else if(a==='gmail-intake'){
  if(busy)return;
  const recipient=String(detail.client?.email||detail.intake?.submission?.data?.contact_email||'').trim();
- if(!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(recipient))throw Error('Add a valid customer email address in Client details before opening the Gmail draft.');
+ if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient))throw Error('Add a valid customer email address in Client details before opening the Gmail draft.');
  // Open the tab directly from the button click, like the Chip In HQ quotation email.
  const tab=window.open('about:blank','_blank');
  if(!tab)throw Error('Your browser blocked the Gmail tab. Allow pop-ups for SEO Manager and try again.');
