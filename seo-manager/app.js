@@ -291,13 +291,18 @@ function clientIntake(){
  ['Access or approval notes',result.access_notes],['Website change permission',result.permission_level==='non_visible'?'Non-visible SEO changes allowed after access is verified; visible changes require approval':result.permission_level==='ask_each'?'Ask the client before ANY changes':'Not provided']
  ];
  return '<section class="card intake-admin"><div class="eyebrow">CLIENT ONBOARDING · PRIVATE INVITATION</div><h2>Invite '+esc(c.name)+' to complete their SEO setup</h2><p>Send a unique link explaining the service and asking for business details, website platform, Google access and approval boundaries. No account passwords are requested or stored.</p>'+
- '<div class="grid2"><div class="card"><h3>1. Prepare the Gmail email</h3><p>Use the customer’s name and email address, with the message ending <strong>James Butt · Chip In</strong>.</p>'+
+ '<div class="grid2"><div class="card"><h3>1. Prepare the customer email</h3><p>It starts with <strong>Hello '+esc(String(c.contact||result.contact_name||'').trim().split(/\s+/)[0]||'[Customer First Name]')+',</strong> and ends with James Butt · Chip In. The button text <strong>Click to Begin SEO Onboarding</strong> will be the hyperlink, not a visible long URL.</p>'+
  (gmail.connected
-   ?'<div class="intake-email-actions">'+btn('Create formatted Gmail draft','gmail-rich','gold')+'</div><p class="hint">Creates a real Gmail draft containing <strong>Click to Begin SEO Onboarding</strong> as a clickable text hyperlink. Gmail opens to Drafts for your final review. Nothing is sent.</p>'
-   :gmail.configured
-     ?'<div class="intake-email-actions">'+btn('Connect Gmail once','gmail-connect','gold')+'</div><p class="hint">Connect your Chip In Gmail account to prepare fully formatted drafts with a true text-only hyperlink.</p>'
-     :'<p class="hint"><strong>Rich Gmail drafts require one-time Gmail authorisation.</strong> It has not been configured for this website yet. The plain-text email below is still available, but it shows the full URL.</p>')+
- '<div class="intake-email-actions">'+btn('Open plain-text Gmail draft','gmail-intake','alt')+'</div>'+
+  ?'<div class="intake-email-actions">'+btn('Open formatted Gmail draft','gmail-rich','gold')+'</div><p class="hint">Creates a fully formatted draft in your authorised Gmail account and opens Gmail in a new tab. You review and send it yourself.</p>'
+  :gmail.configured
+    ?'<div class="gmail-setup"><div class="eyebrow">ONE-TIME CONNECTION</div><p>Everything is prepared. Sign in with the Google account <strong>jamesbutt.chipin@gmail.com</strong> and grant permission to create Gmail drafts.</p><div class="intake-email-actions">'+btn('Sign in with Google','gmail-connect','gold')+'</div></div>'
+    :'<div class="gmail-setup"><h3>Connect Gmail once</h3><p>Google needs to recognise SEO Manager as your own app before it can create formatted drafts. Complete this one-time Google setup, then sign in. <strong>You only do this for Chip In, not for each customer.</strong></p>'+
+      '<ol class="gmail-steps"><li>Open <a href="https://console.cloud.google.com/auth/overview" target="_blank" rel="noopener noreferrer">Google Auth Platform</a> in the account <strong>jamesbutt.chipin@gmail.com</strong>. Use the <strong>personal-use setup</strong> if Google offers it, or create an OAuth application named <strong>Chip In SEO Manager</strong>.</li>'+
+      '<li>Enable the <a href="https://console.cloud.google.com/apis/library/gmail.googleapis.com" target="_blank" rel="noopener noreferrer">Gmail API</a> for that project and allow the <strong>gmail.compose</strong> permission. Only your Chip In account needs access.</li>'+
+      '<li>Create an OAuth client of type <strong>Web application</strong>. Add this exact <strong>Authorised redirect URI</strong>:<div class="gmail-uri"><code>https://seo.chipinworks.co.uk/api/gmail/callback</code></div></li>'+
+      '<li>Copy the <strong>Client ID</strong> and <strong>Client secret</strong> shown by Google into the secure fields below, then select <strong>Save and sign in with Google</strong>.</li></ol>'+
+      '<form id="gmailSetupForm" class="gmail-setup-form"><div class="field"><label>Google OAuth Client ID</label><input type="text" name="client_id" autocomplete="off" required placeholder="...apps.googleusercontent.com"></div><div class="field"><label>Google OAuth Client secret</label><input type="password" name="client_secret" autocomplete="new-password" required></div><button type="submit" class="button gold">Save and sign in with Google</button></form>'+
+      '<p class="hint">This is the only one-time technical setup. Credentials are encrypted in your private SEO Manager; the client secret is not shown again. No customer passwords or Gmail login details are collected here.</p></div>')+
  (!c.email&&!result.contact_email?'<p class="hint"><strong>Customer email missing.</strong> Add their email address in Client details first.</p>':'')+
  '<h3>Private onboarding link</h3><p>Each invitation expires after 30 days. Creating a new link replaces the earlier one.</p>'+
  btn(link?'Generate a replacement link':'Create a secure client link','issue-intake','gold')+
@@ -312,7 +317,7 @@ function clientIntake(){
 
 function clientScreen(){const c=detail.client,links=[['intake','Client onboarding'],['results','Results & progress'],['work','Work done'],['report','Customer report'],['guide','Setup'],['audit','Website check'],['metrics','Google connection'],['checklist','Work checklist'],['overview','Technical detail'],['edit','Client details']];return '<div class="top"><div><div class="eyebrow">Client project</div><h1>'+esc(c.name)+'</h1><p class="muted">'+esc(c.website)+'</p></div><div class="toolbar">'+btn('All clients','back')+btn('Print report','print','gold')+'</div></div><div class="tabs">'+links.map(x=>'<button data-tab="'+x[0]+'" class="'+(tab===x[0]?'active':'')+'">'+x[1]+'</button>').join('')+'</div>'+(tab==='intake'?clientIntake():tab==='results'?resultsOverview():tab==='work'?workRecord():tab==='guide'?guide():tab==='overview'?summary():tab==='checklist'?checklist():tab==='audit'?audit():tab==='metrics'?metrics():tab==='report'?clientReport():'<div class="card"><h2>Client details</h2>'+form(true)+'<div style="margin-top:25px;padding-top:20px;border-top:1px solid #eee"><h3>Remove client data</h3><p class="hint">Permanently deletes the client record, metrics, checklists and audit history. Download a private backup first if you need one.</p>'+btn('Permanently delete this client','delete-client','alt')+'</div></div>')}
 function render(){let content=page==='client'&&detail?clientScreen():page==='new'?'<div class="top"><h1>New SEO client</h1></div><div class="card">'+form(false)+'</div>':page==='intake'?'<div class="top"><h1>Client onboarding</h1></div>'+intake():home();
-app.innerHTML='<div class="layout"><aside class="sidebar"><div class="brand">CHIP <em>IN</em><small>SEO MANAGER V4.4</small></div><nav class="nav"><button data-nav="clients" class="'+(page==='clients'?'active':'')+'">Clients</button><button data-nav="new" class="'+(page==='new'?'active':'')+'">New client</button><button data-nav="intake" class="'+(page==='intake'?'active':'')+'">Onboarding</button>'+(detail?'<button data-nav="client" class="'+(page==='client'?'active':'')+'">Current client</button>':'')+'</nav><div class="aside">Cloudflare Access · EU-region storage<br>Chip In SEO Manager</div></aside><main class="main">'+message+content+'</main></div>';message=''}
+app.innerHTML='<div class="layout"><aside class="sidebar"><div class="brand">CHIP <em>IN</em><small>SEO MANAGER V4.5</small></div><nav class="nav"><button data-nav="clients" class="'+(page==='clients'?'active':'')+'">Clients</button><button data-nav="new" class="'+(page==='new'?'active':'')+'">New client</button><button data-nav="intake" class="'+(page==='intake'?'active':'')+'">Onboarding</button>'+(detail?'<button data-nav="client" class="'+(page==='client'?'active':'')+'">Current client</button>':'')+'</nav><div class="aside">Cloudflare Access · EU-region storage<br>Chip In SEO Manager</div></aside><main class="main">'+message+content+'</main></div>';message=''}
 app.addEventListener('click',async ev=>{const x=ev.target.closest('[data-nav],[data-tab],[data-open],[data-action]');if(!x)return;try{
 if(x.dataset.nav){page=x.dataset.nav;render();return}
 if(x.dataset.tab){tab=x.dataset.tab;render();return}
@@ -354,49 +359,10 @@ else if(a==='gmail-rich'){
   if(!out.ok||!out.open_url?.startsWith('https://mail.google.com/'))throw Error('Gmail did not return a valid draft link');
   tab.location.replace(out.open_url);
   try{tab.opener=null}catch{}
-  alertMsg('Formatted Gmail draft saved. Gmail Drafts is open in a new tab; open the newest message, review and press Send. The onboarding link appears behind “Click to Begin SEO Onboarding”.');
+  alertMsg('Formatted Gmail draft saved. Gmail is open in a new tab with the formatted message; review and press Send. The onboarding link appears behind “Click to Begin SEO Onboarding”.');
  }catch(e){
   try{tab.document.body.textContent='Gmail draft could not be created. Return to SEO Manager for the explanation. No email was sent.'}catch{}
   throw e;
- }finally{busy=false;render()}
-}
-else if(a==='gmail-intake'){
- if(busy)return;
- const recipient=String(detail.client?.email||detail.intake?.submission?.data?.contact_email||'').trim();
- if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient))throw Error('Add a valid customer email address in Client details before opening the Gmail draft.');
- const current=detail.intake?.link;
- // Existing legacy links cannot be reconstructed from their stored hash. Warn BEFORE opening any tab.
- if(current&&!current.revoked&&Date.parse(current.expiresAt)>Date.now()&&!current.url&&!detail.intakeLinkUrl){
-  if(!window.confirm('This customer already has an older invitation link, but it cannot be retrieved after a reload. To open the Gmail email, create a NEW link. The old link will stop working. Continue?'))return;
- }
- // For securely saved links, navigate straight to Gmail in the click handler (no blank-tab flash).
- const prepared=detail.intakeLinkUrl||detail.intake?.link?.url;
- if(prepared){
-  const draft=onboardingEmailDetails(prepared);
-  const url='https://mail.google.com/mail/?view=cm&fs=1&to='+encodeURIComponent(recipient)+
-   '&su='+encodeURIComponent(draft.subject)+'&body='+encodeURIComponent(draft.plaintext);
-  const tab=window.open(url,'_blank');
-  if(!tab)throw Error('Your browser blocked the Gmail tab. Allow pop-ups for SEO Manager and try again.');
-  try{tab.opener=null}catch{}
-  alertMsg('Gmail draft opened in a new tab. Review it and press Send.');
-  return;
- }
- // For brand-new clients (or a one-time legacy replacement), reserve the tab synchronously.
- const tab=window.open('about:blank','_blank');
- if(!tab)throw Error('Your browser blocked the Gmail tab. Allow pop-ups for SEO Manager and try again.');
- busy=true;render();
- try{
-  const link=await ensureOnboardingEmailLink();
-  const draft=onboardingEmailDetails(link);
-  const url='https://mail.google.com/mail/?view=cm&fs=1&to='+encodeURIComponent(recipient)+
-   '&su='+encodeURIComponent(draft.subject)+'&body='+encodeURIComponent(draft.plaintext);
-  tab.location.replace(url);
-  try{tab.opener=null}catch{}
-  alertMsg('Gmail draft opened with the customer, subject and full message prefilled. Review and press Send.');
- }catch(err){
-  // Don't close a tab immediately after opening it: that causes the reported "flash".
-  try{tab.document.body.textContent='Could not prepare your onboarding email. Return to SEO Manager to see the error. No email was sent.'}catch{}
-  throw err;
  }finally{busy=false;render()}
 }
 else if(a==='copy-intake'){
@@ -432,7 +398,15 @@ else if(a==='audit'){if(busy)return;busy=true;render();try{await api('/api/clien
 else if(a==='backup'){const data=await api('/api/export');const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),link=document.createElement('a');link.href=URL.createObjectURL(blob);link.download='chipin-seo-backup-'+today+'.json';link.click();setTimeout(()=>URL.revokeObjectURL(link.href),5000);alertMsg('Private JSON backup downloaded.')}
 }catch(e){busy=false;alertMsg(e.message,'error')}});
 app.addEventListener('change',async ev=>{const x=ev.target;if(x.id==='workMonth'){workMonth=x.value;render();return}if(!x.matches('.task-change,.task-note'))return;const row=x.closest('.task');try{await api('/api/clients/'+detail.id+'/tasks','PUT',{key:row.dataset.key.startsWith('m-')?'monthly-'+workMonth+'-'+row.dataset.key.slice(2):row.dataset.key,status:row.querySelector('select').value,notes:row.querySelector('input').value});detail=await api('/api/clients/'+detail.id);alertMsg('Task saved.')}catch(e){alertMsg(e.message,'error')}});
-app.addEventListener('submit',async ev=>{const f=ev.target;if(!['clientForm','metricsForm','workForm'].includes(f.id))return;ev.preventDefault();const data=Object.fromEntries(new FormData(f));try{
+app.addEventListener('submit',async ev=>{const f=ev.target;if(!['clientForm','metricsForm','workForm','gmailSetupForm'].includes(f.id))return;ev.preventDefault();const data=Object.fromEntries(new FormData(f));try{
+if(f.id==='gmailSetupForm'){
+ if(!data.client_id||!data.client_secret)throw Error('Enter the OAuth Client ID and Client secret from Google Cloud.');
+ await api('/api/gmail/setup','POST',{client_id:data.client_id,client_secret:data.client_secret});
+ const auth=await api('/api/gmail/connect','POST',{});
+ if(!auth.authorization_url||!auth.authorization_url.startsWith('https://accounts.google.com/'))throw Error('Google sign-in could not start.');
+ window.location.assign(auth.authorization_url);
+ return;
+}
 if(f.id==='clientForm'){if(!data.name||!data.website)throw Error('Business name and URL are required');if(f.dataset.edit==='yes'){await api('/api/clients/'+detail.id,'PUT',data);await open(detail.id);alertMsg('Client updated.')}else{const r=await api('/api/clients','POST',data);await refresh();await open(r.id,'intake');alertMsg('Client added. Generate their private onboarding link below and send it to the business owner.')}}
 else if(f.id==='workForm'){await api('/api/clients/'+detail.id+'/work','POST',data);await open(detail.id,'work');alertMsg('Completed work recorded, with evidence if supplied.')}else{await api('/api/clients/'+detail.id+'/metrics','PUT',data);await open(detail.id,'metrics');alertMsg('Monthly figures saved.')}
 }catch(e){alertMsg(e.message,'error')}});
