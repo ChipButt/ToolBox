@@ -113,3 +113,18 @@
 .figure-definition p{margin:0;color:#465c72;font-size:13px;line-height:1.6}
 @media(max-width:700px){.verdict-row,.figure-definition{grid-template-columns:1fr;gap:5px}.verdict-row{padding:13px 0}.figure-definition{padding:12px 0}}
 @media print{.seo-verdict,.figures-explained{break-inside:avoid}.verdict-row{grid-template-columns:170px 1fr}.figure-definition{grid-template-columns:150px 1fr}}
+
+/* SEO Manager V4: secure, client-specific SEO onboarding workspace */
+.intake-admin .grid2{align-items:start}
+.intake-admin .grid2>.card{margin:0}
+.intake-link{display:grid;gap:10px;margin:17px 0 7px}
+.intake-link label{font-size:12px;font-weight:750;color:#2b527e}
+.intake-link input{width:100%;max-width:100%;padding:11px;border:1px solid #cbd8e7;border-radius:9px;background:#f6f9fc;color:#183c64;font-size:12px}
+.intake-link .row{display:flex;align-items:center;flex-wrap:wrap;gap:12px}
+.intake-received{background:#f1f8f5;border-left:3px solid #2b8a59;padding:14px 16px;line-height:1.7}
+.intake-responses{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 18px}
+.intake-responses>div{border-top:1px solid #e1eaf2;padding:15px 3px;overflow-wrap:anywhere}
+.intake-responses strong{font-size:12px;color:#607991}
+.intake-responses p{font-size:14px;line-height:1.6;margin:5px 0 0;white-space:pre-wrap}
+@media(max-width:720px){.intake-responses{grid-template-columns:1fr}}
+@media print{.intake-admin .button,.intake-link{display:none!important}}
