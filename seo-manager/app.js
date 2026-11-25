@@ -77,7 +77,7 @@ const TASK_HELP={
 function clientPlatformSetup(){
  const c=detail?.client||{};
  const platform=c.platform||'unknown';
- if(platform==='chipin')return '';
+ if(platform==='chipin'||platform==='unknown')return '';
  const access=c.siteAccess||'not_requested';
  const accessText={not_requested:'Permission has not been requested',requested:'Waiting for the client to grant access',granted:'Access reported as granted (not independently tested)',read_only:'Read-only access recorded',declined:'Client declined access'};
  const wix=platform==='wix';
