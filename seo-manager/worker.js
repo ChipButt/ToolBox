@@ -4,7 +4,7 @@ const S = { "Content-Type":"application/json; charset=utf-8", "Cache-Control":"n
 function reply(data,status=200){return new Response(JSON.stringify(data),{status,headers:S})}
 const now=()=>new Date().toISOString();
 const idOK=x=>/^[a-f0-9-]{36}$/.test(x||"");
-function cleanData(x){const fields=['name','website','contact','email','phone','address','area','services','priorities','competitors','notes','package','status','googleSearchConsole','googleBusinessProfile','analytics','startDate'];let r={};for(const f of fields)r[f]=String(x?.[f]??'').trim().slice(0,f==='notes'?4000:1200);return r}
+function cleanData(x){const fields=['name','website','contact','email','phone','address','area','services','priorities','competitors','notes','seoExcludeTerms','package','status','googleSearchConsole','googleBusinessProfile','analytics','startDate'];let r={};for(const f of fields)r[f]=String(x?.[f]??'').trim().slice(0,f==='notes'?4000:1200);return r}
 function num(v,max=1000000000){return v===null||v===undefined||v===''?null:(Number.isFinite(Number(v))&&Number(v)>=0&&Number(v)<=max?Number(v):null)}
 function safeUrl(input){let u;try{u=new URL(input.startsWith('http')?input:'https://'+input)}catch{throw Error('Enter a valid website URL')};if(u.protocol!=='https:'&&u.protocol!=='http:')throw Error('Only HTTP or HTTPS websites can be audited');if(u.username||u.password||u.port)throw Error('Custom ports or credentials are not allowed');let h=u.hostname.toLowerCase();if(h==='localhost'||h.endsWith('.local')||h.endsWith('.internal')||h.endsWith('.test')||h.endsWith('.localhost')||h.includes(':')||/^\d+(\.\d+){3}$/.test(h))throw Error('Enter a public website domain');return u.origin}
 const take=(html,re)=>{const m=html.match(re);return m?m[1].replace(/<[^>]*>/g,'').replace(/\s+/g,' ').trim().slice(0,500):''};
@@ -171,18 +171,22 @@ async function refreshGscInsights(env,clientId,clientData){
   query(start,end),query(prevStart,prevEnd),query(start,end,['query'],250),query(start,end,['page'],100)
  ]);
  const clean=r=>r?{clicks:Math.round(r.clicks||0),impressions:Math.round(r.impressions||0),ctr:Number(r.ctr||0),position:Number(r.position||0)}:null;
- const business=String(clientData.name||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
- const brandBase=business.replace(/^the /,'');
- const significant=brandBase.split(' ').filter(x=>x.length>2);
- const isBrand=q=>{const n=String(q||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();return (brandBase.length>=6&&n.includes(brandBase))||(significant.length>=2&&significant.every(word=>n.includes(word)))};
- const terms=queryRows.map(r=>({term:String(r.keys?.[0]||'').slice(0,140),...clean(r),branded:isBrand(r.keys?.[0])})).filter(r=>r.term);
+ // Business names may have a location after a comma: it is not part of the brand.
+ const normalise=value=>String(value||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+ const businessName=String(clientData.name||'').split(',')[0].trim();
+ const brandBase=normalise(businessName).replace(/^the /,'');
+ const ignored=String(clientData.seoExcludeTerms||'').split(/[\n,;]/).map(normalise).filter(Boolean).slice(0,25);
+ const isBrand=q=>{const n=normalise(q);return brandBase.length>=4&&(n===brandBase||n.includes(brandBase))};
+ const isExcluded=q=>{const n=normalise(q);return ignored.some(phrase=>n.includes(phrase))};
+ const terms=queryRows.map(r=>({term:String(r.keys?.[0]||'').slice(0,140),...clean(r),branded:isBrand(r.keys?.[0]),excluded:isExcluded(r.keys?.[0])})).filter(r=>r.term);
  const pages=pageRows.map(r=>({url:String(r.keys?.[0]||''),...clean(r)})).filter(x=>x.url&&x.url.startsWith('https://'));
- const opportunities=terms.filter(t=>!t.branded&&t.impressions>=4&&t.position>3).sort((a,b)=>b.impressions-a.impressions).slice(0,8);
+ const opportunities=terms.filter(t=>!t.branded&&!t.excluded&&t.impressions>=4&&t.position>3).sort((a,b)=>b.impressions-a.impressions).slice(0,8);
  const data={property,source:'Google Search Console API',updatedAt:now(),period:{from:day(start),to:day(end),days:28},previousPeriod:{from:day(prevStart),to:day(prevEnd),days:28},
   current:clean(currentRows[0]),previous:clean(previousRows[0]),
   brandedQueries:terms.filter(t=>t.branded).sort((a,b)=>b.clicks-a.clicks).slice(0,12),
-  discoveryQueries:terms.filter(t=>!t.branded).sort((a,b)=>b.clicks-a.clicks||b.impressions-a.impressions).slice(0,20),
-  opportunities,pages:pages.sort((a,b)=>b.clicks-a.clicks).slice(0,12),
+  discoveryQueries:terms.filter(t=>!t.branded&&!t.excluded).sort((a,b)=>b.clicks-a.clicks||b.impressions-a.impressions).slice(0,20),
+  unsuitableQueries:terms.filter(t=>!t.branded&&t.excluded).sort((a,b)=>b.impressions-a.impressions).slice(0,12),
+  excludedThemes:ignored,opportunities,pages:pages.sort((a,b)=>b.clicks-a.clicks).slice(0,12),
   caveats:['This report compares two equal 28-day periods ending three days ago to allow for Google processing delays.','Search terms may omit anonymised queries and are not a complete traffic breakdown.','A search-result click is not proof of a sale, booking, call or visit.','Average position varies by search and does not indicate ranking for every keyword.']};
  await env.DB.prepare("INSERT INTO gsc_insights(client_id,updated_at,payload,last_error) VALUES(?,?,?,'') ON CONFLICT(client_id) DO UPDATE SET updated_at=excluded.updated_at,payload=excluded.payload,last_error=''").bind(clientId,now(),JSON.stringify(data)).run();
  return data;
