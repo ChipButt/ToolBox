@@ -27,3 +27,8 @@
 #posterSize{font-size:13px;color:#e8f0e9}
 @media(max-width:800px){.poster-workspace{grid-template-columns:1fr}.poster-preview{position:static}.poster-stage{min-height:0;max-height:55dvh;padding:10px}.poster-stage canvas{max-height:50dvh}.poster-controls{padding:16px}.maker-modes button{flex:1;padding:11px 8px;font-size:14px}}
 @media(max-width:400px){.poster-pair{grid-template-columns:1fr}.poster-swatches{grid-template-columns:1fr 1fr}}
+/* V5.5: optional ranked prizes and stock illustration picker. */
+.poster-help{font-size:12px;line-height:1.5;color:#52665e;margin:7px 0 0;font-weight:400}
+.poster-prize-fields{border:1px solid #d8e2db;background:#f6f8f6;padding:2px 12px 12px;border-radius:12px;margin-top:12px}
+.poster-prize-fields[hidden],.poster-prize-fields label[hidden],#posterArtworkOptions[hidden]{display:none!important}
+.poster-prize-fields label span{display:block;color:#264b40;margin-bottom:5px;font-size:13px}
