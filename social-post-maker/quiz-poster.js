@@ -1,28 +1,41 @@
-// Static quiz and event promotion posters. All images stay in this browser.
+// Static social posts for all Chip In services, events and merchandise.
+import {expectedTier} from './cutouts.js';
 const q=id=>document.getElementById(id);
 const canvas=q('posterCanvas'),g=canvas.getContext('2d',{alpha:false});
-const fields=['posterFormat','posterLayout','posterVenue','posterHeadline','posterExtra','posterDay','posterTime','posterWhen','posterEntry','posterPrizeCount','posterPrize','posterPrize2','posterPrize3','posterPrize4','posterPrize5','posterArtwork','posterHost','posterBg','posterInk','posterAccent','posterTextMode','posterPhotoShade','posterPhotoPosition','posterLogoSize','posterPubChoice','posterHostChoice'];
-const state={photo:null,pubLogo:null,hostLogo:null};
+const fields=['posterPurpose','posterCTA','posterFormat','posterLayout','posterVenue','posterHeadline','posterExtra','posterDay','posterTime','posterWhen','posterEntry','posterPrizeCount','posterPrize','posterPrize2','posterPrize3','posterPrize4','posterPrize5','posterArtwork','posterHost','posterBg','posterInk','posterAccent','posterTextMode','posterPhotoShade','posterPhotoPosition','posterLogoSize','posterPubChoice','posterHostChoice'];
+const state={photo:null,merchPhoto:null,pubLogo:null,hostLogo:null};
 const illustratedLayouts=['classic','question','ticket','chalk','photo'];
 const illustrationFiles={
   pints:'gig-art/chalk.webp',
-  'quiz-answer-sheet':'gig-art/chalk-quiz-answer-sheet.webp',
   trophy:'gig-art/chalk-trophy.webp',
   microphone:'gig-art/classic.webp',
   'question-mark':'gig-art/question.webp',
   christmas:'gig-art/chalk-christmas.webp',
   'new-year':'gig-art/chalk-new-year.webp'
 };
-const photographFiles={
-  'photo-original':'poster-art/photo.webp',
-  'photo-team':'poster-art/photo-team.webp',
-  'photo-christmas':'poster-art/photo-christmas.webp',
-  'photo-new-year':'poster-art/photo-new-year.webp',
-  'photo-halloween':'poster-art/photo-halloween.webp'
+const serviceKeys=['quizzes','bingo','web','video','events','voice','admin','production','merch'];
+const photographFiles=Object.fromEntries(serviceKeys.map(key=>['service-'+key,'poster-art/services/'+key+'.webp']));
+const presets={
+  quizzes:{title:'QUIZ NIGHT',extra:'Play on your mobile · Pictures · Music · General Knowledge',art:'quizzes',event:true,prizes:true,host:'Chip In Quizzes'},
+  bingo:{title:'BINGO NIGHT',extra:'A great night of bingo',art:'bingo',event:true,prizes:true,host:'Chip In'},
+  'event-promo':{title:'SPECIAL EVENT',extra:'',art:'events',event:true,prizes:true},
+  merch:{title:'CHIP IN MERCH',extra:'',art:'merch',cta:'Shop online · chipinworks.co.uk/merch/'},
+  digital:{title:'DIGITAL QUIZ PRODUCTS',extra:'Downloadable quiz rounds and packs',art:'quizzes',cta:'Browse online · chipinworks.co.uk'},
+  web:{title:'WEBSITE DESIGN',extra:'Modern websites for your business',art:'web',cta:'Get in touch · chipinworks.co.uk'},
+  seo:{title:'SEO SERVICES',extra:'Help your business get found online',art:'web',cta:'Get in touch · chipinworks.co.uk'},
+  video:{title:'VIDEO CREATION',extra:'Video content that works',art:'video',cta:'Get in touch · chipinworks.co.uk'},
+  events:{title:'HOSPITALITY & EVENTS',extra:'Extra support when it matters',art:'events',cta:'Get in touch · chipinworks.co.uk'},
+  voice:{title:'VOICE ACTING',extra:'Bring your words to life',art:'voice',cta:'Get in touch · chipinworks.co.uk'},
+  admin:{title:'BUSINESS ADMIN',extra:'Less paperwork. More progress.',art:'admin',cta:'Get in touch · chipinworks.co.uk'},
+  production:{title:'PRODUCTION SUPPORT',extra:'Make every shoot run smoothly',art:'production',cta:'Get in touch · chipinworks.co.uk'},
+  manual:{title:'YOUR HEADLINE',extra:'',art:'events',event:true,prizes:true}
 };
+function currentPreset(){return presets[val('posterPurpose')]||presets.quizzes}
+function customImage(){return state.photo||state.merchPhoto}
+function effectivePrizeCount(){return currentPreset().prizes?prizeCount():0}
 const nativeArtwork={
   classic:'gig-art/classic.webp',chalk:'gig-art/chalk.webp',ticket:'gig-art/ticket.webp',
-  question:'gig-art/question.webp',photo:'poster-art/photo.webp'
+  question:'gig-art/question.webp',photo:photographFiles['service-quizzes'],minimal:photographFiles['service-quizzes']
 };
 const printPalettes={
   classic:['#14352d','#ecc66e'],bigtime:['#461b18','#ffae4b'],chalk:['#202727','#fff0d0'],
@@ -33,9 +46,11 @@ function selectedArtwork(style){
   const choice=val('posterArtwork');
   if(illustrationFiles[choice])return {path:illustrationFiles[choice],kind:'illustration',choice};
   if(photographFiles[choice])return {path:photographFiles[choice],kind:'photo',choice};
+  const purpose=val('posterPurpose');
+  if(purpose!=='quizzes')return {path:photographFiles['service-'+currentPreset().art],kind:'photo',choice:'original'};
   return nativeArtwork[style]?{path:nativeArtwork[style],kind:'original',choice:'original'}:null;
 }
-function alternateArtwork(){return val('posterArtwork')!=='original'&&Boolean(selectedArtwork(val('posterLayout')))}
+function alternateArtwork(){const style=val('posterLayout');return Boolean(customImage()||selectedArtwork(style)&&(val('posterArtwork')!=='original'||val('posterPurpose')!=='quizzes'||style==='minimal'))}
 function imageDimensions(img){return [img.naturalWidth||img.width,img.naturalHeight||img.height]}
 function printColours(style){return printPalettes[style]||printPalettes.chalk}
 const recolouredCache=new Map();
@@ -61,11 +76,17 @@ const prizeIds=['posterPrize','posterPrize2','posterPrize3','posterPrize4','post
 const ranks=['1st','2nd','3rd','4th','5th'];
 function prizeCount(){return Math.max(0,Math.min(5,Number(val('posterPrizeCount'))||0))}
 function syncPosterControls(){
-  const n=prizeCount();
+  const n=effectivePrizeCount(),p=currentPreset(),purpose=val('posterPurpose');
   q('posterPrizeFields').hidden=n===0;
+  q('posterPrizeSection').hidden=!p.prizes;
+  q('posterEventTiming').hidden=!p.event;
+  q('posterMerchSetup').hidden=purpose!=='merch';
+  q('posterVenueLabel').textContent=p.event?'Pub / venue name':purpose==='merch'?'Product / design name':'Service / business name';
+  q('posterEntryLabel').textContent=p.event?'Entry fee':'Price or offer (optional)';
+  q('posterEntry').placeholder=p.event?'£2 per person':'Optional price or offer';
   const art=selectedArtwork(val('posterLayout')),preview=q('posterArtworkPreview'),thumb=q('posterArtworkThumb');
-  preview.hidden=!art||Boolean(state.photo);
-  if(art&&!state.photo){if(thumb.dataset.path!==art.path){thumb.dataset.path=art.path;thumb.src=new URL(art.path,import.meta.url)}q('posterArtworkNote').textContent=art.kind==='illustration'?'Vintage illustration · matched to layout colours':art.kind==='photo'?'Photographic artwork':'Original design artwork'}
+  preview.hidden=!art||Boolean(customImage());
+  if(art&&!customImage()){if(thumb.dataset.path!==art.path){thumb.dataset.path=art.path;thumb.src=new URL(art.path,import.meta.url)}q('posterArtworkNote').textContent=art.kind==='illustration'?'Vintage illustration · matched to layout colours':art.kind==='photo'?'Photographic artwork':'Original design artwork'}
   for(const label of q('posterPrizeFields').querySelectorAll('[data-prize-place]'))label.hidden=Number(label.dataset.prizePlace)>n;
 }
 
@@ -105,6 +126,7 @@ function imageLogo(image,x,y,maxW,maxH){
   return true;
 }
 function eventWhen(){
+  if(!currentPreset().event)return '';
   const mode=val('posterWhen'),time=val('posterTime');
   if(mode==='hide')return '';
   if(mode==='tonight')return 'TONIGHT'+(time?' · '+time:'');
@@ -114,15 +136,15 @@ function eventWhen(){
 }
 const artCache = new Map();
 function plateImage(style) {
-  if(state.photo)return state.photo;
+  if(customImage())return customImage();
   const art=selectedArtwork(style);if(!art)return null;const key=art.path;
   if(!artCache.has(key)){
     const img=new Image();
     artCache.set(key,img);
-    img.onload=()=>{if(selectedArtwork(val('posterLayout'))?.path===key&&!state.photo)safeDraw()};
+    img.onload=()=>{if(selectedArtwork(val('posterLayout'))?.path===key&&!customImage())safeDraw()};
     img.onerror=()=>{
       artCache.delete(key);
-      if(selectedArtwork(val('posterLayout'))?.path===key && !state.photo){
+      if(selectedArtwork(val('posterLayout'))?.path===key && !customImage()){
         q('posterStatus').textContent='Artwork could not load. Select the layout again to retry.';
       }
     };
@@ -161,29 +183,31 @@ function draw(){
   const style=val('posterLayout'),{bg,ink,accent}=palette();
   const face='Arial, sans-serif',serif='Georgia, serif',mono='"Courier New", monospace';
   const onAccent=light(accent)?'#142327':'#fff9ee';
-  const title=val('posterHeadline')||'QUIZ NIGHT',when=eventWhen();
+  const title=val('posterHeadline')||currentPreset().title,when=eventWhen();
   const venue=val('posterVenue'),extra=val('posterExtra');
-  const artwork=illustratedLayouts.includes(style),alt=alternateArtwork()&&!state.photo;
-  const art=selectedArtwork(style),needsImage=artwork||alt||Boolean(state.photo);
+  const artwork=illustratedLayouts.includes(style),alt=alternateArtwork();
+  const art=selectedArtwork(style),needsImage=Boolean(art||customImage());
   const img=needsImage?plateImage(style):null;
   q('posterSize').textContent=W+' × '+H+' px';
   if(needsImage&&!img)return false;
   rect(0,0,W,H,bg);
   function picture(x,y,w,h){
     g.save();g.translate(x,H*y);g.beginPath();g.rect(0,0,w,H*h);g.clip();
-    if(alt&&art?.kind==='illustration'){
+    if(!img){g.restore();return}
+    if(!state.photo&&state.merchPhoto){rect(0,0,w,H*h,bg);imageLogo(img,w/2,H*h/2,w-16,H*h-16);}
+    else if(alt&&!customImage()&&art?.kind==='illustration'){
       // Match the stock artwork's colour field and preserve the complete subject.
       const [plate]=printColours(style);rect(0,0,w,H*h,plate);
       if(style==='chalk'&&art.choice!=='microphone'&&art.choice!=='question-mark')rect(0,0,w,H*h,'#1e2724');
       imageLogo(img,w/2,H*h/2,w,H*h);
-    }else if(!state.photo && !alt && (style==='ticket'||style==='question')){
+    }else if(!customImage() && !alt && (style==='ticket'||style==='question')){
       rect(0,0,w,H*h,style==='ticket'?'#8a332a':'#15283e');
       imageLogo(img,w/2,H*h/2,w,H*h);
     }else coverImage(img,w,H*h,state.photo?Number(val('posterPhotoPosition'))/100:0);
     if(state.photo)rect(0,0,w,H*h,rgba(bg,Number(val('posterPhotoShade'))/100));
     g.restore();
   }
-  if(state.photo&&!artwork)picture(0,0,W,1);
+  // Non-illustrated layouts use their designated image panel rather than a duplicated background.
   function line(value,x,y,w,h,size,color=ink,family=face,align='left',weight=700){
     lettering(value,x,H*y,w,H*h,size,color,family,align,weight);
   }
@@ -253,10 +277,8 @@ function draw(){
   }else if(style==='minimal'){
     if(alt){picture(718,.075,304,.374)}
     else{
-      // Preserve the original diagonal pencil.
-      g.save();g.translate(907,H*.219);g.rotate(-.94);
-      rect(-171,-53,580,106,accent);rect(-171,-53,580,15,rgba(ink,.25));
-      g.fillStyle=ink;g.beginPath();g.moveTo(-263,0);g.lineTo(-171,-53);g.lineTo(-171,53);g.fill();g.restore();
+      // Keep a simple typographic treatment if no image was selected.
+      rect(800,H*.115,160,H*.24,accent,8);
     }
     stacked(58,.075,615,.374,ink,face);
     rect(62,H*.49,956,8,accent);
@@ -282,9 +304,10 @@ function draw(){
   const rows=[
     [venue,88,1.35,serif,700],
     [extra,46,.88,face,500],
-    [val('posterEntry'),42,.77,face,600]
+    [val('posterEntry'),52,.9,face,800],
+    [val('posterCTA'),39,.8,face,700]
   ].filter(row=>row[0]);
-  const count=prizeCount(),prizes=prizeIds.slice(0,count).map(val);
+  const count=effectivePrizeCount(),prizes=prizeIds.slice(0,count).map(val);
   const detailed=prizes.some(Boolean);
   const gridRows=detailed?Math.ceil(count/2):count?1:0;
   // Give the prize section extra space rather than squeezing five prize lines
@@ -300,7 +323,8 @@ function draw(){
   if(count){
     const height=available*prizeUnits/units;
     if(!detailed){
-      const label=count===1?'PRIZE FOR THE WINNING TEAM':'PRIZES FOR THE TOP '+count+' TEAMS';
+      const unit=val('posterPurpose')==='quizzes'?'TEAM':'WINNER';
+      const label=count===1?(unit==='TEAM'?'PRIZE FOR THE WINNING TEAM':'PRIZE FOR THE WINNER'):'PRIZES FOR THE TOP '+count+' '+(unit==='TEAM'?'TEAMS':'WINNERS');
       const gap=Math.min(8,height*.1);
       rect(margin,y+gap,W-2*margin,height-2*gap,accent,8);
       lettering(label,margin+14,y+gap,W-2*margin-28,height-2*gap,42,onAccent,face,'center',800);
@@ -351,6 +375,25 @@ function matchStockColours(){
   }
   previousLayout=val('posterLayout');
 }
+let previousPurpose='quizzes';
+function changePurpose(){
+  const purpose=val('posterPurpose');
+  if(purpose===previousPurpose)return;
+  previousPurpose=purpose;
+  const p=currentPreset();
+  q('posterHeadline').value=p.title==='YOUR HEADLINE'?'':p.title;
+  q('posterVenue').value='';q('posterExtra').value=p.extra||'';
+  q('posterEntry').value='';q('posterCTA').value=p.cta||'';
+  q('posterHost').value=p.host||'Chip In';q('posterArtwork').value='original';
+  q('posterWhen').value=p.event?'day':'hide';
+  q('posterPrizeCount').value='0';
+  for(const id of prizeIds)q(id).value='';
+  if(purpose==='merch')loadMerchCatalogue();
+  else{merchLoadVersion++;pendingImages.delete('merchPhoto');state.merchPhoto=null;q('posterMerchClear').hidden=true}
+  safeDraw();
+}
+q('posterPurpose').addEventListener('input',changePurpose);
+q('posterPurpose').addEventListener('change',changePurpose);
 q('posterLayout').addEventListener('input',matchStockColours);
 q('posterLayout').addEventListener('change',matchStockColours);
 for(const id of fields)q(id).addEventListener('input',safeDraw);
@@ -375,6 +418,85 @@ function selectedLogo(key){
   return img.complete && img.naturalWidth?img:false;
 }
 const pendingImages=new Set();
+
+const shop='https://shop.chipinworks.co.uk';
+let merchCatalogue=null,merchRequest=null,merchLoadVersion=0,activeType=null,activeDesign=null,activeGallery=[];
+const merchStatus=message=>q('posterMerchStatus').textContent=message;
+function setChoices(id,placeholder,items){
+  const el=q(id);el.replaceChildren(new Option(placeholder,''),...items.map((x,i)=>new Option(x.label,String(i))));
+  el.value='';el.disabled=!items.length;
+}
+function resetMerchImage(){
+  merchLoadVersion++;pendingImages.delete('merchPhoto');state.merchPhoto=null;
+  q('posterMerchClear').hidden=true;q('posterMerchThumb').hidden=true;
+  q('posterMerchApply').disabled=true;safeDraw();
+}
+async function loadMerchCatalogue(){
+  if(merchCatalogue||merchRequest)return;
+  merchStatus('Loading the live shop catalogue…');
+  const get=async file=>{const r=await fetch(shop+'/data/'+file);if(!r.ok)throw Error(file+' unavailable');return r.json()};
+  merchRequest=Promise.all([get('catalog.json'),get('product-first-v2.json')]);
+  try{
+    const [catalog,index]=await merchRequest;
+    const products=new Map(catalog.products.filter(p=>p.active&&!p.hidden&&!p.testOnly&&p.printfulSyncProductId&&p.variants?.some(v=>v.active&&v.printfulSyncVariantId)).map(p=>[p.id,p]));
+    merchCatalogue=index.types.map(t=>({...t,designs:t.designs.filter(d=>products.has(d.shopProductId)).map(d=>({...d,product:products.get(d.shopProductId)}))})).filter(t=>t.designs.length);
+    setChoices('posterMerchType','Choose a product type…',merchCatalogue);
+    merchStatus(merchCatalogue.length?'Choose a product type, design and product-only mock-up.':'No active products found.');
+  }catch{merchCatalogue=null;merchStatus('Catalogue unavailable. Change purpose and select Merch again to retry, or upload your own product image.')}
+  finally{merchRequest=null}
+}
+function productGallery(product){
+  const images=new Map();
+  function add(url,label){
+    if(typeof url!=='string'||!url)return;
+    try{const link=new URL(url,shop);if(link.protocol==='https:'&&!images.has(link.href)&&expectedTier(link.href,product)===2)images.set(link.href,label||'Product view')}catch{}
+  }
+  add(product.image,'Main product image');product.gallery?.forEach((url,i)=>add(url,'Gallery '+(i+1)));
+  for(const [colour,urls] of Object.entries(product.colourAngleGalleries||{}))if(Array.isArray(urls))urls.forEach((url,i)=>add(url,colour+' · '+(i+1)));
+  for(const v of product.variants||[]){add(v.image,v.colour);for(const key of ['gallery','angleGallery'])if(Array.isArray(v[key]))v[key].forEach((url,i)=>add(url,v.colour+' · '+(i+1)))}
+  return [...images].map(([url,label])=>({url,label}));
+}
+q('posterMerchType').onchange=()=>{
+  resetMerchImage();activeType=q('posterMerchType').value===''?null:merchCatalogue?.[+q('posterMerchType').value];activeDesign=null;activeGallery=[];
+  setChoices('posterMerchDesign','Choose a design…',activeType?.designs||[]);
+  setChoices('posterMerchImage','Choose a product image…',[]);
+};
+q('posterMerchDesign').onchange=()=>{
+  resetMerchImage();activeDesign=q('posterMerchDesign').value===''?null:activeType?.designs[+q('posterMerchDesign').value];
+  activeGallery=activeDesign?productGallery(activeDesign.product):[];
+  setChoices('posterMerchImage','Choose a product image…',activeGallery);
+  if(activeDesign){
+    q('posterHeadline').value=activeDesign.label;
+    q('posterVenue').value=activeType.label;
+    const prices=activeDesign.product.variants.filter(v=>v.active&&v.printfulSyncVariantId&&Number.isFinite(v.pricePence)).map(v=>v.pricePence);
+    const price=prices.length?Math.min(...prices):activeDesign.fromPricePence;
+    q('posterEntry').value=Number.isFinite(price)?'From '+new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP'}).format(price/100):'';
+    merchStatus(activeGallery.length?'Preview the mock-up before using it. Known model images are excluded.':'No suitable catalogue image found. Upload a face-free product image instead.');
+    safeDraw();
+  }
+};
+q('posterMerchImage').onchange=()=>{
+  const item=q('posterMerchImage').value===''?null:activeGallery[+q('posterMerchImage').value];
+  q('posterMerchThumb').hidden=!item;q('posterMerchApply').disabled=!item;
+  if(item){q('posterMerchThumb').src=item.url;merchStatus('Check that the product is clearly visible and no faces appear before using this image.')}
+};
+q('posterMerchApply').onclick=async()=>{
+  const item=q('posterMerchImage').value===''?null:activeGallery[+q('posterMerchImage').value];
+  if(!item||val('posterPurpose')!=='merch')return;
+  const version=++merchLoadVersion;
+  pendingImages.add('merchPhoto');safeDraw();
+  q('posterMerchApply').disabled=true;
+  try{
+    const img=new Image();img.crossOrigin='anonymous';
+    await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject;img.src=item.url});
+    if(version!==merchLoadVersion)return;
+    state.merchPhoto=img;state.photo=null;q('posterClearPhoto').hidden=true;
+    q('posterMerchClear').hidden=false;merchStatus('Product image ready.');
+  }catch{if(version===merchLoadVersion)merchStatus('This mock-up could not be loaded for PNG export. Select another image or upload a product photo.')}
+  finally{if(version===merchLoadVersion){pendingImages.delete('merchPhoto');q('posterMerchApply').disabled=false;safeDraw()}}
+};
+q('posterMerchClear').onclick=resetMerchImage;
+
 function fileUpload(fileId,key,clearId){
   const field=q(fileId),choiceId=logoChoices[key];
   const select=choiceId?q(choiceId):null;
@@ -444,7 +566,8 @@ q('posterSave').onclick=()=>{
 };
 q('posterReset').onclick=()=>{
   for(const id of fields){const field=q(id);field.value=field.dataset.original??field.value}
-  previousLayout=val('posterLayout');
+  previousLayout=val('posterLayout');previousPurpose=val('posterPurpose');
+  resetMerchImage();
   for(const k of Object.keys(state))state[k]=null;
   ['posterClearPhoto','posterClearPubLogo','posterClearHostLogo'].forEach(id=>q(id).hidden=true);
   try{localStorage.removeItem('chipin.quizposter.settings.v1')}catch{}
@@ -459,7 +582,7 @@ q('posterDownload').onclick=()=>{
     const url=URL.createObjectURL(blob),a=document.createElement('a');
     serial++;
     try{localStorage.setItem('chipin.quizposter.export-number',String(serial))}catch{}
-    a.href=url;a.download='QuizPoster_'+(layouts[val('posterLayout')]||'Classic').replace(/[^A-Za-z]/g,'')+'_'+String(serial).padStart(4,'0')+'.png';
+    a.href=url;a.download='SocialPost_'+val('posterPurpose').replace(/[^a-z-]/g,'')+'_'+(layouts[val('posterLayout')]||'Classic').replace(/[^A-Za-z]/g,'')+'_'+String(serial).padStart(4,'0')+'.png';
     a.click();setTimeout(()=>URL.revokeObjectURL(url),30000);
     q('posterStatus').textContent='PNG created at '+canvas.width+' × '+canvas.height+'.';
   },'image/png');
@@ -468,6 +591,8 @@ for(const id of fields)q(id).dataset.original=q(id).value;
 try{
   const saved=JSON.parse(localStorage.getItem('chipin.quizposter.settings.v1')||'null');
   if(saved&&typeof saved==='object'){
+    // Retire stock images with visible faces or paper-and-pencil quiz play.
+    if(['quiz-answer-sheet','photo-original','photo-team','photo-christmas','photo-new-year','photo-halloween'].includes(saved.posterArtwork))saved.posterArtwork=saved.posterArtwork==='photo-christmas'?'christmas':saved.posterArtwork==='photo-new-year'?'new-year':'service-quizzes';
     // V5.4 stored just a single prize. Retain it and advertise first place.
     if(typeof saved.posterPrizeCount!=='string'&&typeof saved.posterPrize==='string'&&saved.posterPrize.trim())saved.posterPrizeCount='1';
     for(const id of fields){
@@ -481,5 +606,6 @@ try{
 fileUpload('posterPhoto','photo','posterClearPhoto');
 fileUpload('posterPubLogo','pubLogo','posterClearPubLogo');
 fileUpload('posterHostLogo','hostLogo','posterClearHostLogo');
-previousLayout=val('posterLayout');
+previousLayout=val('posterLayout');previousPurpose=val('posterPurpose');
+if(previousPurpose==='merch')loadMerchCatalogue();
 safeDraw();

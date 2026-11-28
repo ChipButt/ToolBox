@@ -1,8 +1,8 @@
 <!doctype html>
-<html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Social Post Maker · Chip In ToolBox</title><link rel="stylesheet" href="studio.css?v=2"><link rel="stylesheet" href="quiz-poster.css?v=3"></head>
+<html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Social Post Maker · Chip In ToolBox</title><link rel="stylesheet" href="studio.css?v=2"><link rel="stylesheet" href="quiz-poster.css?v=4"></head>
 <body><header><a href="../index.html">← ToolBox</a><img src="../chip_in_logo.png" alt="Chip In"><span>Creative tools</span></header>
-<main><div class="heading"><div><h1>Social Post Maker <small>V5.8</small></h1><p id="makerSubtitle">Three scenes · 10.5 seconds · 960 × 1200</p></div></div>
-<nav class="maker-modes" aria-label="Post format"><button id="modeAnimated" type="button" aria-pressed="true">Animated video</button><button id="modePoster" type="button" aria-pressed="false">Static quiz poster</button></nav>
+<main><div class="heading"><div><h1>Social Post Maker <small>V5.9</small></h1><p id="makerSubtitle">Three scenes · 10.5 seconds · 960 × 1200</p></div></div>
+<nav class="maker-modes" aria-label="Post format"><button id="modeAnimated" type="button" aria-pressed="true">Animated video</button><button id="modePoster" type="button" aria-pressed="false">Static post</button></nav>
 <div id="animationMaker"><div class="workspace"><section class="monitor"><div class="bar"><b>Preview</b><output id="clock">0.00 s</output></div><div class="screen"><button id="cover" aria-label="Browse animation previews"><span><img src="art/blackboard_gold-preview.jpg" alt=""><img src="art/rockabilly_diner-preview.jpg" alt=""><img src="art/atomic_pop-preview.jpg" alt=""><img src="art/service_stripe-preview.jpg" alt=""></span>Choose an animation</button><canvas hidden id="screen" width="960" height="1200" aria-label="Post preview"></canvas></div><div class="transport"><button id="play" disabled>Play</button><input type="range" id="seek" aria-label="Preview frame" min="0" max="251" value="24"></div></section>
 <section class="controls"><fieldset id="editing"><label for="purpose">What’s the post for?</label>
 <select id="purpose" disabled><option value="">Build manually</option><option value="merch">Merch</option><option value="video">Video Creation</option><option value="web">Website Design</option><option value="events">Hospitality &amp; Events</option><option value="quizzes">Pub Quizzes</option><option value="bingo">Bingo Nights</option><option value="voice">Voice Acting</option><option value="admin">Business Admin</option><option value="production">Production Support</option></select>
@@ -15,36 +15,53 @@
 <p class="hint">One image fills the scene. Add a second or third view to change the image during playback.</p>
 <label for="title">Title</label><input id="title" maxlength="100"><label for="price">Price or caption</label><input id="price" maxlength="80"></div></fieldset>
 <div class="export"><button id="export" disabled>Export video</button><a id="save" hidden>Download video</a></div><p role="status" id="status">Choose a purpose for a suggested post, or choose an animation to build manually.</p></section></div></div>
-<section id="posterMaker" class="poster-workspace" hidden aria-label="Quiz poster maker">
+<section id="posterMaker" class="poster-workspace" hidden aria-label="Static social post maker">
   <div class="poster-preview monitor">
     <div class="bar"><strong>Poster preview</strong><output id="posterSize">1080 × 1350 px</output></div>
-    <div class="poster-stage"><canvas id="posterCanvas" width="1080" height="1350" aria-label="Editable quiz night poster preview"></canvas></div>
+    <div class="poster-stage"><canvas id="posterCanvas" width="1080" height="1350" aria-label="Editable social post preview"></canvas></div>
     <div class="poster-download"><button id="posterDownload" type="button">Download PNG</button><p>High-resolution image, ready to post. Photos and logos stay on your device.</p></div>
   </div>
   <div class="poster-controls controls">
+    <h2>Post purpose</h2>
+    <label>What’s the post for?<select id="posterPurpose">
+      <option value="quizzes">Pub Quizzes</option><option value="bingo">Bingo Nights</option><option value="event-promo">Other event / promotion</option>
+      <option value="merch">Merch</option><option value="digital">Digital quiz products</option>
+      <option value="web">Website Design</option><option value="seo">SEO Services</option><option value="video">Video Creation</option><option value="events">Hospitality &amp; Events</option><option value="voice">Voice Acting</option><option value="admin">Business Admin</option><option value="production">Production Support</option><option value="manual">Build manually</option>
+    </select></label>
+    <p class="poster-help">Choose a purpose to set up suitable wording and imagery. All wording remains editable.</p>
+    <div id="posterMerchSetup" hidden class="poster-merch-setup">
+      <label>Product type<select id="posterMerchType"><option value="">Choose a product type…</option></select></label>
+      <label>Design<select id="posterMerchDesign" disabled><option value="">Choose a design…</option></select></label>
+      <label>Product image<select id="posterMerchImage" disabled><option value="">Choose an image…</option></select></label>
+      <img id="posterMerchThumb" hidden alt="Selected merchandise mock-up for review">
+      <button type="button" id="posterMerchApply" disabled>Use this product image</button>
+      <button type="button" id="posterMerchClear" class="poster-secondary" hidden>Remove product image</button>
+      <p id="posterMerchStatus" class="poster-help" role="status">Choose an actual item from the shop. Review the preview and use a product-only image with no visible faces.</p>
+    </div>
     <h2>Design</h2>
     <div class="poster-pair"><label>Post size<select id="posterFormat"><option value="tall">Portrait feed · 1080 × 1350</option><option value="square">Square · 1080 × 1080</option><option value="story">Story · 1080 × 1920</option></select></label>
     <label>Layout<select id="posterLayout"><option value="classic">Classic</option><option value="bigtime">Big Time</option><option value="chalk">Chalkboard</option><option value="ticket">Ticket</option><option value="photo">Photo Feature</option><option value="minimal">Minimal</option><option value="question">Question Mark</option><option value="calendar">Calendar</option></select></label></div>
     <div id="posterArtworkOptions">
       <label>Artwork<select id="posterArtwork"><option value="original">Original layout artwork</option>
-        <optgroup label="Vintage illustrations">
-          <option value="pints">Clinking pints</option><option value="quiz-answer-sheet">Quiz answer sheet &amp; pint</option><option value="trophy">Trophy &amp; laurels</option><option value="microphone">Vintage microphone</option><option value="question-mark">Question mark</option>
+        <optgroup label="Service and product photography">
+          <option value="service-quizzes">Mobile quiz at the pub</option><option value="service-bingo">Bingo balls &amp; cage</option><option value="service-web">Web design · laptop &amp; phone</option><option value="service-video">Video camera</option><option value="service-events">Event venue</option><option value="service-voice">Recording studio</option><option value="service-admin">Business workspace</option><option value="service-production">Production equipment</option><option value="service-merch">Merch flat lay</option>
+        </optgroup><optgroup label="Vintage illustrations">
+          <option value="pints">Clinking pints</option><option value="trophy">Trophy &amp; laurels</option><option value="microphone">Vintage microphone</option><option value="question-mark">Question mark</option>
         </optgroup><optgroup label="Seasonal illustrations"><option value="christmas">Christmas holly &amp; baubles</option><option value="new-year">New Year's toast</option></optgroup>
-        <optgroup label="Pub photography"><option value="photo-original">Pub table &amp; quiz sheet</option><option value="photo-team">Quiz team at the pub</option></optgroup>
-        <optgroup label="Seasonal photography"><option value="photo-christmas">Christmas at the pub</option><option value="photo-new-year">New Year's Eve at the pub</option><option value="photo-halloween">Halloween at the pub</option></optgroup>
       </select></label>
       <div class="poster-artwork-preview" id="posterArtworkPreview" hidden><img id="posterArtworkThumb" alt="Selected stock artwork"><span id="posterArtworkNote"></span></div>
-      <p class="poster-help">Artwork is available in every layout. Illustrations use the layout's print colours; photographs retain their original colours. Your own uploaded photograph takes priority.</p>
+      <p class="poster-help">Artwork is available in every layout. Stock photos have no visible faces. Illustrations match the layout’s print colours. Uploaded images and chosen product mock-ups take priority.</p>
     </div>
-    <h2>Event wording</h2>
+    <h2>Post wording</h2>
     <label>Headline<input id="posterHeadline" value="QUIZ NIGHT" maxlength="75"></label>
-    <label>Pub / venue name<input id="posterVenue" value="" placeholder="Venue name" maxlength="80"></label>
-    <label>Extra line (optional)<input id="posterExtra" value="Pictures · Music · General Knowledge" maxlength="110"></label>
-    <div class="poster-pair"><label>When<select id="posterWhen"><option value="day">Day and time</option><option value="tonight">Tonight</option><option value="tomorrow">Tomorrow</option><option value="hide">Hide</option></select></label>
+    <label><span id="posterVenueLabel">Pub / venue name</span><input id="posterVenue" value="" placeholder="Venue name" maxlength="80"></label>
+    <label>Extra line (optional)<input id="posterExtra" value="Play on your mobile · Pictures · Music · General Knowledge" maxlength="110"></label>
+    <div id="posterEventTiming"><div class="poster-pair"><label>When<select id="posterWhen"><option value="day">Day and time</option><option value="tonight">Tonight</option><option value="tomorrow">Tomorrow</option><option value="hide">Hide</option></select></label>
     <label>Day or date<input id="posterDay" value="Thursday" maxlength="40"></label></div>
-    <div class="poster-pair"><label>Start time<input id="posterTime" value="8:00 PM" maxlength="30"></label>
-    <label>Entry fee<input id="posterEntry" placeholder="£2 per person" maxlength="40"></label></div>
-    <h2>Prizes</h2>
+    <label>Start time<input id="posterTime" value="8:00 PM" maxlength="30"></label></div>
+    <label><span id="posterEntryLabel">Entry fee</span><input id="posterEntry" placeholder="£2 per person" maxlength="70"></label>
+    <label>Call to action / website (optional)<input id="posterCTA" maxlength="100" placeholder="e.g. Book now · chipinworks.co.uk"></label>
+    <div id="posterPrizeSection"><h2>Prizes</h2>
     <label>Number of prize-winning places<select id="posterPrizeCount"><option value="0">No prizes advertised</option><option value="1">Winner only</option><option value="2">Top 2 places</option><option value="3">Top 3 places</option><option value="4">Top 4 places</option><option value="5">Top 5 places</option></select></label>
     <div id="posterPrizeFields" class="poster-prize-fields" hidden>
       <label data-prize-place="1"><span>1st place · Winner</span><input id="posterPrize" placeholder="e.g. £50 cash" maxlength="70"></label>
@@ -54,13 +71,13 @@
       <label data-prize-place="5"><span>5th place</span><input id="posterPrize5" placeholder="Optional prize details" maxlength="70"></label>
       <p class="poster-help">Prize descriptions are optional. Leave them blank to advertise the winning places without specifying rewards.</p>
     </div>
-    <label>Quiz host / company (optional)<input id="posterHost" value="Chip In Quizzes" maxlength="65"></label>
+    </div><label>Host / brand (optional)<input id="posterHost" value="Chip In Quizzes" maxlength="65"></label>
     <h2>Colours</h2>
     <div class="poster-swatches"><label>Background<input id="posterBg" type="color" value="#14352d"></label><label>Highlight<input id="posterAccent" type="color" value="#ecc66e"></label><label>Text<select id="posterTextMode"><option value="auto">Automatic contrast</option><option value="manual">Custom</option></select></label><label>Text colour<input id="posterInk" type="color" value="#fff9ec"></label></div>
     <h2>Photos and logos</h2>
-    <label>Background photograph<input id="posterPhoto" type="file" accept="image/*"></label><button id="posterClearPhoto" type="button" class="poster-secondary" hidden>Remove background photograph</button>
+    <label>Custom artwork or photograph<input id="posterPhoto" type="file" accept="image/*"></label><button id="posterClearPhoto" type="button" class="poster-secondary" hidden>Remove custom artwork</button>
     <div class="poster-pair"><label>Photo colour overlay<input id="posterPhotoShade" type="range" min="0" max="90" value="64"></label><label>Move photo left / right<input id="posterPhotoPosition" type="range" min="-100" max="100" value="0"></label></div>
-    <div class="poster-pair"><div><label>Venue logo<select id="posterPubChoice"><option value="none">None</option><option value="chip">Chip In</option><option value="quiz">Quiz In</option><option value="pick">Upload a logo…</option></select></label><label>Upload venue logo<input id="posterPubLogo" type="file" accept="image/*"></label><button id="posterClearPubLogo" type="button" class="poster-secondary" hidden>Remove venue logo</button></div><div><label>Quiz company logo<select id="posterHostChoice"><option value="none">None</option><option value="chip">Chip In</option><option value="quiz">Quiz In</option><option value="pick">Upload a logo…</option></select></label><label>Upload quiz company logo<input id="posterHostLogo" type="file" accept="image/*"></label><button id="posterClearHostLogo" type="button" class="poster-secondary" hidden>Remove company logo</button></div></div>
+    <div class="poster-pair"><div><label>Venue / partner logo<select id="posterPubChoice"><option value="none">None</option><option value="chip">Chip In</option><option value="quiz">Quiz In</option><option value="pick">Upload a logo…</option></select></label><label>Upload venue logo<input id="posterPubLogo" type="file" accept="image/*"></label><button id="posterClearPubLogo" type="button" class="poster-secondary" hidden>Remove venue logo</button></div><div><label>Company / brand logo<select id="posterHostChoice"><option value="none">None</option><option value="chip">Chip In</option><option value="quiz">Quiz In</option><option value="pick">Upload a logo…</option></select></label><label>Upload company / brand logo<input id="posterHostLogo" type="file" accept="image/*"></label><button id="posterClearHostLogo" type="button" class="poster-secondary" hidden>Remove company logo</button></div></div>
     <label>Logo size<input id="posterLogoSize" type="range" min="60" max="160" step="10" value="100"></label>
     <div class="poster-actions"><button id="posterSave" type="button">Save these settings</button><button id="posterReset" type="button" class="poster-secondary">Start fresh</button></div>
     <p role="status" id="posterStatus">Ready to download as PNG.</p>
@@ -68,7 +85,7 @@
 </section></main>
 <dialog id="library"><div class="bar"><h2 id="dialogTitle"></h2><button id="close">Close</button></div><div id="filters"></div><div id="gallery"></div></dialog>
 <script type="module" src="studio.js?v=5.3"></script>
-<script type="module" src="quiz-poster.js?v=11"></script>
+<script type="module" src="quiz-poster.js?v=12"></script>
 <script>
   const modeVideo=document.getElementById('modeAnimated'),modePoster=document.getElementById('modePoster');
   const videoMaker=document.getElementById('animationMaker'),posterMaker=document.getElementById('posterMaker');
@@ -76,8 +93,8 @@
     videoMaker.hidden=poster;posterMaker.hidden=!poster;
     modeVideo.setAttribute('aria-pressed',String(!poster));modePoster.setAttribute('aria-pressed',String(poster));
     document.getElementById('makerSubtitle').textContent=poster?'Custom graphics · square, portrait and Story PNG':'Three scenes · 10.5 seconds · 960 × 1200';
-    try{history.replaceState(null,'',poster?'#quiz-poster':'#animated-video')}catch{}
+    try{history.replaceState(null,'',poster?'#static-post':'#animated-video')}catch{}
   }
   modeVideo.onclick=()=>setMode(false);modePoster.onclick=()=>setMode(true);
-  if(location.hash==='#quiz-poster')setMode(true);
+  if(['#quiz-poster','#static-post'].includes(location.hash))setMode(true);
 </script></body></html>
