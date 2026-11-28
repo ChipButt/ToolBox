@@ -14,7 +14,7 @@ const illustrationFiles={
   'new-year':'gig-art/chalk-new-year.webp'
 };
 const serviceKeys=['quizzes','bingo','web','video','events','voice','admin','production','merch'];
-const photographFiles=Object.fromEntries(serviceKeys.map(key=>['service-'+key,'poster-art/services/'+key+'.webp']));
+const photographFiles=Object.fromEntries([...serviceKeys.map(key=>['service-'+key,'poster-art/services/'+key+'.webp']),...['christmas','new-year','halloween','easter'].map(key=>['season-'+key,'poster-art/seasonal/'+key+'.webp'])]);
 const presets={
   quizzes:{title:'QUIZ NIGHT',extra:'Play on your mobile · Pictures · Music · General Knowledge',art:'quizzes',event:true,prizes:true,host:'Chip In Quizzes'},
   bingo:{title:'BINGO NIGHT',extra:'A great night of bingo',art:'bingo',event:true,prizes:true,host:'Chip In'},
@@ -227,7 +227,7 @@ function draw(){
     rect(0,H*.417,W,8,accent);
     line(title,52,.436,976,.134,156,ink,serif,'center',900);
     band(when,110,.586,860,.063,accent,onAccent);
-    body=.667;bodyAlign='center';
+    body=when?.667:.58;bodyAlign='center';
   }else if(style==='bigtime'){
     if(alt){picture(748,.045,284,.205)}
     else{
@@ -250,7 +250,7 @@ function draw(){
     lettering(title,-483,-H*.088,966,H*.176,163,ink,serif,'center',900);
     rect(-270,H*.080,540,4,accent);g.restore();
     line(when,62,.575,956,.078,64,ink,mono,'center');
-    body=.66;bodyAlign='center';
+    body=when?.66:.57;bodyAlign='center';
   }else if(style==='ticket'){
     const edge=36,stub=355;
     rect(edge,H*.042,W-2*edge,H*.56,accent,20);
@@ -267,13 +267,18 @@ function draw(){
     }
     body=.635;
   }else if(style==='photo'){
+    if(state.merchPhoto&&!state.photo){
+      picture(0,0,W,.39);
+      line(title,54,.403,968,.175,160,ink,serif,'center',900);
+    }else{
     picture(0,0,W,.60);
     const shade=g.createLinearGradient(0,H*.19,0,H*.60);
     shade.addColorStop(0,'rgba(0,0,0,0)');shade.addColorStop(1,'rgba(0,0,0,.9)');
     rect(0,H*.19,W,H*.41,shade);
     line(title,54,.37,968,.199,182,'#fffaf0',serif,'left',900);
+    }
     band(when,0,.60,W,.070,accent,onAccent);
-    body=.69;
+    body=when?.69:.59;
   }else if(style==='minimal'){
     if(alt){picture(718,.075,304,.374)}
     else{
@@ -287,7 +292,7 @@ function draw(){
     picture(516,0,564,.55);
     stacked(48,.09,452,.365,ink,serif);
     band(when,0,.55,W,.085,accent,onAccent);
-    body=.662;
+    body=when?.662:.56;
   }else{
     const [day,time]=when.split(' · ');
     rect(42,H*.055,996,H*.48,accent,28);
@@ -495,7 +500,7 @@ q('posterMerchApply').onclick=async()=>{
   }catch{if(version===merchLoadVersion)merchStatus('This mock-up could not be loaded for PNG export. Select another image or upload a product photo.')}
   finally{if(version===merchLoadVersion){pendingImages.delete('merchPhoto');q('posterMerchApply').disabled=false;safeDraw()}}
 };
-q('posterMerchClear').onclick=resetMerchImage;
+q('posterMerchClear').onclick=()=>{q('posterMerchImage').value='';resetMerchImage()};
 
 function fileUpload(fileId,key,clearId){
   const field=q(fileId),choiceId=logoChoices[key];
@@ -568,6 +573,8 @@ q('posterReset').onclick=()=>{
   for(const id of fields){const field=q(id);field.value=field.dataset.original??field.value}
   previousLayout=val('posterLayout');previousPurpose=val('posterPurpose');
   resetMerchImage();
+  q('posterMerchType').value='';activeType=null;activeDesign=null;activeGallery=[];
+  setChoices('posterMerchDesign','Choose a design…',[]);setChoices('posterMerchImage','Choose a product image…',[]);
   for(const k of Object.keys(state))state[k]=null;
   ['posterClearPhoto','posterClearPubLogo','posterClearHostLogo'].forEach(id=>q(id).hidden=true);
   try{localStorage.removeItem('chipin.quizposter.settings.v1')}catch{}
@@ -592,7 +599,7 @@ try{
   const saved=JSON.parse(localStorage.getItem('chipin.quizposter.settings.v1')||'null');
   if(saved&&typeof saved==='object'){
     // Retire stock images with visible faces or paper-and-pencil quiz play.
-    if(['quiz-answer-sheet','photo-original','photo-team','photo-christmas','photo-new-year','photo-halloween'].includes(saved.posterArtwork))saved.posterArtwork=saved.posterArtwork==='photo-christmas'?'christmas':saved.posterArtwork==='photo-new-year'?'new-year':'service-quizzes';
+    if(['quiz-answer-sheet','photo-original','photo-team','photo-christmas','photo-new-year','photo-halloween'].includes(saved.posterArtwork))saved.posterArtwork=saved.posterArtwork==='photo-christmas'?'season-christmas':saved.posterArtwork==='photo-new-year'?'season-new-year':saved.posterArtwork==='photo-halloween'?'season-halloween':'service-quizzes';
     // V5.4 stored just a single prize. Retain it and advertise first place.
     if(typeof saved.posterPrizeCount!=='string'&&typeof saved.posterPrize==='string'&&saved.posterPrize.trim())saved.posterPrizeCount='1';
     for(const id of fields){
