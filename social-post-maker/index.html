@@ -1,7 +1,7 @@
 <!doctype html>
-<html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Social Post Maker · Chip In ToolBox</title><link rel="stylesheet" href="studio.css?v=2"><link rel="stylesheet" href="quiz-poster.css?v=1"></head>
+<html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Social Post Maker · Chip In ToolBox</title><link rel="stylesheet" href="studio.css?v=2"><link rel="stylesheet" href="quiz-poster.css?v=2"></head>
 <body><header><a href="../index.html">← ToolBox</a><img src="../chip_in_logo.png" alt="Chip In"><span>Creative tools</span></header>
-<main><div class="heading"><div><h1>Social Post Maker <small>V5.4</small></h1><p id="makerSubtitle">Three scenes · 10.5 seconds · 960 × 1200</p></div></div>
+<main><div class="heading"><div><h1>Social Post Maker <small>V5.5</small></h1><p id="makerSubtitle">Three scenes · 10.5 seconds · 960 × 1200</p></div></div>
 <nav class="maker-modes" aria-label="Post format"><button id="modeAnimated" type="button" aria-pressed="true">Animated video</button><button id="modePoster" type="button" aria-pressed="false">Static quiz poster</button></nav>
 <div id="animationMaker"><div class="workspace"><section class="monitor"><div class="bar"><b>Preview</b><output id="clock">0.00 s</output></div><div class="screen"><button id="cover" aria-label="Browse animation previews"><span><img src="art/blackboard_gold-preview.jpg" alt=""><img src="art/rockabilly_diner-preview.jpg" alt=""><img src="art/atomic_pop-preview.jpg" alt=""><img src="art/service_stripe-preview.jpg" alt=""></span>Choose an animation</button><canvas hidden id="screen" width="960" height="1200" aria-label="Post preview"></canvas></div><div class="transport"><button id="play" disabled>Play</button><input type="range" id="seek" aria-label="Preview frame" min="0" max="251" value="24"></div></section>
 <section class="controls"><fieldset id="editing"><label for="purpose">What’s the post for?</label>
@@ -25,6 +25,14 @@
     <h2>Design</h2>
     <div class="poster-pair"><label>Post size<select id="posterFormat"><option value="tall">Portrait feed · 1080 × 1350</option><option value="square">Square · 1080 × 1080</option><option value="story">Story · 1080 × 1920</option></select></label>
     <label>Layout<select id="posterLayout"><option value="classic">Classic</option><option value="bigtime">Big Time</option><option value="chalk">Chalkboard</option><option value="ticket">Ticket</option><option value="photo">Photo Feature</option><option value="minimal">Minimal</option><option value="question">Question Mark</option><option value="calendar">Calendar</option></select></label></div>
+    <div id="posterArtworkOptions">
+      <label>Artwork<select id="posterArtwork">
+        <option value="original">Original layout artwork</option>
+        <optgroup label="Quiz night"><option value="quiz">Question cards &amp; pencils</option><option value="trophy">Trophy &amp; laurels</option><option value="music">Records &amp; music notes</option><option value="bulb">Ideas &amp; lightbulbs</option><option value="pub">Pub sign &amp; darts</option></optgroup>
+        <optgroup label="Seasonal"><option value="christmas">Christmas · tree &amp; presents</option><option value="newyear">New Year · fireworks</option><option value="valentine">Valentine’s · hearts</option><option value="stpatrick">St Patrick’s · shamrocks</option><option value="easter">Easter · decorated eggs</option><option value="summer">Summer · sun &amp; bunting</option><option value="halloween">Halloween · pumpkins</option></optgroup>
+      </select></label>
+      <p class="poster-help" id="posterArtworkHint">Choose an illustration or retain the original layout artwork. An uploaded photograph takes priority.</p>
+    </div>
     <h2>Event wording</h2>
     <label>Headline<input id="posterHeadline" value="QUIZ NIGHT" maxlength="75"></label>
     <label>Pub / venue name<input id="posterVenue" value="" placeholder="Venue name" maxlength="80"></label>
@@ -33,7 +41,16 @@
     <label>Day or date<input id="posterDay" value="Thursday" maxlength="40"></label></div>
     <div class="poster-pair"><label>Start time<input id="posterTime" value="8:00 PM" maxlength="30"></label>
     <label>Entry fee<input id="posterEntry" placeholder="£2 per person" maxlength="40"></label></div>
-    <label>Prize (optional)<input id="posterPrize" placeholder="£50 prize" maxlength="70"></label>
+    <h2>Prizes</h2>
+    <label>Number of prize-winning places<select id="posterPrizeCount"><option value="0">No prizes advertised</option><option value="1">Winner only</option><option value="2">Top 2 places</option><option value="3">Top 3 places</option><option value="4">Top 4 places</option><option value="5">Top 5 places</option></select></label>
+    <div id="posterPrizeFields" class="poster-prize-fields" hidden>
+      <label data-prize-place="1"><span>1st place · Winner</span><input id="posterPrize" placeholder="e.g. £50 cash" maxlength="70"></label>
+      <label data-prize-place="2"><span>2nd place</span><input id="posterPrize2" placeholder="e.g. £25 bar voucher" maxlength="70"></label>
+      <label data-prize-place="3"><span>3rd place</span><input id="posterPrize3" placeholder="e.g. Bottle of wine" maxlength="70"></label>
+      <label data-prize-place="4"><span>4th place</span><input id="posterPrize4" placeholder="Optional prize details" maxlength="70"></label>
+      <label data-prize-place="5"><span>5th place</span><input id="posterPrize5" placeholder="Optional prize details" maxlength="70"></label>
+      <p class="poster-help">Prize descriptions are optional. Leave them blank to advertise the winning places without specifying rewards.</p>
+    </div>
     <label>Quiz host / company (optional)<input id="posterHost" value="Chip In Quizzes" maxlength="65"></label>
     <h2>Colours</h2>
     <div class="poster-swatches"><label>Background<input id="posterBg" type="color" value="#14352d"></label><label>Highlight<input id="posterAccent" type="color" value="#ecc66e"></label><label>Text<select id="posterTextMode"><option value="auto">Automatic contrast</option><option value="manual">Custom</option></select></label><label>Text colour<input id="posterInk" type="color" value="#fff9ec"></label></div>
@@ -48,7 +65,7 @@
 </section></main>
 <dialog id="library"><div class="bar"><h2 id="dialogTitle"></h2><button id="close">Close</button></div><div id="filters"></div><div id="gallery"></div></dialog>
 <script type="module" src="studio.js?v=5.3"></script>
-<script type="module" src="quiz-poster.js?v=7"></script>
+<script type="module" src="quiz-poster.js?v=8"></script>
 <script>
   const modeVideo=document.getElementById('modeAnimated'),modePoster=document.getElementById('modePoster');
   const videoMaker=document.getElementById('animationMaker'),posterMaker=document.getElementById('posterMaker');
