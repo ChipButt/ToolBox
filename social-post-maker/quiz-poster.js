@@ -1,15 +1,18 @@
 // Static quiz and event promotion posters. All images stay in this browser.
 const q=id=>document.getElementById(id);
 const canvas=q('posterCanvas'),g=canvas.getContext('2d',{alpha:false});
-const fields=['posterFormat','posterLayout','posterVenue','posterHeadline','posterExtra','posterDay','posterTime','posterWhen','posterEntry','posterPrizeCount','posterPrize','posterPrize2','posterPrize3','posterPrize4','posterPrize5','posterHost','posterBg','posterInk','posterAccent','posterTextMode','posterPhotoShade','posterPhotoPosition','posterLogoSize','posterPubChoice','posterHostChoice'];
+const fields=['posterFormat','posterLayout','posterVenue','posterHeadline','posterExtra','posterDay','posterTime','posterWhen','posterEntry','posterPrizeCount','posterPrize','posterPrize2','posterPrize3','posterPrize4','posterPrize5','posterArtwork','posterHost','posterBg','posterInk','posterAccent','posterTextMode','posterPhotoShade','posterPhotoPosition','posterLogoSize','posterPubChoice','posterHostChoice'];
 const state={photo:null,pubLogo:null,hostLogo:null};
 const illustratedLayouts=['classic','question','ticket','chalk','photo'];
+const chalkArtwork=new Set(['quiz-answer-sheet','trophy','christmas','new-year']);
+function chosenChalkArt(style){const a=val('posterArtwork');return style==='chalk'&&chalkArtwork.has(a)?a:''}
 const prizeIds=['posterPrize','posterPrize2','posterPrize3','posterPrize4','posterPrize5'];
 const ranks=['1st','2nd','3rd','4th','5th'];
 function prizeCount(){return Math.max(0,Math.min(5,Number(val('posterPrizeCount'))||0))}
 function syncPosterControls(){
   const n=prizeCount();
   q('posterPrizeFields').hidden=n===0;
+  q('posterArtworkOptions').hidden=val('posterLayout')!=='chalk';
   for(const label of q('posterPrizeFields').querySelectorAll('[data-prize-place]'))label.hidden=Number(label.dataset.prizePlace)>n;
 }
 
@@ -59,19 +62,20 @@ function eventWhen(){
 const artCache = new Map();
 function plateImage(style) {
   if(state.photo)return state.photo;
-  if(!artCache.has(style)){
+  const alternate=chosenChalkArt(style),key=alternate?'chalk:'+alternate:style;
+  if(!artCache.has(key)){
     const img=new Image();
-    artCache.set(style,img);
+    artCache.set(key,img);
     img.onload=()=>{if(val('posterLayout')===style)safeDraw()};
     img.onerror=()=>{
-      artCache.delete(style);
+      artCache.delete(key);
       if(val('posterLayout')===style && !state.photo){
         q('posterStatus').textContent='Artwork could not load. Select the layout again to retry.';
       }
     };
-    img.src=new URL((style==='photo'?'poster-art/':'gig-art/')+style+'.webp',import.meta.url);
+    img.src=new URL(alternate?'gig-art/chalk-'+alternate+'.webp':(style==='photo'?'poster-art/':'gig-art/')+style+'.webp',import.meta.url);
   }
-  const image=artCache.get(style);
+  const image=artCache.get(key);
   return image.complete && image.naturalWidth ? image : null;
 }
 // Find a balanced one- or two-line setting within an explicit type area.
@@ -112,7 +116,11 @@ function draw(){
   rect(0,0,W,H,bg);
   function picture(x,y,w,h){
     g.save();g.translate(x,H*y);g.beginPath();g.rect(0,0,w,H*h);g.clip();
-    if(!state.photo && (style==='ticket'||style==='question')){
+    if(!state.photo&&chosenChalkArt(style)){
+      // Fit the whole vintage illustration in all three formats; never crop away its subject.
+      rect(0,0,w,H*h,'#1e2724');
+      imageLogo(img,w/2,H*h/2,w,H*h);
+    }else if(!state.photo && (style==='ticket'||style==='question')){
       rect(0,0,w,H*h,style==='ticket'?'#8a332a':'#15283e');
       imageLogo(img,w/2,H*h/2,w,H*h);
     }else coverImage(img,w,H*h,state.photo?Number(val('posterPhotoPosition'))/100:0);
